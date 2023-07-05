@@ -7,10 +7,8 @@ use voxelar::*;
 
 fn main() {
     let mut ctx = Voxelar::new();
-    let (mut window, mut events) = ctx.create_window(600, 300, "Demo", glfw::WindowMode::Windowed);
-
-    let receivable_events = ReceivableEvents::all();
-    receivable_events.set_for(&mut window);
+    let (mut window, mut events) = ctx.create_window(800, 600, "Demo", glfw::WindowMode::Windowed);
+    window.set_receivable_events(ReceivableEvents::all());
 
     while !window.should_close() {
         ctx.poll_events();
