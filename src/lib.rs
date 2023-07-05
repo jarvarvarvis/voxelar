@@ -1,8 +1,13 @@
 pub extern crate glfw;
-use glfw::Glfw;
 
+use glfw::*;
+
+pub mod receivable_events;
 pub mod window;
-use window::Window;
+pub mod window_events;
+
+use window::*;
+use window_events::*;
 
 pub struct Voxelar {
     glfw: Glfw,
@@ -15,19 +20,30 @@ impl Voxelar {
         }
     }
 
+    pub fn window_hint(&mut self, hint: WindowHint) {
+        self.glfw.window_hint(hint);
+    }
+
     pub fn create_window(
         &mut self,
         width: u32,
         height: u32,
         title: &str,
-        mode: glfw::WindowMode,
-    ) -> Window {
+        mode: WindowMode,
+    ) -> (VoxelarWindow, VoxelarWindowEvents) {
         let (window, events) = self
             .glfw
             .create_window(width, height, title, mode)
             .expect("Failed to create GLFW window."); // TODO: think about how this could be
                                                       // handled using a user-defined error/result
                                                       // type
-        Window::new(window, events)
+        let window = VoxelarWindow::new(window);
+        let events = VoxelarWindowEvents::new(events);
+
+        (window, events)
+    }
+
+    pub fn poll_events(&mut self) {
+        self.glfw.poll_events();
     }
 }
