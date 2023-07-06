@@ -1,7 +1,6 @@
-use glfw::{Context, Window};
+use glfw::Window;
 
 use crate::receivable_events::ReceivableEvents;
-use crate::render_context::RenderContext;
 
 pub struct VoxelarWindow {
     glfw_window: Window,
@@ -24,19 +23,11 @@ impl VoxelarWindow {
         events.set_for(self);
     }
 
+    pub fn glfw_window(&self) -> &Window {
+        &self.glfw_window
+    }
+
     pub fn glfw_window_mut(&mut self) -> &mut Window {
         &mut self.glfw_window
-    }
-
-    pub fn load_render_context<C: RenderContext>(&mut self) -> C {
-        C::load(self)
-    }
-
-    pub fn make_current(&mut self) {
-        self.glfw_window.make_current();
-    }
-
-    pub fn swap(&mut self) {
-        self.glfw_window.swap_buffers();
     }
 }

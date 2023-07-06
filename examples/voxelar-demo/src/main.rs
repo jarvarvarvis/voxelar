@@ -2,6 +2,7 @@ extern crate voxelar;
 
 use voxelar::glfw::*;
 use voxelar::receivable_events::*;
+use voxelar::vulkan::VulkanContext;
 use voxelar::window::*;
 use voxelar::*;
 
@@ -10,16 +11,11 @@ fn main() -> Result<()> {
 
     ctx.window_hint(WindowHint::Visible(true));
     ctx.window_hint(WindowHint::ClientApi(ClientApiHint::NoApi));
-    let (mut window, mut events) = ctx.create_window(800, 600, "Demo", glfw::WindowMode::Windowed);
-
-    assert!(ctx.vulkan_supported());
-
-    let required_extensions = ctx.get_required_instance_extensions().unwrap_or(vec![]);
-    assert!(required_extensions.contains(&"VK_KHR_surface".to_string()));
-
-    println!("Required Vulkan extensions: {:?}", required_extensions);
+    let (mut window, mut events) = ctx.create_window(800, 600, "Demo", glfw::WindowMode::Windowed)?;
     
     window.set_receivable_events(ReceivableEvents::all());
+
+    let vulkan_context = ctx.load_render_context_for_window::<VulkanContext>(&mut window)?;
 
     while !window.should_close() {
         ctx.poll_events();

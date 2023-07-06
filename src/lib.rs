@@ -6,11 +6,14 @@ use glfw::*;
 pub mod receivable_events;
 pub mod render_context;
 pub mod result;
+pub mod vulkan;
 pub mod window;
 pub mod window_events;
 
 pub use result::*;
 
+use render_context::RenderContext;
+use result::Context;
 use window::*;
 use window_events::*;
 
@@ -35,17 +38,15 @@ impl Voxelar {
         height: u32,
         title: &str,
         mode: WindowMode,
-    ) -> (VoxelarWindow, VoxelarWindowEvents) {
+    ) -> crate::Result<(VoxelarWindow, VoxelarWindowEvents)> {
         let (window, events) = self
             .glfw
             .create_window(width, height, title, mode)
-            .expect("Failed to create GLFW window."); // TODO: think about how this could be
-                                                      // handled using a user-defined error/result
-                                                      // type
+            .context("Failed to create GLFW window.".to_string())?;
         let window = VoxelarWindow::new(window);
         let events = VoxelarWindowEvents::new(events);
 
-        (window, events)
+        Ok((window, events))
     }
 
     pub fn set_swap_interval(&mut self, interval: SwapInterval) {
@@ -62,5 +63,12 @@ impl Voxelar {
 
     pub fn get_required_instance_extensions(&self) -> Option<Vec<String>> {
         self.glfw.get_required_instance_extensions()
+    }
+
+    pub fn load_render_context_for_window<C: RenderContext>(
+        &mut self,
+        window: &mut VoxelarWindow,
+    ) -> crate::Result<C> {
+        C::load(self, window)
     }
 }

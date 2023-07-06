@@ -1,11 +1,14 @@
-use std::{ffi::NulError, str::Utf8Error};
+use std::ffi::NulError;
+use std::str::Utf8Error;
 
 #[derive(Debug)]
 pub enum VoxelarError {
     Wrapped(Box<dyn std::error::Error>),
     Custom(String),
     NulError(NulError),
-    Utf8Error(Utf8Error)
+    Utf8Error(Utf8Error),
+    VkError(ash::vk::Result),
+    VkLoadingError(ash::LoadingError)
 }
 
 impl std::fmt::Display for VoxelarError {
@@ -15,6 +18,8 @@ impl std::fmt::Display for VoxelarError {
             VoxelarError::Custom(msg) => write!(f, "Voxelar error (Custom): {}", msg),
             VoxelarError::NulError(err) => write!(f, "Voxelar error (NulError): {}", err),
             VoxelarError::Utf8Error(err) => write!(f, "Voxelar error (Utf8Error): {}", err),
+            VoxelarError::VkError(err) => write!(f, "Voxelar error (VkError): {}", err),
+            VoxelarError::VkLoadingError(err) => write!(f, "Voxelar error (VkLoadingError): {}", err),
         }
     }
 }
@@ -26,30 +31,40 @@ macro_rules! error_impl_from {
                 $variant(value)
             }
         }
-    }
+    };
 }
 
 error_impl_from!(Box<dyn std::error::Error>, Self::Wrapped);
 error_impl_from!(String, Self::Custom);
 error_impl_from!(NulError, Self::NulError);
 error_impl_from!(Utf8Error, Self::Utf8Error);
+error_impl_from!(ash::vk::Result, Self::VkError);
+error_impl_from!(ash::LoadingError, Self::VkLoadingError);
 
 pub type Result<T> = std::result::Result<T, VoxelarError>;
 
+#[macro_export]
 macro_rules! error {
     ($($arg:tt),*) => {
         crate::result::VoxelarError::Custom(format!($($arg),*))
     }
 }
 
+#[macro_export]
 macro_rules! bail {
     ($($arg:tt),*) => {
-        return Err(crate::result::error!($($arg),*))
+        return Err(crate::error!($($arg),*))
     }
 }
 
-pub(super) use error;
-pub(super) use bail;
+#[macro_export]
+macro_rules! verify {
+    ($value:expr, $($arg:tt),*) => {
+        if !{ $value } {
+            return Err(crate::error!($($arg),*));
+        }
+    }
+}
 
 pub trait Context<T> {
     fn context(self, ctx: String) -> Result<T>;
@@ -89,15 +104,15 @@ mod tests {
     #[derive(Debug)]
     struct Wrapped {
         #[allow(unused)]
-        data: u32
+        data: u32,
     }
-    
+
     impl std::fmt::Display for Wrapped {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { 
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             write!(f, "{:?}", self)
         }
     }
-    
+
     impl std::error::Error for Wrapped {}
 
     #[test]
