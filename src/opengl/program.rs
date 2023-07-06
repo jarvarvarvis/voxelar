@@ -1,8 +1,10 @@
-use std::ptr;
+use std::{ffi::CString, ptr};
 
 use gl::types::*;
 
 use crate::opengl::shader::Shader;
+
+use super::uniform::Uniform;
 
 pub struct Program {
     pub handle: u32,
@@ -81,6 +83,31 @@ impl Program {
         program.attach(shaders);
         program.link()?;
         Ok(program)
+    }
+
+    /// Uniforms must (at maximum) live as long as the Program that they have been 
+    /// created from. Otherwise, setting the value of a uniform after the program has
+    /// been moved and dropped (like below) will result in an error (even undefined 
+    /// behaviour, perhaps):
+    ///
+    /// ```rust
+    /// fn move_program(_: Program) {}
+    ///
+    /// fn example() {
+    ///     let program = Program::create();
+    ///     let mut uniform = program.get_uniform("test").unwrap();
+    ///     move_program(program);
+    ///     uniform.set_f32(0.0);
+    /// }
+    /// ```
+    pub fn get_uniform<'prog>(&'prog self, name: &str) -> crate::Result<Uniform<'prog>> {
+        let c_name = CString::new(name)?;
+        let ptr = c_name.as_ptr();
+
+        match unsafe { gl::GetUniformLocation(self.handle, ptr) } {
+            -1 => crate::bail!("Uniform with name {} was not found", name),
+            id => Ok(Uniform::new(id)),
+        }
     }
 }
 

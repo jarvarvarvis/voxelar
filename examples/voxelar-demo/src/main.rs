@@ -9,6 +9,7 @@ use voxelar::opengl::vao::Vao;
 use voxelar::opengl::vbo::Vbo;
 use voxelar::opengl::GlContext;
 use voxelar::receivable_events::*;
+use voxelar::render_context::RenderContext;
 use voxelar::window::*;
 use voxelar::*;
 
@@ -65,15 +66,24 @@ fn create_mesh() -> crate::Result<Mesh> {
 
 fn main() -> Result<()> {
     let mut ctx = Voxelar::new();
+
+    ctx.window_hint(WindowHint::ContextVersion(3, 3));
+    ctx.window_hint(WindowHint::OpenGlProfile(OpenGlProfileHint::Core));
     let (mut window, mut events) = ctx.create_window(800, 600, "Demo", glfw::WindowMode::Windowed);
     window.set_receivable_events(ReceivableEvents::all());
 
-    window.load_render_context::<GlContext>();
     window.make_current();
+    let render_context = window.load_render_context::<GlContext>();
+    println!("{}", render_context.get_info()?);
 
     ctx.set_swap_interval(SwapInterval::Sync(1));
 
     let mesh = create_mesh()?;
+
+    let program = mesh.program();
+    let mut uniform = program.get_uniform("colorMultiplier")?;
+    program.bind();
+    uniform.set_float(0.5); // Make the colors a bit darker
 
     while !window.should_close() {
         unsafe {

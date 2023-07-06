@@ -25,4 +25,16 @@ impl Mesh {
         self.vao.unbind();
         self.program.unbind();
     }
+
+    pub fn program(&self) -> &Program {
+        &self.program
+    }
+
+    pub fn program_mut(&mut self) -> &mut Program {
+        &mut self.program
+    }
+
+    pub fn vertices(&self) -> i32 {
+        self.vertices
+    }
 }

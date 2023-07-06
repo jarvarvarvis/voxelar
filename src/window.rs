@@ -28,8 +28,8 @@ impl VoxelarWindow {
         &mut self.glfw_window
     }
 
-    pub fn load_render_context<C: RenderContext>(&mut self) {
-        C::load(self);
+    pub fn load_render_context<C: RenderContext>(&mut self) -> C {
+        C::load(self)
     }
 
     pub fn make_current(&mut self) {

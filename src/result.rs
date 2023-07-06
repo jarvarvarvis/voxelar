@@ -1,7 +1,11 @@
+use std::{ffi::NulError, str::Utf8Error};
+
 #[derive(Debug)]
 pub enum VoxelarError {
     Wrapped(Box<dyn std::error::Error>),
-    Custom(String)
+    Custom(String),
+    NulError(NulError),
+    Utf8Error(Utf8Error)
 }
 
 impl std::fmt::Display for VoxelarError {
@@ -9,23 +13,26 @@ impl std::fmt::Display for VoxelarError {
         match self {
             VoxelarError::Wrapped(err) => write!(f, "Voxelar error (Wrapped): {}", err),
             VoxelarError::Custom(msg) => write!(f, "Voxelar error (Custom): {}", msg),
+            VoxelarError::NulError(err) => write!(f, "Voxelar error (NulError): {}", err),
+            VoxelarError::Utf8Error(err) => write!(f, "Voxelar error (Utf8Error): {}", err),
         }
     }
 }
 
-impl From<Box<dyn std::error::Error>> for VoxelarError {
-    fn from(value: Box<dyn std::error::Error>) -> Self {
-        Self::Wrapped(value)
+macro_rules! error_impl_from {
+    ($type:ty, $variant:expr) => {
+        impl From<$type> for VoxelarError {
+            fn from(value: $type) -> Self {
+                $variant(value)
+            }
+        }
     }
 }
 
-impl From<String> for VoxelarError {
-    fn from(value: String) -> Self {
-        Self::Custom(value)
-    }
-}
-
-impl std::error::Error for VoxelarError {}
+error_impl_from!(Box<dyn std::error::Error>, Self::Wrapped);
+error_impl_from!(String, Self::Custom);
+error_impl_from!(NulError, Self::NulError);
+error_impl_from!(Utf8Error, Self::Utf8Error);
 
 pub type Result<T> = std::result::Result<T, VoxelarError>;
 

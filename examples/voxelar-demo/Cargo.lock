@@ -126,6 +126,9 @@ dependencies = [
 [[package]]
 name = "voxelar-math"
 version = "0.1.0"
+dependencies = [
+ "gl",
+]
 
 [[package]]
 name = "winapi"
