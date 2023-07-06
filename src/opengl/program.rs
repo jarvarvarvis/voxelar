@@ -50,7 +50,7 @@ impl Program {
         }
     }
 
-    pub fn link<'err>(&self) -> crate::Result<'err, ()> {
+    pub fn link(&self) -> crate::Result<()> {
         unsafe { gl::LinkProgram(self.handle) };
 
         if !self.is_linked() {
@@ -76,7 +76,7 @@ impl Program {
         }
     }
 
-    pub fn from_shaders<'err>(shaders: Vec<Shader>) -> crate::Result<'err, Self> {
+    pub fn from_shaders(shaders: Vec<Shader>) -> crate::Result<Self> {
         let program = Self::create();
         program.attach(shaders);
         program.link()?;

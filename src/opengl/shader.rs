@@ -66,12 +66,20 @@ impl Drop for Shader {
     }
 }
 
+#[macro_export]
 macro_rules! shader_from_source {
     ($ty:expr, $code:tt) => {{
-        let shader = crate::shader::Shader::create($ty);
+        let shader = crate::opengl::shader::Shader::create($ty);
         shader.compile(format!("{}", $code))?;
         Ok(shader)
     }};
 }
 
-pub(super) use shader_from_source;
+#[macro_export]
+macro_rules! shader_from_file {
+    ($ty:expr, $file:tt) => {{
+        let shader = crate::opengl::shader::Shader::create($ty);
+        shader.compile(include_str!($file).to_string())?;
+        Ok(shader)
+    }};
+}

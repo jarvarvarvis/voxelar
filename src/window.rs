@@ -35,4 +35,8 @@ impl VoxelarWindow {
     pub fn make_current(&mut self) {
         self.glfw_window.make_current();
     }
+
+    pub fn swap(&mut self) {
+        self.glfw_window.swap_buffers();
+    }
 }

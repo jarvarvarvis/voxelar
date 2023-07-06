@@ -1,3 +1,5 @@
+pub extern crate gl;
+
 pub mod mesh;
 pub mod program;
 pub mod shader;
