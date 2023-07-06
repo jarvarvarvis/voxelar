@@ -1,4 +1,5 @@
 pub extern crate glfw;
+pub extern crate voxelar_math;
 
 use glfw::*;
 

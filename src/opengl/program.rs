@@ -90,14 +90,20 @@ impl Program {
     /// been moved and dropped (like below) will result in an error (even undefined 
     /// behaviour, perhaps):
     ///
-    /// ```rust
+    /// ```
+    /// use voxelar::opengl::uniform::Uniforms;
+    /// use voxelar::opengl::program::Program;
     /// fn move_program(_: Program) {}
     ///
     /// fn example() {
     ///     let program = Program::create();
     ///     let mut uniform = program.get_uniform("test").unwrap();
+    ///     uniform.set(Uniforms::Uniform1f(0.5));
     ///     move_program(program);
-    ///     uniform.set_f32(0.0);
+    ///     // Moving the call to set after move_program will result
+    ///     // in a compiler error, because uniform can't outlive
+    ///     // program.
+    ///     // uniform.set(Uniforms::Uniform1f(0.5));
     /// }
     /// ```
     pub fn get_uniform<'prog>(&'prog self, name: &str) -> crate::Result<Uniform<'prog>> {

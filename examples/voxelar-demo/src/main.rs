@@ -5,11 +5,13 @@ use voxelar::opengl::gl;
 use voxelar::opengl::mesh::Mesh;
 use voxelar::opengl::program::Program;
 use voxelar::opengl::shader::*;
+use voxelar::opengl::uniform::*;
 use voxelar::opengl::vao::Vao;
 use voxelar::opengl::vbo::Vbo;
 use voxelar::opengl::GlContext;
 use voxelar::receivable_events::*;
 use voxelar::render_context::RenderContext;
+use voxelar::voxelar_math::vec3::Vec3;
 use voxelar::window::*;
 use voxelar::*;
 
@@ -81,9 +83,13 @@ fn main() -> Result<()> {
     let mesh = create_mesh()?;
 
     let program = mesh.program();
-    let mut uniform = program.get_uniform("colorMultiplier")?;
+    let mut uniform = program.get_uniform("colors")?;
     program.bind();
-    uniform.set_float(0.5); // Make the colors a bit darker
+    uniform.set(Uniforms::Uniform3fv(vec![
+        Vec3::new(1.0, 0.0, 0.0),
+        Vec3::new(0.0, 0.5, 0.0),
+        Vec3::new(0.0, 0.0, 0.5),
+    ]));
 
     while !window.should_close() {
         unsafe {
