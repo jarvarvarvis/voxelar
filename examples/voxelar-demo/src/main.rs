@@ -10,6 +10,8 @@ fn main() {
     let (mut window, mut events) = ctx.create_window(800, 600, "Demo", glfw::WindowMode::Windowed);
     window.set_receivable_events(ReceivableEvents::all());
 
+    ctx.set_swap_interval(SwapInterval::Sync(1));
+
     while !window.should_close() {
         ctx.poll_events();
         for (_, event) in events.flush() {

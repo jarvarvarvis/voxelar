@@ -43,6 +43,10 @@ impl Voxelar {
         (window, events)
     }
 
+    pub fn set_swap_interval(&mut self, interval: SwapInterval) {
+        self.glfw.set_swap_interval(interval)
+    }
+
     pub fn poll_events(&mut self) {
         self.glfw.poll_events();
     }
