@@ -22,23 +22,25 @@ impl Shader {
     }
 
     fn get_shader_info_log(&self) -> Option<String> {
-        let mut success = gl::FALSE as GLint;
-        let mut info_log = Vec::with_capacity(512);
+        let mut len: gl::types::GLint = 0;
         unsafe {
-            info_log.set_len(512 - 1); // subtract 1 to skip the trailing null character
-            gl::GetShaderiv(self.handle, gl::COMPILE_STATUS, &mut success);
-            if success != gl::TRUE as GLint {
-                gl::GetShaderInfoLog(
-                    self.handle,
-                    512,
-                    ptr::null_mut(),
-                    info_log.as_mut_ptr() as *mut GLchar,
-                );
-                return Some(String::from_utf8(info_log).unwrap());
-            }
+            gl::GetShaderiv(self.handle, gl::INFO_LOG_LENGTH, &mut len);
         }
 
-        None
+        let mut buffer: Vec<u8> = Vec::with_capacity(len as usize + 1);
+        buffer.extend([b' '].iter().cycle().take(len as usize));
+        let info_log: CString = unsafe { CString::from_vec_unchecked(buffer) };
+
+        unsafe {
+            gl::GetShaderInfoLog(
+                self.handle,
+                len,
+                std::ptr::null_mut(),
+                info_log.as_ptr() as *mut gl::types::GLchar,
+            );
+        }
+
+        Some(info_log.to_string_lossy().into_owned())
     }
 
     pub fn compile(&self, source: String) -> crate::Result<()> {
