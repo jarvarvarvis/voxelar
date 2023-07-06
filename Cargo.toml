@@ -6,6 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-gl = "0.14.0"
-glfw = "0.52.0"
+ash = "0.37.3"
+glfw = { version = "0.52.0", features = ["vulkan"] }
 voxelar-math = { path = "./voxelar-math" }

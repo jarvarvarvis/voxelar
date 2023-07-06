@@ -3,7 +3,6 @@ pub extern crate voxelar_math;
 
 use glfw::*;
 
-pub mod opengl;
 pub mod receivable_events;
 pub mod render_context;
 pub mod result;
@@ -55,5 +54,13 @@ impl Voxelar {
 
     pub fn poll_events(&mut self) {
         self.glfw.poll_events();
+    }
+
+    pub fn vulkan_supported(&self) -> bool {
+        self.glfw.vulkan_supported()
+    }
+
+    pub fn get_required_instance_extensions(&self) -> Option<Vec<String>> {
+        self.glfw.get_required_instance_extensions()
     }
 }
