@@ -1,5 +1,6 @@
 extern crate voxelar;
 
+use voxelar::gl_context::*;
 use voxelar::glfw::*;
 use voxelar::receivable_events::*;
 use voxelar::window::*;
@@ -9,6 +10,9 @@ fn main() {
     let mut ctx = Voxelar::new();
     let (mut window, mut events) = ctx.create_window(800, 600, "Demo", glfw::WindowMode::Windowed);
     window.set_receivable_events(ReceivableEvents::all());
+
+    window.load_render_context::<GlContext>();
+    window.make_current();
 
     ctx.set_swap_interval(SwapInterval::Sync(1));
 

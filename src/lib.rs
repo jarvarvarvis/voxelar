@@ -2,7 +2,9 @@ pub extern crate glfw;
 
 use glfw::*;
 
+pub mod gl_context;
 pub mod receivable_events;
+pub mod render_context;
 pub mod window;
 pub mod window_events;
 
