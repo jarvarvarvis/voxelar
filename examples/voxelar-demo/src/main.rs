@@ -1,6 +1,6 @@
 extern crate voxelar;
 
-use voxelar::gl_context::*;
+use voxelar::opengl::*;
 use voxelar::glfw::*;
 use voxelar::receivable_events::*;
 use voxelar::window::*;

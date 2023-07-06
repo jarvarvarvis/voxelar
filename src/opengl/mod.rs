@@ -1,3 +1,9 @@
+pub mod mesh;
+pub mod program;
+pub mod shader;
+pub mod vao;
+pub mod vbo;
+
 use crate::render_context::RenderContext;
 use crate::window::VoxelarWindow;
 
