@@ -1,3 +1,5 @@
+use ash::vk::{MemoryPropertyFlags, MemoryRequirements, PhysicalDeviceMemoryProperties};
+
 pub fn map_vec_ref<A, B, MapFn>(vec: &Vec<A>, map_fn: MapFn) -> Vec<B>
 where
     MapFn: Fn(&A) -> B,

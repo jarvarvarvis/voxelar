@@ -14,6 +14,7 @@ pub trait VerificationProvider {
     fn load(entry: &Entry, instance: &Instance) -> crate::Result<Self>
     where
         Self: Sized;
+    fn destroy(&mut self);
 }
 
 pub struct NoVerification;
@@ -26,6 +27,8 @@ impl VerificationProvider for NoVerification {
     fn load(_: &Entry, _: &Instance) -> crate::Result<Self> {
         Ok(Self)
     }
+
+    fn destroy(&mut self) {}
 }
 
 pub unsafe extern "system" fn vulkan_debug_callback(
@@ -93,6 +96,12 @@ impl VerificationProvider for KHRVerificationAndDebugMessenger {
                 debug_utils_loader,
                 debug_messenger
             })
+        }
+    }
+    
+    fn destroy(&mut self) {
+        unsafe {
+            self.debug_utils_loader.destroy_debug_utils_messenger(self.debug_messenger, None);
         }
     }
 }

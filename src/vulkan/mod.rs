@@ -15,8 +15,6 @@ pub mod debug;
 pub mod physical_device;
 pub mod util;
 
-use util::*;
-
 use crate::render_context::RenderContext;
 use crate::window::VoxelarWindow;
 use crate::Voxelar;
@@ -95,7 +93,7 @@ impl<Verification: VerificationProvider> RenderContext for VulkanContext<Verific
             println!("Layers: {:?}", layer_names);
 
             let layers_names_raw: Vec<*const c_char> =
-                map_vec_ref(&layer_names, |name| name.as_ptr());
+                util::map_vec_ref(&layer_names, |name| name.as_ptr());
 
             // Create flags
             let create_flags = if cfg!(any(target_os = "macos", target_os = "ios")) {
@@ -137,5 +135,15 @@ impl<Verification: VerificationProvider> RenderContext for VulkanContext<Verific
 
     fn get_info(&self) -> crate::Result<String> {
         todo!()
+    }
+}
+
+impl<Verification: VerificationProvider> Drop for VulkanContext<Verification> {
+    fn drop(&mut self) {
+        unsafe {
+            self.surface_loader.destroy_surface(self.surface, None);
+            self.verification.destroy();
+            self.instance.destroy_instance(None);
+        }
     }
 }
