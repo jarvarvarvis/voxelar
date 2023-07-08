@@ -1,6 +1,7 @@
 use std::ffi::{c_char, CStr, CString};
 
 use ash::extensions::ext::DebugUtils;
+use ash::extensions::khr::Surface;
 use ash::vk;
 use ash::vk::ApplicationInfo;
 use ash::vk::SurfaceKHR;
@@ -21,6 +22,7 @@ use crate::window::VoxelarWindow;
 use crate::Voxelar;
 
 use self::debug::VerificationProvider;
+use self::physical_device::PhysicalDeviceInfo;
 
 pub struct VulkanContext<Verification: VerificationProvider> {
     pub entry: Entry,
@@ -28,6 +30,7 @@ pub struct VulkanContext<Verification: VerificationProvider> {
 
     pub verification: Verification,
 
+    pub surface_loader: Surface,
     pub surface: SurfaceKHR,
 }
 
@@ -43,6 +46,16 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
             .api_version(vk::make_api_version(0, 1, 0, 0));
 
         *app_info
+    }
+
+    pub fn find_physical_device(&self) -> crate::Result<PhysicalDeviceInfo> {
+        unsafe {
+            PhysicalDeviceInfo::find_usable_device(
+                &self.instance,
+                &self.surface_loader,
+                self.surface,
+            )
+        }
     }
 }
 
@@ -110,11 +123,14 @@ impl<Verification: VerificationProvider> RenderContext for VulkanContext<Verific
                 None,
             )?;
 
+            let surface_loader = Surface::new(&entry, &instance);
+
             Ok(Self {
                 entry,
                 instance,
                 verification,
                 surface,
+                surface_loader,
             })
         }
     }

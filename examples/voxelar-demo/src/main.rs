@@ -17,6 +17,8 @@ fn main() -> Result<()> {
     window.set_receivable_events(ReceivableEvents::all());
 
     let vulkan_context = ctx.load_render_context_for_window::<VulkanContext<KHRVerificationAndDebugMessenger>>(&mut window)?;
+    let physical_device = vulkan_context.find_physical_device()?;
+    println!("Found physical device with properties: {:#?}", physical_device.device_properties);
 
     while !window.should_close() {
         ctx.poll_events();
