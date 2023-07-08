@@ -48,7 +48,7 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         *app_info
     }
 
-    pub fn find_physical_device(&self) -> crate::Result<PhysicalDeviceInfo> {
+    pub fn find_usable_physical_device(&self) -> crate::Result<PhysicalDeviceInfo> {
         unsafe {
             PhysicalDeviceInfo::find_usable_device(
                 &self.instance,

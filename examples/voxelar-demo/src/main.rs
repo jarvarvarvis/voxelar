@@ -2,8 +2,8 @@ extern crate voxelar;
 
 use voxelar::glfw::*;
 use voxelar::receivable_events::*;
-use voxelar::vulkan::VulkanContext;
 use voxelar::vulkan::debug::*;
+use voxelar::vulkan::VulkanContext;
 use voxelar::window::*;
 use voxelar::*;
 
@@ -12,13 +12,17 @@ fn main() -> Result<()> {
 
     ctx.window_hint(WindowHint::Visible(true));
     ctx.window_hint(WindowHint::ClientApi(ClientApiHint::NoApi));
-    let (mut window, mut events) = ctx.create_window(800, 600, "Demo", glfw::WindowMode::Windowed)?;
-    
+    let (mut window, mut events) =
+        ctx.create_window(800, 600, "Demo", glfw::WindowMode::Windowed)?;
+
     window.set_receivable_events(ReceivableEvents::all());
 
-    let vulkan_context = ctx.load_render_context_for_window::<VulkanContext<KHRVerificationAndDebugMessenger>>(&mut window)?;
-    let physical_device = vulkan_context.find_physical_device()?;
-    println!("Found physical device with properties: {:#?}", physical_device.device_properties);
+    let vulkan_context = ctx
+        .load_render_context_for_window::<VulkanContext<KHRVerificationAndDebugMessenger>>(
+            &mut window,
+        )?;
+    let physical_device = vulkan_context.find_usable_physical_device()?;
+    println!("Found physical device: {:#?}", physical_device.name());
 
     while !window.should_close() {
         ctx.poll_events();

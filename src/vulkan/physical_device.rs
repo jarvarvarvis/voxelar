@@ -1,3 +1,5 @@
+use std::ffi::CStr;
+
 use ash::extensions::khr::Surface;
 use ash::vk::SurfaceKHR;
 use ash::vk::{PhysicalDevice, PhysicalDeviceMemoryProperties, PhysicalDeviceProperties};
@@ -10,7 +12,7 @@ pub struct PhysicalDeviceInfo {
     pub device: PhysicalDevice,
     pub device_properties: PhysicalDeviceProperties,
     pub device_memory_properties: PhysicalDeviceMemoryProperties,
-    pub queue_family_index: usize,
+    pub queue_family_index: u32,
 }
 
 impl PhysicalDeviceInfo {
@@ -18,12 +20,12 @@ impl PhysicalDeviceInfo {
         info: &QueueFamilyProperties,
         device: &PhysicalDevice,
         surface_loader: &Surface,
-        index: usize,
+        index: u32,
         surface: SurfaceKHR,
     ) -> bool {
         info.queue_flags.contains(QueueFlags::GRAPHICS)
             && surface_loader
-                .get_physical_device_surface_support(*device, index as u32, surface)
+                .get_physical_device_surface_support(*device, index, surface)
                 .unwrap()
     }
 
@@ -45,7 +47,7 @@ impl PhysicalDeviceInfo {
                             &info,
                             &pdevice,
                             &surface_loader,
-                            index,
+                            index as u32,
                             surface,
                         );
                         if supports_graphic_and_surface {
@@ -61,7 +63,11 @@ impl PhysicalDeviceInfo {
             device,
             device_memory_properties: instance.get_physical_device_memory_properties(device),
             device_properties: instance.get_physical_device_properties(device),
-            queue_family_index,
+            queue_family_index: queue_family_index as u32,
         })
+    }
+
+    pub fn name(&self) -> &CStr {
+        unsafe { CStr::from_ptr(self.device_properties.device_name.as_ptr()) }
     }
 }
