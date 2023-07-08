@@ -1,10 +1,10 @@
 use std::ffi::CStr;
 
 use ash::extensions::khr::Surface;
-use ash::vk::SurfaceKHR;
 use ash::vk::{MemoryPropertyFlags, MemoryRequirements};
 use ash::vk::{PhysicalDevice, PhysicalDeviceMemoryProperties, PhysicalDeviceProperties};
 use ash::vk::{QueueFamilyProperties, QueueFlags};
+use ash::vk::{SurfaceCapabilitiesKHR, SurfaceFormatKHR, SurfaceKHR};
 use ash::Instance;
 
 use crate::result::Context;
@@ -13,7 +13,11 @@ pub struct SetUpPhysicalDevice {
     pub device: PhysicalDevice,
     pub device_properties: PhysicalDeviceProperties,
     pub device_memory_properties: PhysicalDeviceMemoryProperties,
+
     pub queue_family_index: u32,
+
+    pub surface_format: SurfaceFormatKHR,
+    pub surface_capabilities: SurfaceCapabilitiesKHR,
 }
 
 pub fn find_memory_type_index(
@@ -75,11 +79,20 @@ impl SetUpPhysicalDevice {
             })
             .context("Unable to find usable physical device".to_string())?;
 
+        let device_memory_properties = instance.get_physical_device_memory_properties(device);
+        let device_properties = instance.get_physical_device_properties(device);
+        let surface_format =
+            surface_loader.get_physical_device_surface_formats(device, surface)?[0];
+        let surface_capabilities =
+            surface_loader.get_physical_device_surface_capabilities(device, surface)?;
+
         Ok(Self {
             device,
-            device_memory_properties: instance.get_physical_device_memory_properties(device),
-            device_properties: instance.get_physical_device_properties(device),
+            device_memory_properties,
+            device_properties,
             queue_family_index: queue_family_index as u32,
+            surface_format,
+            surface_capabilities
         })
     }
 

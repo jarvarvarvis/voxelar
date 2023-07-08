@@ -10,7 +10,9 @@ use super::physical_device::SetUpPhysicalDevice;
 
 pub struct SetUpVirtualDevice {
     pub device: Device,
+    
     pub present_queue: Queue,
+    pub queue_family_index: u32,
 }
 
 impl SetUpVirtualDevice {
@@ -38,6 +40,7 @@ impl SetUpVirtualDevice {
         Ok(Self {
             device,
             present_queue,
+            queue_family_index: physical_device_info.queue_family_index
         })
     }
 

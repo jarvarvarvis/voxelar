@@ -13,6 +13,7 @@ use ash::vk::{KhrGetPhysicalDeviceProperties2Fn, KhrPortabilityEnumerationFn};
 
 pub mod debug;
 pub mod physical_device;
+pub mod swapchain;
 pub mod util;
 pub mod virtual_device;
 
@@ -23,6 +24,7 @@ use crate::Voxelar;
 
 use self::debug::VerificationProvider;
 use self::physical_device::SetUpPhysicalDevice;
+use self::swapchain::SetUpSwapchain;
 use self::virtual_device::SetUpVirtualDevice;
 
 pub struct VulkanContext<Verification: VerificationProvider> {
@@ -36,6 +38,7 @@ pub struct VulkanContext<Verification: VerificationProvider> {
 
     pub physical_device: Option<SetUpPhysicalDevice>,
     pub virtual_device: Option<SetUpVirtualDevice>,
+    pub swapchain: Option<SetUpSwapchain>,
 }
 
 impl<Verification: VerificationProvider> VulkanContext<Verification> {
@@ -72,6 +75,30 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
             self.virtual_device = Some(SetUpVirtualDevice::create_with_defaults(
                 &self.instance,
                 &physical_device,
+            )?);
+        }
+
+        Ok(())
+    }
+
+    pub fn create_swapchain(&mut self, window_size: (i32, i32)) -> crate::Result<()> {
+        let physical_device = self.physical_device
+            .as_ref()
+            .context("No physical device was set up yet! Use VulkanContext::find_usable_physical_device to do so".to_string())?;
+        let virtual_device = self.virtual_device.as_ref().context(
+            "No virtual device was set up yet! Use VulkanContext::create_virtual_device to do so"
+                .to_string(),
+        )?;
+
+        unsafe {
+            self.swapchain = Some(SetUpSwapchain::create_with_defaults(
+                &self.instance,
+                &self.surface_loader,
+                self.surface,
+                physical_device,
+                virtual_device,
+                window_size.0 as u32,
+                window_size.1 as u32,
             )?);
         }
 
@@ -153,6 +180,7 @@ impl<Verification: VerificationProvider> RenderContext for VulkanContext<Verific
                 surface_loader,
                 physical_device: None,
                 virtual_device: None,
+                swapchain: None,
             })
         }
     }
@@ -167,6 +195,11 @@ impl<Verification: VerificationProvider> Drop for VulkanContext<Verification> {
         unsafe {
             if let Some(device) = self.virtual_device.as_mut() {
                 device.wait();
+
+                if let Some(swapchain) = self.swapchain.as_mut() {
+                    swapchain.destroy();
+                }
+
                 device.destroy();
             }
             self.surface_loader.destroy_surface(self.surface, None);

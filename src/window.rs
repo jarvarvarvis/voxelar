@@ -49,4 +49,8 @@ impl VoxelarWindow {
     pub fn title(&self) -> &str {
         self.title.as_str()
     }
+
+    pub fn get_size(&self) -> (i32, i32) {
+        self.glfw_window.get_size()
+    }
 }

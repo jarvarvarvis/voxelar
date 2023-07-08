@@ -27,6 +27,7 @@ fn main() -> Result<()> {
     println!("Found physical device: {:?}", phys_device.name());
 
     vulkan_context.create_virtual_device()?;
+    vulkan_context.create_swapchain(window.get_size())?;
 
     while !window.should_close() {
         ctx.poll_events();
