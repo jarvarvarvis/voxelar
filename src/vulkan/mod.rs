@@ -14,13 +14,16 @@ use ash::vk::{KhrGetPhysicalDeviceProperties2Fn, KhrPortabilityEnumerationFn};
 pub mod debug;
 pub mod physical_device;
 pub mod util;
+pub mod virtual_device;
 
 use crate::render_context::RenderContext;
+use crate::result::Context;
 use crate::window::VoxelarWindow;
 use crate::Voxelar;
 
 use self::debug::VerificationProvider;
 use self::physical_device::PhysicalDeviceInfo;
+use self::virtual_device::VirtualDeviceInfo;
 
 pub struct VulkanContext<Verification: VerificationProvider> {
     pub entry: Entry,
@@ -31,7 +34,8 @@ pub struct VulkanContext<Verification: VerificationProvider> {
     pub surface_loader: Surface,
     pub surface: SurfaceKHR,
 
-    pub physical_device: Option<PhysicalDeviceInfo>
+    pub physical_device: Option<PhysicalDeviceInfo>,
+    pub virtual_device: Option<VirtualDeviceInfo>,
 }
 
 impl<Verification: VerificationProvider> VulkanContext<Verification> {
@@ -56,6 +60,21 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
                 self.surface,
             )?);
         }
+        Ok(())
+    }
+
+    pub fn create_virtual_device(&mut self) -> crate::Result<()> {
+        let physical_device = self.physical_device
+            .as_ref()
+            .context("No physical device was set up yet! Use VulkanContext::find_usable_physical_device to do so".to_string())?;
+
+        unsafe {
+            self.virtual_device = Some(VirtualDeviceInfo::create_with_defaults(
+                &self.instance,
+                &physical_device,
+            )?);
+        }
+
         Ok(())
     }
 }
@@ -132,7 +151,8 @@ impl<Verification: VerificationProvider> RenderContext for VulkanContext<Verific
                 verification,
                 surface,
                 surface_loader,
-                physical_device: None
+                physical_device: None,
+                virtual_device: None,
             })
         }
     }
@@ -145,6 +165,10 @@ impl<Verification: VerificationProvider> RenderContext for VulkanContext<Verific
 impl<Verification: VerificationProvider> Drop for VulkanContext<Verification> {
     fn drop(&mut self) {
         unsafe {
+            if let Some(device) = self.virtual_device.as_mut() {
+                device.wait();
+                device.destroy();
+            }
             self.surface_loader.destroy_surface(self.surface, None);
             self.verification.destroy();
             self.instance.destroy_instance(None);

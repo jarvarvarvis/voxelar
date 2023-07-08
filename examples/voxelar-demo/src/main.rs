@@ -25,6 +25,8 @@ fn main() -> Result<()> {
     let phys_device = vulkan_context.physical_device.as_ref().unwrap();
     println!("Found physical device: {:?}", phys_device.name());
 
+    vulkan_context.create_virtual_device()?;
+
     while !window.should_close() {
         ctx.poll_events();
         for (_, event) in events.flush() {
