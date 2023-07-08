@@ -11,6 +11,7 @@ use ash::{Entry, Instance};
 use ash::vk::{KhrGetPhysicalDeviceProperties2Fn, KhrPortabilityEnumerationFn};
 
 pub mod debug;
+pub mod physical_device;
 pub mod util;
 
 use util::*;
@@ -60,6 +61,14 @@ impl<Verification: VerificationProvider> RenderContext for VulkanContext<Verific
                     .unwrap()
                     .to_vec();
             extension_names_raw.push(DebugUtils::name().as_ptr());
+
+            #[cfg(any(target_os = "macos", target_os = "ios"))]
+            {
+                extension_names_raw.push(KhrPortabilityEnumerationFn::name().as_ptr());
+                // Enabling this extension is a requirement when using `VK_KHR_portability_subset`
+                extension_names_raw.push(KhrGetPhysicalDeviceProperties2Fn::name().as_ptr());
+            }
+
             println!(
                 "Extensions: {:?}",
                 extension_names_raw
