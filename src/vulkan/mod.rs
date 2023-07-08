@@ -47,6 +47,16 @@ pub struct VulkanContext<Verification: VerificationProvider> {
     pub present_images: Option<SetUpPresentImages>,
 }
 
+macro_rules! generate_safe_getter {
+    ($name:ident, $type:ty, $err_message:tt) => {
+        pub fn $name(&self) -> crate::Result<&$type> {
+            self.$name
+                .as_ref()
+                .context($err_message.to_string())
+        }
+    }
+}
+
 impl<Verification: VerificationProvider> VulkanContext<Verification> {
     fn create_app_info(window: &VoxelarWindow) -> ApplicationInfo {
         let app_name = CString::new(window.title()).unwrap();
@@ -61,6 +71,26 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         *app_info
     }
 
+    generate_safe_getter!(
+        physical_device, SetUpPhysicalDevice, "No physical device was set up yet! Use VulkanContext::find_usable_physical_device to do so"
+    );
+
+    generate_safe_getter!(
+        virtual_device, SetUpVirtualDevice, "No virtual device was set up yet! Use VulkanContext::create_virtual_device to do so"
+    );
+
+    generate_safe_getter!(
+        swapchain, SetUpSwapchain, "No swapchain was set up yet! Use VulkanContext::create_swapchain to do so"
+    );
+    
+    generate_safe_getter!(
+        command_logic, SetUpCommandLogic, "No command logic was set up yet! Use VulkanContext::create_command_logic to do so"
+    );
+    
+    generate_safe_getter!(
+        present_images, SetUpPresentImages, "No present image were set up yet! Use VulkanContext::create_present_images to do so"
+    );
+
     pub fn find_usable_physical_device(&mut self) -> crate::Result<()> {
         unsafe {
             self.physical_device = Some(SetUpPhysicalDevice::find_usable_device(
@@ -73,14 +103,10 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
     }
 
     pub fn create_virtual_device(&mut self) -> crate::Result<()> {
-        let physical_device = self.physical_device
-            .as_ref()
-            .context("No physical device was set up yet! Use VulkanContext::find_usable_physical_device to do so".to_string())?;
-
         unsafe {
             self.virtual_device = Some(SetUpVirtualDevice::create_with_defaults(
                 &self.instance,
-                &physical_device,
+                self.physical_device()?,
             )?);
         }
 
@@ -88,21 +114,13 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
     }
 
     pub fn create_swapchain(&mut self, window_size: (i32, i32)) -> crate::Result<()> {
-        let physical_device = self.physical_device
-            .as_ref()
-            .context("No physical device was set up yet! Use VulkanContext::find_usable_physical_device to do so".to_string())?;
-        let virtual_device = self.virtual_device.as_ref().context(
-            "No virtual device was set up yet! Use VulkanContext::create_virtual_device to do so"
-                .to_string(),
-        )?;
-
         unsafe {
             self.swapchain = Some(SetUpSwapchain::create_with_defaults(
                 &self.instance,
                 &self.surface_loader,
                 self.surface,
-                physical_device,
-                virtual_device,
+                self.physical_device()?,
+                self.virtual_device()?,
                 window_size.0 as u32,
                 window_size.1 as u32,
             )?);
@@ -112,35 +130,21 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
     }
 
     pub fn create_command_logic(&mut self) -> crate::Result<()> {
-        let virtual_device = self.virtual_device.as_ref().context(
-            "No virtual device was set up yet! Use VulkanContext::create_virtual_device to do so"
-                .to_string(),
-        )?;
-
         unsafe {
-            self.command_logic = Some(SetUpCommandLogic::create_with_defaults(&virtual_device)?);
+            self.command_logic = Some(SetUpCommandLogic::create_with_defaults(
+                self.virtual_device()?,
+            )?);
         }
 
         Ok(())
     }
 
     pub fn create_present_images(&mut self) -> crate::Result<()> {
-        let physical_device = self.physical_device
-            .as_ref()
-            .context("No physical device was set up yet! Use VulkanContext::find_usable_physical_device to do so".to_string())?;
-        let virtual_device = self.virtual_device.as_ref().context(
-            "No virtual device was set up yet! Use VulkanContext::create_virtual_device to do so"
-                .to_string(),
-        )?;
-        let swapchain = self.swapchain.as_ref().context(
-            "No swapchain was set up yet! Use VulkanContext::create_swapchain to do so".to_string(),
-        )?;
-
         unsafe {
             self.present_images = Some(SetUpPresentImages::create_with_defaults(
-                &physical_device,
-                &virtual_device,
-                &swapchain,
+                self.physical_device()?,
+                self.virtual_device()?,
+                self.swapchain()?,
             )?);
         }
 
