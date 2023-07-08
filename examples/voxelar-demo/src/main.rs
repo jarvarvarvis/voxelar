@@ -28,7 +28,6 @@ fn main() -> Result<()> {
 }
 
 fn handle_window_event(window: &mut VoxelarWindow, event: glfw::WindowEvent) {
-    println!("Event: {:?}", event);
     match event {
         glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => window.set_should_close(true),
         _ => {}
