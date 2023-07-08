@@ -17,12 +17,13 @@ fn main() -> Result<()> {
 
     window.set_receivable_events(ReceivableEvents::all());
 
-    let vulkan_context = ctx
+    let mut vulkan_context = ctx
         .load_render_context_for_window::<VulkanContext<KHRVerificationAndDebugMessenger>>(
             &mut window,
         )?;
-    let physical_device = vulkan_context.find_usable_physical_device()?;
-    println!("Found physical device: {:#?}", physical_device.name());
+    vulkan_context.find_usable_physical_device()?;
+    let phys_device = vulkan_context.physical_device.as_ref().unwrap();
+    println!("Found physical device: {:?}", phys_device.name());
 
     while !window.should_close() {
         ctx.poll_events();

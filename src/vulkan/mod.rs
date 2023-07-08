@@ -30,6 +30,8 @@ pub struct VulkanContext<Verification: VerificationProvider> {
 
     pub surface_loader: Surface,
     pub surface: SurfaceKHR,
+
+    pub physical_device: Option<PhysicalDeviceInfo>
 }
 
 impl<Verification: VerificationProvider> VulkanContext<Verification> {
@@ -46,14 +48,15 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         *app_info
     }
 
-    pub fn find_usable_physical_device(&self) -> crate::Result<PhysicalDeviceInfo> {
+    pub fn find_usable_physical_device(&mut self) -> crate::Result<()> {
         unsafe {
-            PhysicalDeviceInfo::find_usable_device(
+            self.physical_device = Some(PhysicalDeviceInfo::find_usable_device(
                 &self.instance,
                 &self.surface_loader,
                 self.surface,
-            )
+            )?);
         }
+        Ok(())
     }
 }
 
@@ -129,6 +132,7 @@ impl<Verification: VerificationProvider> RenderContext for VulkanContext<Verific
                 verification,
                 surface,
                 surface_loader,
+                physical_device: None
             })
         }
     }

@@ -2,6 +2,7 @@ use std::ffi::CStr;
 
 use ash::extensions::khr::Surface;
 use ash::vk::SurfaceKHR;
+use ash::vk::{MemoryPropertyFlags, MemoryRequirements};
 use ash::vk::{PhysicalDevice, PhysicalDeviceMemoryProperties, PhysicalDeviceProperties};
 use ash::vk::{QueueFamilyProperties, QueueFlags};
 use ash::Instance;
@@ -13,6 +14,21 @@ pub struct PhysicalDeviceInfo {
     pub device_properties: PhysicalDeviceProperties,
     pub device_memory_properties: PhysicalDeviceMemoryProperties,
     pub queue_family_index: u32,
+}
+
+pub fn find_memory_type_index(
+    memory_req: &MemoryRequirements,
+    memory_prop: &PhysicalDeviceMemoryProperties,
+    flags: MemoryPropertyFlags,
+) -> Option<u32> {
+    memory_prop.memory_types[..memory_prop.memory_type_count as _]
+        .iter()
+        .enumerate()
+        .find(|(index, memory_type)| {
+            (1 << index) & memory_req.memory_type_bits != 0
+                && memory_type.property_flags & flags == flags
+        })
+        .map(|(index, _memory_type)| index as _)
 }
 
 impl PhysicalDeviceInfo {
