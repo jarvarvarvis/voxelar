@@ -3,6 +3,7 @@ extern crate voxelar;
 use voxelar::glfw::*;
 use voxelar::receivable_events::*;
 use voxelar::vulkan::VulkanContext;
+use voxelar::vulkan::debug::*;
 use voxelar::window::*;
 use voxelar::*;
 
@@ -15,7 +16,7 @@ fn main() -> Result<()> {
     
     window.set_receivable_events(ReceivableEvents::all());
 
-    let vulkan_context = ctx.load_render_context_for_window::<VulkanContext>(&mut window)?;
+    let vulkan_context = ctx.load_render_context_for_window::<VulkanContext<KHRVerificationAndDebugMessenger>>(&mut window)?;
 
     while !window.should_close() {
         ctx.poll_events();

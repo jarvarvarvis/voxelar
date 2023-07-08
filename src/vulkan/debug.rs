@@ -2,14 +2,36 @@ use std::borrow::Cow;
 use std::ffi::CStr;
 
 use ash::extensions::ext::DebugUtils;
-use ash::vk::DebugUtilsMessengerEXT;
-use ash::vk;
+use ash::vk::{self, DebugUtilsMessengerEXT};
+use ash::vk::{
+    DebugUtilsMessageSeverityFlagsEXT, DebugUtilsMessageTypeFlagsEXT,
+    DebugUtilsMessengerCallbackDataEXT,
+};
 use ash::{Entry, Instance};
 
-unsafe extern "system" fn vulkan_debug_callback(
-    message_severity: vk::DebugUtilsMessageSeverityFlagsEXT,
-    message_type: vk::DebugUtilsMessageTypeFlagsEXT,
-    p_callback_data: *const vk::DebugUtilsMessengerCallbackDataEXT,
+pub trait VerificationProvider {
+    fn get_layers<'a>() -> Vec<&'a CStr>;
+    fn load(entry: &Entry, instance: &Instance) -> crate::Result<Self>
+    where
+        Self: Sized;
+}
+
+pub struct NoVerification;
+
+impl VerificationProvider for NoVerification {
+    fn get_layers<'a>() -> Vec<&'a CStr> {
+        vec![]
+    }
+
+    fn load(_: &Entry, _: &Instance) -> crate::Result<Self> {
+        Ok(Self)
+    }
+}
+
+pub unsafe extern "system" fn vulkan_debug_callback(
+    message_severity: DebugUtilsMessageSeverityFlagsEXT,
+    message_type: DebugUtilsMessageTypeFlagsEXT,
+    p_callback_data: *const DebugUtilsMessengerCallbackDataEXT,
     _user_data: *mut std::os::raw::c_void,
 ) -> vk::Bool32 {
     let callback_data = *p_callback_data;
@@ -34,25 +56,43 @@ unsafe extern "system" fn vulkan_debug_callback(
     vk::FALSE
 }
 
-pub unsafe fn create_debug_utils_loader_and_messenger(
-    entry: &Entry,
-    instance: &Instance,
-) -> crate::Result<(DebugUtils, DebugUtilsMessengerEXT)> {
-    let debug_info = vk::DebugUtilsMessengerCreateInfoEXT::builder()
-        .message_severity(
-            vk::DebugUtilsMessageSeverityFlagsEXT::ERROR
-                | vk::DebugUtilsMessageSeverityFlagsEXT::WARNING
-                | vk::DebugUtilsMessageSeverityFlagsEXT::INFO,
-        )
-        .message_type(
-            vk::DebugUtilsMessageTypeFlagsEXT::GENERAL
-                | vk::DebugUtilsMessageTypeFlagsEXT::VALIDATION
-                | vk::DebugUtilsMessageTypeFlagsEXT::PERFORMANCE,
-        )
-        .pfn_user_callback(Some(vulkan_debug_callback));
+pub struct KHRVerificationAndDebugMessenger {
+    debug_utils_loader: DebugUtils,
+    debug_messenger: DebugUtilsMessengerEXT,
+}
 
-    let debug_utils_loader = DebugUtils::new(entry, instance);
-    let debug_messenger = debug_utils_loader.create_debug_utils_messenger(&debug_info, None)?;
+impl VerificationProvider for KHRVerificationAndDebugMessenger {
+    fn get_layers<'a>() -> Vec<&'a CStr> {
+        unsafe {
+            vec![CStr::from_bytes_with_nul_unchecked(
+                b"VK_LAYER_KHRONOS_validation\0",
+            )]
+        }
+    }
 
-    Ok((debug_utils_loader, debug_messenger))
+    fn load(entry: &Entry, instance: &Instance) -> crate::Result<Self> {
+        unsafe {
+            let debug_info = vk::DebugUtilsMessengerCreateInfoEXT::builder()
+                .message_severity(
+                    vk::DebugUtilsMessageSeverityFlagsEXT::ERROR
+                        | vk::DebugUtilsMessageSeverityFlagsEXT::WARNING
+                        | vk::DebugUtilsMessageSeverityFlagsEXT::INFO,
+                )
+                .message_type(
+                    vk::DebugUtilsMessageTypeFlagsEXT::GENERAL
+                        | vk::DebugUtilsMessageTypeFlagsEXT::VALIDATION
+                        | vk::DebugUtilsMessageTypeFlagsEXT::PERFORMANCE,
+                )
+                .pfn_user_callback(Some(vulkan_debug_callback));
+
+            let debug_utils_loader = DebugUtils::new(&entry, &instance);
+            let debug_messenger =
+                debug_utils_loader.create_debug_utils_messenger(&debug_info, None)?;
+
+            Ok(Self {
+                debug_utils_loader,
+                debug_messenger
+            })
+        }
+    }
 }
