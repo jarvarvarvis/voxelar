@@ -5,9 +5,6 @@ pub mod vec2;
 pub mod vec3;
 pub mod vec4;
 
-pub mod mat_macros;
-pub mod mat2;
-pub mod mat3;
-pub mod mat4;
+pub mod matrix;
 
-pub trait MathType = PartialEq + Clone + Copy + Sized;
+pub trait MathType = PartialEq + Clone + Copy + Default + Sized;
