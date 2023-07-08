@@ -3,6 +3,7 @@ use std::ffi::{c_char, CStr, CString};
 use ash::extensions::ext::DebugUtils;
 use ash::vk;
 use ash::vk::ApplicationInfo;
+use ash::vk::SurfaceKHR;
 use ash::vk::{InstanceCreateFlags, InstanceCreateInfo};
 use ash::{Entry, Instance};
 
@@ -25,6 +26,8 @@ pub struct VulkanContext<Verification: VerificationProvider> {
     pub instance: Instance,
 
     pub verification: Verification,
+
+    pub surface: SurfaceKHR,
 }
 
 impl<Verification: VerificationProvider> VulkanContext<Verification> {
@@ -90,10 +93,19 @@ impl<Verification: VerificationProvider> RenderContext for VulkanContext<Verific
 
             let verification = Verification::load(&entry, &instance)?;
 
+            let surface = ash_window::create_surface(
+                &entry,
+                &instance,
+                window.raw_display_handle(),
+                window.raw_window_handle(),
+                None,
+            )?;
+
             Ok(Self {
                 entry,
                 instance,
                 verification,
+                surface,
             })
         }
     }
