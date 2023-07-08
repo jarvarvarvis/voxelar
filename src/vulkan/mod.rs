@@ -22,8 +22,8 @@ use crate::window::VoxelarWindow;
 use crate::Voxelar;
 
 use self::debug::VerificationProvider;
-use self::physical_device::PhysicalDeviceInfo;
-use self::virtual_device::VirtualDeviceInfo;
+use self::physical_device::SetUpPhysicalDevice;
+use self::virtual_device::SetUpVirtualDevice;
 
 pub struct VulkanContext<Verification: VerificationProvider> {
     pub entry: Entry,
@@ -34,8 +34,8 @@ pub struct VulkanContext<Verification: VerificationProvider> {
     pub surface_loader: Surface,
     pub surface: SurfaceKHR,
 
-    pub physical_device: Option<PhysicalDeviceInfo>,
-    pub virtual_device: Option<VirtualDeviceInfo>,
+    pub physical_device: Option<SetUpPhysicalDevice>,
+    pub virtual_device: Option<SetUpVirtualDevice>,
 }
 
 impl<Verification: VerificationProvider> VulkanContext<Verification> {
@@ -54,7 +54,7 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
 
     pub fn find_usable_physical_device(&mut self) -> crate::Result<()> {
         unsafe {
-            self.physical_device = Some(PhysicalDeviceInfo::find_usable_device(
+            self.physical_device = Some(SetUpPhysicalDevice::find_usable_device(
                 &self.instance,
                 &self.surface_loader,
                 self.surface,
@@ -69,7 +69,7 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
             .context("No physical device was set up yet! Use VulkanContext::find_usable_physical_device to do so".to_string())?;
 
         unsafe {
-            self.virtual_device = Some(VirtualDeviceInfo::create_with_defaults(
+            self.virtual_device = Some(SetUpVirtualDevice::create_with_defaults(
                 &self.instance,
                 &physical_device,
             )?);

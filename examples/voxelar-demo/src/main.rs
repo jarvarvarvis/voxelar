@@ -21,6 +21,7 @@ fn main() -> Result<()> {
         .load_render_context_for_window::<VulkanContext<KHRVerificationAndDebugMessenger>>(
             &mut window,
         )?;
+
     vulkan_context.find_usable_physical_device()?;
     let phys_device = vulkan_context.physical_device.as_ref().unwrap();
     println!("Found physical device: {:?}", phys_device.name());

@@ -6,17 +6,17 @@ use ash::vk::Queue;
 use ash::vk::{DeviceCreateInfo, DeviceQueueCreateInfo};
 use ash::{Device, Instance};
 
-use super::physical_device::PhysicalDeviceInfo;
+use super::physical_device::SetUpPhysicalDevice;
 
-pub struct VirtualDeviceInfo {
+pub struct SetUpVirtualDevice {
     pub device: Device,
     pub present_queue: Queue,
 }
 
-impl VirtualDeviceInfo {
+impl SetUpVirtualDevice {
     pub unsafe fn create(
         instance: &Instance,
-        physical_device_info: &PhysicalDeviceInfo,
+        physical_device_info: &SetUpPhysicalDevice,
         device_extension_names_raw: &[*const i8],
         features: PhysicalDeviceFeatures,
         priorities: &[f32],
@@ -43,7 +43,7 @@ impl VirtualDeviceInfo {
 
     pub unsafe fn create_with_defaults(
         instance: &Instance,
-        physical_device_info: &PhysicalDeviceInfo,
+        physical_device_info: &SetUpPhysicalDevice,
     ) -> crate::Result<Self> {
         let device_extension_names_raw = [
             Swapchain::name().as_ptr(),

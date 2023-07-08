@@ -9,7 +9,7 @@ use ash::Instance;
 
 use crate::result::Context;
 
-pub struct PhysicalDeviceInfo {
+pub struct SetUpPhysicalDevice {
     pub device: PhysicalDevice,
     pub device_properties: PhysicalDeviceProperties,
     pub device_memory_properties: PhysicalDeviceMemoryProperties,
@@ -31,7 +31,7 @@ pub fn find_memory_type_index(
         .map(|(index, _memory_type)| index as _)
 }
 
-impl PhysicalDeviceInfo {
+impl SetUpPhysicalDevice {
     unsafe fn is_device_suitable(
         info: &QueueFamilyProperties,
         device: &PhysicalDevice,
