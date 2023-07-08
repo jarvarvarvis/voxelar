@@ -4,7 +4,7 @@ macro_rules! make_mat_type {
     }) => {
         #[derive(Debug, PartialEq, Clone)]
         pub struct $name<T: MathType> {
-            values: Vec<T>
+            values: Vec<T>,
         }
 
         impl<T: MathType> $name<T> {
@@ -52,16 +52,10 @@ macro_rules! make_mat_type {
             type Output = T;
 
             fn index(&self, index: (usize, usize)) -> &Self::Output {
-                self.get_ref(index.0, index.1) 
+                self.get_ref(index.0, index.1)
             }
         }
-    };
-}
 
-pub(super) use make_mat_type;
-
-macro_rules! impl_mat_math {
-    ($name:ident) => {
         impl<T: MathType + std::ops::Add<Output = T>> std::ops::Add for $name<T> {
             type Output = Self;
 
@@ -129,4 +123,4 @@ macro_rules! impl_mat_math {
     };
 }
 
-pub(super) use impl_mat_math;
+pub(super) use make_mat_type;

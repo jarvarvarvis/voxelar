@@ -6,21 +6,18 @@ make_mat_type! {
         size = (2, 2)
     }
 }
-impl_mat_math!(Mat2);
 
 make_mat_type! {
     Mat2x3 {
         size = (2, 3)
     }
 }
-impl_mat_math!(Mat2x3);
 
 make_mat_type! {
     Mat2x4 {
         size = (2, 4)
     }
 }
-impl_mat_math!(Mat2x4);
 
 #[cfg(test)]
 mod tests {
