@@ -121,7 +121,8 @@ impl SetUpSwapchain {
 
     pub fn destroy(&mut self) {
         unsafe {
-            self.swapchain_loader.destroy_swapchain(self.swapchain, None);
+            self.swapchain_loader
+                .destroy_swapchain(self.swapchain, None);
         }
     }
 }

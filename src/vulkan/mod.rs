@@ -11,6 +11,7 @@ use ash::{Entry, Instance};
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 use ash::vk::{KhrGetPhysicalDeviceProperties2Fn, KhrPortabilityEnumerationFn};
 
+pub mod command;
 pub mod debug;
 pub mod physical_device;
 pub mod swapchain;
@@ -22,6 +23,7 @@ use crate::result::Context;
 use crate::window::VoxelarWindow;
 use crate::Voxelar;
 
+use self::command::SetUpCommandLogic;
 use self::debug::VerificationProvider;
 use self::physical_device::SetUpPhysicalDevice;
 use self::swapchain::SetUpSwapchain;
@@ -39,6 +41,7 @@ pub struct VulkanContext<Verification: VerificationProvider> {
     pub physical_device: Option<SetUpPhysicalDevice>,
     pub virtual_device: Option<SetUpVirtualDevice>,
     pub swapchain: Option<SetUpSwapchain>,
+    pub command_logic: Option<SetUpCommandLogic>,
 }
 
 impl<Verification: VerificationProvider> VulkanContext<Verification> {
@@ -100,6 +103,19 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
                 window_size.0 as u32,
                 window_size.1 as u32,
             )?);
+        }
+
+        Ok(())
+    }
+
+    pub fn create_command_logic(&mut self) -> crate::Result<()> {
+        let virtual_device = self.virtual_device.as_ref().context(
+            "No virtual device was set up yet! Use VulkanContext::create_virtual_device to do so"
+                .to_string(),
+        )?;
+
+        unsafe {
+            self.command_logic = Some(SetUpCommandLogic::create_with_defaults(&virtual_device)?);
         }
 
         Ok(())
@@ -181,6 +197,7 @@ impl<Verification: VerificationProvider> RenderContext for VulkanContext<Verific
                 physical_device: None,
                 virtual_device: None,
                 swapchain: None,
+                command_logic: None,
             })
         }
     }
@@ -195,6 +212,10 @@ impl<Verification: VerificationProvider> Drop for VulkanContext<Verification> {
         unsafe {
             if let Some(device) = self.virtual_device.as_mut() {
                 device.wait();
+
+                if let Some(command_logic) = self.command_logic.as_mut() {
+                    command_logic.destroy(&device);
+                }
 
                 if let Some(swapchain) = self.swapchain.as_mut() {
                     swapchain.destroy();
