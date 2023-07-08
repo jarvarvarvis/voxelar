@@ -108,6 +108,19 @@ macro_rules! make_mat_type {
             }
         }
 
+        impl<T: MathType + std::ops::Div<Output = T>> std::ops::Div for $name<T> {
+            type Output = Self;
+
+            fn div(mut self, rhs: Self) -> Self::Output {
+                for column in 0..Self::COLUMNS {
+                    for row in 0..Self::ROWS {
+                        *self.get_mut(row, column) = self.get(row, column) / rhs.get(row, column);
+                    }
+                }
+                self
+            }
+        }
+
         impl<T: MathType + std::ops::Div<Output = T>> std::ops::Div<T> for $name<T> {
             type Output = Self;
 
