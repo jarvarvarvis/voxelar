@@ -32,18 +32,18 @@ impl Voxelar {
         self.glfw.window_hint(hint);
     }
 
-    pub fn create_window(
-        &mut self,
+    pub fn create_window<'win>(
+        &'win mut self,
         width: u32,
         height: u32,
-        title: &str,
+        title: &'win str,
         mode: WindowMode,
     ) -> crate::Result<(VoxelarWindow, VoxelarWindowEvents)> {
         let (window, events) = self
             .glfw
             .create_window(width, height, title, mode)
             .context("Failed to create GLFW window.".to_string())?;
-        let window = VoxelarWindow::new(window);
+        let window = VoxelarWindow::new(window, title);
         let events = VoxelarWindowEvents::new(events);
 
         Ok((window, events))
