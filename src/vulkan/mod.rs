@@ -14,6 +14,7 @@ use ash::vk::{KhrGetPhysicalDeviceProperties2Fn, KhrPortabilityEnumerationFn};
 pub mod command;
 pub mod debug;
 pub mod physical_device;
+pub mod present_images;
 pub mod swapchain;
 pub mod util;
 pub mod virtual_device;
@@ -26,6 +27,7 @@ use crate::Voxelar;
 use self::command::SetUpCommandLogic;
 use self::debug::VerificationProvider;
 use self::physical_device::SetUpPhysicalDevice;
+use self::present_images::SetUpPresentImages;
 use self::swapchain::SetUpSwapchain;
 use self::virtual_device::SetUpVirtualDevice;
 
@@ -42,6 +44,7 @@ pub struct VulkanContext<Verification: VerificationProvider> {
     pub virtual_device: Option<SetUpVirtualDevice>,
     pub swapchain: Option<SetUpSwapchain>,
     pub command_logic: Option<SetUpCommandLogic>,
+    pub present_images: Option<SetUpPresentImages>,
 }
 
 impl<Verification: VerificationProvider> VulkanContext<Verification> {
@@ -116,6 +119,29 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
 
         unsafe {
             self.command_logic = Some(SetUpCommandLogic::create_with_defaults(&virtual_device)?);
+        }
+
+        Ok(())
+    }
+
+    pub fn create_present_images(&mut self) -> crate::Result<()> {
+        let physical_device = self.physical_device
+            .as_ref()
+            .context("No physical device was set up yet! Use VulkanContext::find_usable_physical_device to do so".to_string())?;
+        let virtual_device = self.virtual_device.as_ref().context(
+            "No virtual device was set up yet! Use VulkanContext::create_virtual_device to do so"
+                .to_string(),
+        )?;
+        let swapchain = self.swapchain.as_ref().context(
+            "No swapchain was set up yet! Use VulkanContext::create_swapchain to do so".to_string(),
+        )?;
+
+        unsafe {
+            self.present_images = Some(SetUpPresentImages::create_with_defaults(
+                &physical_device,
+                &virtual_device,
+                &swapchain,
+            )?);
         }
 
         Ok(())
@@ -198,6 +224,7 @@ impl<Verification: VerificationProvider> RenderContext for VulkanContext<Verific
                 virtual_device: None,
                 swapchain: None,
                 command_logic: None,
+                present_images: None,
             })
         }
     }
@@ -212,6 +239,10 @@ impl<Verification: VerificationProvider> Drop for VulkanContext<Verification> {
         unsafe {
             if let Some(device) = self.virtual_device.as_mut() {
                 device.wait();
+
+                if let Some(present_images) = self.present_images.as_mut() {
+                    present_images.destroy(&device);
+                }
 
                 if let Some(command_logic) = self.command_logic.as_mut() {
                     command_logic.destroy(&device);

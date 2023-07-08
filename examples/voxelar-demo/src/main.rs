@@ -29,6 +29,7 @@ fn main() -> Result<()> {
     vulkan_context.create_virtual_device()?;
     vulkan_context.create_swapchain(window.get_size())?;
     vulkan_context.create_command_logic()?;
+    vulkan_context.create_present_images()?;
 
     while !window.should_close() {
         ctx.poll_events();
