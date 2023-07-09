@@ -4,7 +4,10 @@ use ash::extensions::ext::DebugUtils;
 use ash::extensions::khr::Surface;
 use ash::vk;
 use ash::vk::ApplicationInfo;
+use ash::vk::PipelineStageFlags;
 use ash::vk::SurfaceKHR;
+use ash::vk::{CommandBuffer, Queue};
+use ash::vk::{Fence, Semaphore};
 use ash::vk::{InstanceCreateFlags, InstanceCreateInfo};
 use ash::{Entry, Instance};
 
@@ -13,9 +16,11 @@ use ash::vk::{KhrGetPhysicalDeviceProperties2Fn, KhrPortabilityEnumerationFn};
 
 pub mod command;
 pub mod debug;
+pub mod depth_image;
 pub mod physical_device;
 pub mod present_images;
 pub mod swapchain;
+pub mod sync;
 pub mod util;
 pub mod virtual_device;
 
@@ -26,9 +31,11 @@ use crate::Voxelar;
 
 use self::command::SetUpCommandLogic;
 use self::debug::VerificationProvider;
+use self::depth_image::SetUpDepthImage;
 use self::physical_device::SetUpPhysicalDevice;
 use self::present_images::SetUpPresentImages;
 use self::swapchain::SetUpSwapchain;
+use self::sync::InternalSyncPrimitives;
 use self::virtual_device::SetUpVirtualDevice;
 
 pub struct VulkanContext<Verification: VerificationProvider> {
@@ -45,16 +52,16 @@ pub struct VulkanContext<Verification: VerificationProvider> {
     pub swapchain: Option<SetUpSwapchain>,
     pub command_logic: Option<SetUpCommandLogic>,
     pub present_images: Option<SetUpPresentImages>,
+    pub depth_image: Option<SetUpDepthImage>,
+    pub internal_sync_primitives: Option<InternalSyncPrimitives>,
 }
 
 macro_rules! generate_safe_getter {
     ($name:ident, $type:ty, $err_message:tt) => {
         pub fn $name(&self) -> crate::Result<&$type> {
-            self.$name
-                .as_ref()
-                .context($err_message.to_string())
+            self.$name.as_ref().context($err_message.to_string())
         }
-    }
+    };
 }
 
 impl<Verification: VerificationProvider> VulkanContext<Verification> {
@@ -72,23 +79,45 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
     }
 
     generate_safe_getter!(
-        physical_device, SetUpPhysicalDevice, "No physical device was set up yet! Use VulkanContext::find_usable_physical_device to do so"
+        physical_device,
+        SetUpPhysicalDevice,
+        "No physical device was set up yet! Use VulkanContext::find_usable_physical_device to do so"
     );
 
     generate_safe_getter!(
-        virtual_device, SetUpVirtualDevice, "No virtual device was set up yet! Use VulkanContext::create_virtual_device to do so"
+        virtual_device,
+        SetUpVirtualDevice,
+        "No virtual device was set up yet! Use VulkanContext::create_virtual_device to do so"
     );
 
     generate_safe_getter!(
-        swapchain, SetUpSwapchain, "No swapchain was set up yet! Use VulkanContext::create_swapchain to do so"
+        swapchain,
+        SetUpSwapchain,
+        "No swapchain was set up yet! Use VulkanContext::create_swapchain to do so"
     );
-    
+
     generate_safe_getter!(
-        command_logic, SetUpCommandLogic, "No command logic was set up yet! Use VulkanContext::create_command_logic to do so"
+        command_logic,
+        SetUpCommandLogic,
+        "No command logic was set up yet! Use VulkanContext::create_command_logic to do so"
     );
-    
+
     generate_safe_getter!(
-        present_images, SetUpPresentImages, "No present image were set up yet! Use VulkanContext::create_present_images to do so"
+        present_images,
+        SetUpPresentImages,
+        "No present image were set up yet! Use VulkanContext::create_present_images to do so"
+    );
+
+    generate_safe_getter!(
+        depth_image,
+        SetUpDepthImage,
+        "No depth image was set up yet! Use VulkanContext::create_depth_image to do so"
+    );
+
+    generate_safe_getter!(
+        internal_sync_primitives,
+        InternalSyncPrimitives,
+        "No internal sync primitives were set up yet! Use VulkanContext::create_sync_primitives to do so"
     );
 
     pub fn find_usable_physical_device(&mut self) -> crate::Result<()> {
@@ -150,10 +179,78 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
 
         Ok(())
     }
+
+    pub fn create_depth_image(&mut self, window_size: (i32, i32)) -> crate::Result<()> {
+        unsafe {
+            self.depth_image = Some(SetUpDepthImage::create_with_defaults(
+                self.physical_device()?,
+                self.virtual_device()?,
+                window_size.0 as u32,
+                window_size.1 as u32,
+            )?);
+
+            let depth_image = self.depth_image()?;
+            let setup_command_buffer = self.command_logic()?.get_command_buffer(0);
+            let setup_commands_reuse_fence =
+                self.internal_sync_primitives()?.setup_commands_reuse_fence;
+            let present_queue = self.virtual_device()?.present_queue;
+            self.submit_command_buffer(
+                *setup_command_buffer,
+                setup_commands_reuse_fence,
+                present_queue,
+                &[],
+                &[],
+                &[],
+                |device, setup_command_buffer| {
+                    depth_image
+                        .submit_pipeline_barrier_command_buffer(device, setup_command_buffer);
+                    Ok(())
+                },
+            )?;
+        }
+        Ok(())
+    }
+
+    pub fn create_sync_primitives(&mut self) -> crate::Result<()> {
+        unsafe {
+            self.internal_sync_primitives =
+                Some(InternalSyncPrimitives::create(self.virtual_device()?)?);
+        }
+
+        Ok(())
+    }
+}
+
+impl<Verification: VerificationProvider> VulkanContext<Verification> {
+    pub fn submit_command_buffer<F>(
+        &self,
+        command_buffer: CommandBuffer,
+        command_buffer_reuse_fence: Fence,
+        submit_queue: Queue,
+        wait_mask: &[PipelineStageFlags],
+        wait_semaphores: &[Semaphore],
+        signal_semaphores: &[Semaphore],
+        command_buffer_op: F,
+    ) -> crate::Result<()>
+    where
+        F: FnOnce(&SetUpVirtualDevice, CommandBuffer) -> crate::Result<()>,
+    {
+        let device = self.virtual_device()?;
+        command::submit_command_buffer(
+            &device.device,
+            command_buffer,
+            command_buffer_reuse_fence,
+            submit_queue,
+            wait_mask,
+            wait_semaphores,
+            signal_semaphores,
+            |_, buf| command_buffer_op(device, buf),
+        )
+    }
 }
 
 impl<Verification: VerificationProvider> RenderContext for VulkanContext<Verification> {
-    fn load(ctx: &mut Voxelar, window: &mut VoxelarWindow) -> crate::Result<Self>
+    fn load(_: &mut Voxelar, window: &mut VoxelarWindow) -> crate::Result<Self>
     where
         Self: Sized,
     {
@@ -229,6 +326,8 @@ impl<Verification: VerificationProvider> RenderContext for VulkanContext<Verific
                 swapchain: None,
                 command_logic: None,
                 present_images: None,
+                depth_image: None,
+                internal_sync_primitives: None,
             })
         }
     }
@@ -243,6 +342,14 @@ impl<Verification: VerificationProvider> Drop for VulkanContext<Verification> {
         unsafe {
             if let Some(device) = self.virtual_device.as_mut() {
                 device.wait();
+
+                if let Some(internal_sync_primitives) = self.internal_sync_primitives.as_mut() {
+                    internal_sync_primitives.destroy(&device);
+                }
+
+                if let Some(depth_image) = self.depth_image.as_mut() {
+                    depth_image.destroy(&device);
+                }
 
                 if let Some(present_images) = self.present_images.as_mut() {
                     present_images.destroy(&device);

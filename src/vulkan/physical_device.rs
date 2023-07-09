@@ -92,7 +92,7 @@ impl SetUpPhysicalDevice {
             device_properties,
             queue_family_index: queue_family_index as u32,
             surface_format,
-            surface_capabilities
+            surface_capabilities,
         })
     }
 

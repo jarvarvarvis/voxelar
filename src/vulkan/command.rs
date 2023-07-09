@@ -64,7 +64,7 @@ impl SetUpCommandLogic {
 /// is executed. That way we can delay the waiting for the fences by 1 frame which is good for performance.
 /// Make sure to create the fence in a signaled state on the first use.
 #[allow(clippy::too_many_arguments)]
-pub fn record_submit_command_buffer<F: FnOnce(&Device, CommandBuffer)>(
+pub fn submit_command_buffer<F: FnOnce(&Device, CommandBuffer) -> crate::Result<()>>(
     device: &Device,
     command_buffer: CommandBuffer,
     command_buffer_reuse_fence: Fence,
@@ -73,30 +73,19 @@ pub fn record_submit_command_buffer<F: FnOnce(&Device, CommandBuffer)>(
     wait_semaphores: &[Semaphore],
     signal_semaphores: &[Semaphore],
     f: F,
-) {
+) -> crate::Result<()> {
     unsafe {
-        device
-            .wait_for_fences(&[command_buffer_reuse_fence], true, std::u64::MAX)
-            .expect("Wait for fence failed.");
+        device.wait_for_fences(&[command_buffer_reuse_fence], true, std::u64::MAX)?;
+        device.reset_fences(&[command_buffer_reuse_fence])?;
 
-        device
-            .reset_fences(&[command_buffer_reuse_fence])
-            .expect("Reset fences failed.");
-
-        device
-            .reset_command_buffer(command_buffer, CommandBufferResetFlags::RELEASE_RESOURCES)
-            .expect("Reset command buffer failed.");
+        device.reset_command_buffer(command_buffer, CommandBufferResetFlags::RELEASE_RESOURCES)?;
 
         let command_buffer_begin_info =
             CommandBufferBeginInfo::builder().flags(CommandBufferUsageFlags::ONE_TIME_SUBMIT);
 
-        device
-            .begin_command_buffer(command_buffer, &command_buffer_begin_info)
-            .expect("Begin commandbuffer");
-        f(device, command_buffer);
-        device
-            .end_command_buffer(command_buffer)
-            .expect("End commandbuffer");
+        device.begin_command_buffer(command_buffer, &command_buffer_begin_info)?;
+        f(device, command_buffer)?;
+        device.end_command_buffer(command_buffer)?;
 
         let command_buffers = vec![command_buffer];
 
@@ -107,8 +96,8 @@ pub fn record_submit_command_buffer<F: FnOnce(&Device, CommandBuffer)>(
             .signal_semaphores(signal_semaphores)
             .build();
 
-        device
-            .queue_submit(submit_queue, &[submit_info], command_buffer_reuse_fence)
-            .expect("queue submit failed.");
+        device.queue_submit(submit_queue, &[submit_info], command_buffer_reuse_fence)?;
     }
+
+    Ok(())
 }

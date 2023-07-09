@@ -30,6 +30,8 @@ fn main() -> Result<()> {
     vulkan_context.create_swapchain(window.get_size())?;
     vulkan_context.create_command_logic()?;
     vulkan_context.create_present_images()?;
+    vulkan_context.create_sync_primitives()?;
+    vulkan_context.create_depth_image(window.get_size())?;
 
     while !window.should_close() {
         ctx.poll_events();

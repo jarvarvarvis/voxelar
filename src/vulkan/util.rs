@@ -4,4 +4,3 @@ where
 {
     vec.iter().map(|value| map_fn(value)).collect()
 }
-

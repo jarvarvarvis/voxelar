@@ -8,7 +8,7 @@ pub enum VoxelarError {
     NulError(NulError),
     Utf8Error(Utf8Error),
     VkError(ash::vk::Result),
-    VkLoadingError(ash::LoadingError)
+    VkLoadingError(ash::LoadingError),
 }
 
 impl std::fmt::Display for VoxelarError {
@@ -19,7 +19,9 @@ impl std::fmt::Display for VoxelarError {
             VoxelarError::NulError(err) => write!(f, "Voxelar error (NulError): {}", err),
             VoxelarError::Utf8Error(err) => write!(f, "Voxelar error (Utf8Error): {}", err),
             VoxelarError::VkError(err) => write!(f, "Voxelar error (VkError): {}", err),
-            VoxelarError::VkLoadingError(err) => write!(f, "Voxelar error (VkLoadingError): {}", err),
+            VoxelarError::VkLoadingError(err) => {
+                write!(f, "Voxelar error (VkLoadingError): {}", err)
+            }
         }
     }
 }

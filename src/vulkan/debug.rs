@@ -94,14 +94,15 @@ impl VerificationProvider for KHRVerificationAndDebugMessenger {
 
             Ok(Self {
                 debug_utils_loader,
-                debug_messenger
+                debug_messenger,
             })
         }
     }
-    
+
     fn destroy(&mut self) {
         unsafe {
-            self.debug_utils_loader.destroy_debug_utils_messenger(self.debug_messenger, None);
+            self.debug_utils_loader
+                .destroy_debug_utils_messenger(self.debug_messenger, None);
         }
     }
 }

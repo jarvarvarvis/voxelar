@@ -5,12 +5,15 @@ use crate::receivable_events::ReceivableEvents;
 
 pub struct VoxelarWindow {
     glfw_window: Window,
-    title: String
+    title: String,
 }
 
 impl VoxelarWindow {
     pub fn new(glfw_window: Window, title: &str) -> Self {
-        Self { glfw_window, title: String::from(title) }
+        Self {
+            glfw_window,
+            title: String::from(title),
+        }
     }
 
     pub fn should_close(&self) -> bool {
