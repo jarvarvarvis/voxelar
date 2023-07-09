@@ -22,7 +22,7 @@ fn main() -> Result<()> {
 
     window.set_receivable_events(ReceivableEvents::all());
 
-    let vulkan_context = ctx
+    let mut vulkan_context = ctx
         .load_render_context_for_window::<VulkanContext<KHRVerificationAndDebugMessenger>>(
             &mut window,
         )?;
@@ -36,7 +36,7 @@ fn main() -> Result<()> {
         demo.render(&vulkan_context)?;
         ctx.poll_events();
         for (_, event) in events.flush() {
-            handle_window_event(&vulkan_context, &mut demo, &mut window, event)?;
+            handle_window_event(&mut vulkan_context, &mut demo, &mut window, event)?;
         }
     }
 
@@ -46,7 +46,7 @@ fn main() -> Result<()> {
 }
 
 fn handle_window_event<V: VerificationProvider>(
-    vulkan_context: &VulkanContext<V>,
+    vulkan_context: &mut VulkanContext<V>,
     triangle_demo: &mut TriangleDemo,
     window: &mut VoxelarWindow,
     event: glfw::WindowEvent,

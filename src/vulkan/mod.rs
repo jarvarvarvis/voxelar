@@ -1,5 +1,7 @@
 use std::ffi::{c_char, CStr, CString};
 
+use paste::paste;
+
 use ash::extensions::ext::DebugUtils;
 use ash::extensions::khr::Surface;
 use ash::vk;
@@ -18,8 +20,10 @@ pub mod buffer;
 pub mod command;
 pub mod debug;
 pub mod depth_image;
+pub mod framebuffers;
 pub mod physical_device;
 pub mod present_images;
+pub mod render_pass;
 pub mod shader;
 pub mod swapchain;
 pub mod sync;
@@ -35,8 +39,10 @@ use self::buffer::AllocatedBuffer;
 use self::command::SetUpCommandLogic;
 use self::debug::VerificationProvider;
 use self::depth_image::SetUpDepthImage;
+use self::framebuffers::SetUpFramebuffers;
 use self::physical_device::SetUpPhysicalDevice;
 use self::present_images::SetUpPresentImages;
+use self::render_pass::SetUpRenderPass;
 use self::shader::CompiledShaderModule;
 use self::swapchain::SetUpSwapchain;
 use self::sync::InternalSyncPrimitives;
@@ -57,6 +63,9 @@ pub struct VulkanContext<Verification: VerificationProvider> {
     pub command_logic: Option<SetUpCommandLogic>,
     pub present_images: Option<SetUpPresentImages>,
     pub depth_image: Option<SetUpDepthImage>,
+    pub render_pass: Option<SetUpRenderPass>,
+    pub framebuffers: Option<SetUpFramebuffers>,
+
     pub internal_sync_primitives: Option<InternalSyncPrimitives>,
 }
 
@@ -64,6 +73,12 @@ macro_rules! generate_safe_getter {
     ($name:ident, $type:ty, $err_message:tt) => {
         pub fn $name(&self) -> crate::Result<&$type> {
             self.$name.as_ref().context($err_message.to_string())
+        }
+
+        paste! {
+            pub fn [<$name _mut>](&mut self) -> crate::Result<&mut $type> {
+                self.$name.as_mut().context($err_message.to_string())
+            }
         }
     };
 }
@@ -122,6 +137,18 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         internal_sync_primitives,
         InternalSyncPrimitives,
         "No internal sync primitives were set up yet! Use VulkanContext::create_sync_primitives to do so"
+    );
+
+    generate_safe_getter!(
+        render_pass,
+        SetUpRenderPass,
+        "No render pass was set up yet! Use VulkanContext::create_render_pass to do so"
+    );
+
+    generate_safe_getter!(
+        framebuffers,
+        SetUpFramebuffers,
+        "No framebuffers were set up yet! Use VulkanContext::create_framebuffers to do so"
     );
 
     pub fn find_usable_physical_device(&mut self) -> crate::Result<()> {
@@ -224,6 +251,31 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         Ok(())
     }
 
+    pub fn create_framebuffers(&mut self) -> crate::Result<()> {
+        unsafe {
+            self.framebuffers = Some(SetUpFramebuffers::create(
+                self.virtual_device()?,
+                self.depth_image()?,
+                self.swapchain()?,
+                self.present_images()?,
+                self.render_pass()?,
+            )?);
+        }
+
+        Ok(())
+    }
+
+    pub fn create_render_pass(&mut self) -> crate::Result<()> {
+        unsafe {
+            self.render_pass = Some(SetUpRenderPass::create(
+                self.virtual_device()?,
+                self.physical_device()?,
+            )?);
+        }
+
+        Ok(())
+    }
+
     pub fn create_default_data_structures(&mut self, window_size: (i32, i32)) -> crate::Result<()> {
         self.find_usable_physical_device()?;
         self.create_virtual_device()?;
@@ -232,6 +284,8 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         self.create_present_images()?;
         self.create_sync_primitives()?;
         self.create_depth_image(window_size)?;
+        self.create_render_pass()?;
+        self.create_framebuffers()?;
         Ok(())
     }
 }
@@ -283,13 +337,19 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         }
     }
 
-    pub fn create_vertex_shader(&self, compiled_bytes: Vec<u8>) -> crate::Result<CompiledShaderModule> {
+    pub fn create_vertex_shader(
+        &self,
+        compiled_bytes: Vec<u8>,
+    ) -> crate::Result<CompiledShaderModule> {
         unsafe {
             CompiledShaderModule::create_vertex_shader(compiled_bytes, self.virtual_device()?)
         }
     }
 
-    pub fn create_fragment_shader(&self, compiled_bytes: Vec<u8>) -> crate::Result<CompiledShaderModule> {
+    pub fn create_fragment_shader(
+        &self,
+        compiled_bytes: Vec<u8>,
+    ) -> crate::Result<CompiledShaderModule> {
         unsafe {
             CompiledShaderModule::create_fragment_shader(compiled_bytes, self.virtual_device()?)
         }
@@ -374,6 +434,8 @@ impl<Verification: VerificationProvider> RenderContext for VulkanContext<Verific
                 command_logic: None,
                 present_images: None,
                 depth_image: None,
+                framebuffers: None,
+                render_pass: None,
                 internal_sync_primitives: None,
             };
             ctx.create_default_data_structures(window.get_size())?;
@@ -392,6 +454,14 @@ impl<Verification: VerificationProvider> Drop for VulkanContext<Verification> {
         unsafe {
             if let Some(device) = self.virtual_device.as_mut() {
                 device.wait();
+
+                if let Some(render_pass) = self.render_pass.as_mut() {
+                    render_pass.destroy(&device);
+                }
+
+                if let Some(framebuffers) = self.framebuffers.as_mut() {
+                    framebuffers.destroy(&device);
+                }
 
                 if let Some(internal_sync_primitives) = self.internal_sync_primitives.as_mut() {
                     internal_sync_primitives.destroy(&device);

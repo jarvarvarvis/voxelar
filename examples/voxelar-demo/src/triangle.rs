@@ -1,6 +1,4 @@
 use voxelar::ash::vk;
-use voxelar::ash::vk::Framebuffer;
-use voxelar::ash::vk::RenderPass;
 use voxelar::ash::vk::{Pipeline, PipelineLayout};
 use voxelar::ash::vk::{Rect2D, Viewport};
 use voxelar::compile_shader;
@@ -16,8 +14,6 @@ use voxelar_vertex::*;
 use crate::vertex::Vertex;
 
 pub struct TriangleDemo {
-    render_pass: RenderPass,
-    framebuffers: Vec<Framebuffer>,
     pipeline_layout: PipelineLayout,
     graphics_pipelines: Vec<Pipeline>,
     viewports: [Viewport; 1],
@@ -33,78 +29,12 @@ impl TriangleDemo {
     pub unsafe fn create<V: VerificationProvider>(
         vulkan_context: &VulkanContext<V>,
     ) -> crate::Result<Self> {
-        let renderpass_attachments = [
-            vk::AttachmentDescription {
-                format: vulkan_context.physical_device()?.surface_format.format,
-                samples: vk::SampleCountFlags::TYPE_1,
-                load_op: vk::AttachmentLoadOp::CLEAR,
-                store_op: vk::AttachmentStoreOp::STORE,
-                final_layout: vk::ImageLayout::PRESENT_SRC_KHR,
-                ..Default::default()
-            },
-            vk::AttachmentDescription {
-                format: vk::Format::D16_UNORM,
-                samples: vk::SampleCountFlags::TYPE_1,
-                load_op: vk::AttachmentLoadOp::CLEAR,
-                initial_layout: vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                final_layout: vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                ..Default::default()
-            },
-        ];
-        let color_attachment_refs = [vk::AttachmentReference {
-            attachment: 0,
-            layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
-        }];
-        let depth_attachment_ref = vk::AttachmentReference {
-            attachment: 1,
-            layout: vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-        };
-        let dependencies = [vk::SubpassDependency {
-            src_subpass: vk::SUBPASS_EXTERNAL,
-            src_stage_mask: vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
-            dst_access_mask: vk::AccessFlags::COLOR_ATTACHMENT_READ
-                | vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
-            dst_stage_mask: vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
-            ..Default::default()
-        }];
-
-        let subpass = vk::SubpassDescription::builder()
-            .color_attachments(&color_attachment_refs)
-            .depth_stencil_attachment(&depth_attachment_ref)
-            .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS);
-
-        let renderpass_create_info = vk::RenderPassCreateInfo::builder()
-            .attachments(&renderpass_attachments)
-            .subpasses(std::slice::from_ref(&subpass))
-            .dependencies(&dependencies);
-
+        let render_pass = vulkan_context.render_pass()?;
         let virtual_device = vulkan_context.virtual_device()?;
 
-        let render_pass = virtual_device
-            .device
-            .create_render_pass(&renderpass_create_info, None)?;
-
-        let depth_image_view = vulkan_context.depth_image()?.depth_image_view;
         let surface_resolution = vulkan_context.swapchain()?.surface_extent;
         let surface_width = surface_resolution.width;
         let surface_height = surface_resolution.height;
-        let present_image_views = &vulkan_context.present_images()?.present_image_views;
-
-        let mut framebuffers: Vec<vk::Framebuffer> = Vec::with_capacity(present_image_views.len());
-        for present_image_view in present_image_views.iter() {
-            let framebuffer_attachments = [*present_image_view, depth_image_view];
-            let frame_buffer_create_info = vk::FramebufferCreateInfo::builder()
-                .render_pass(render_pass)
-                .attachments(&framebuffer_attachments)
-                .width(surface_width)
-                .height(surface_height)
-                .layers(1);
-
-            let framebuffer = virtual_device
-                .device
-                .create_framebuffer(&frame_buffer_create_info, None)?;
-            framebuffers.push(framebuffer);
-        }
 
         let index_buffer_data = vec![0u32, 1, 2];
         let index_buffer = vulkan_context.create_index_buffer(&index_buffer_data)?;
@@ -217,7 +147,7 @@ impl TriangleDemo {
             .color_blend_state(&color_blend_state)
             .dynamic_state(&dynamic_state_info)
             .layout(pipeline_layout)
-            .render_pass(render_pass)
+            .render_pass(render_pass.render_pass)
             .build();
 
         let graphics_pipelines = virtual_device
@@ -226,8 +156,6 @@ impl TriangleDemo {
             .map_err(|(_, err)| err)?;
 
         Ok(Self {
-            render_pass,
-            framebuffers,
             pipeline_layout,
             graphics_pipelines,
             viewports,
@@ -268,7 +196,7 @@ impl TriangleDemo {
 
     pub fn update_size<V: VerificationProvider>(
         &mut self,
-        vulkan_context: &VulkanContext<V>,
+        vulkan_context: &mut VulkanContext<V>,
         new_width: i32,
         new_height: i32,
     ) -> crate::Result<()> {
@@ -312,8 +240,8 @@ impl TriangleDemo {
             ];
 
             let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
-                .render_pass(self.render_pass)
-                .framebuffer(self.framebuffers[present_index as usize])
+                .render_pass(vulkan_context.render_pass()?.render_pass)
+                .framebuffer(vulkan_context.framebuffers()?.framebuffers[present_index as usize])
                 .render_area(surface_resolution.into())
                 .clear_values(&clear_values);
 
@@ -409,12 +337,6 @@ impl TriangleDemo {
 
             self.index_buffer.destroy(&virtual_device);
             self.vertex_buffer.destroy(&virtual_device);
-
-            for framebuffer in self.framebuffers.iter() {
-                device.destroy_framebuffer(*framebuffer, None);
-            }
-
-            device.destroy_render_pass(self.render_pass, None);
         }
 
         Ok(())
