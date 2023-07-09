@@ -53,7 +53,7 @@ pub unsafe extern "system" fn vulkan_debug_callback(
     };
 
     println!(
-        "{message_severity:?}: [{message_type:?}: {message_id_name} ({message_id_number})]: {message}",
+        "{message_severity:?}: [{message_type:?}: {message_id_name} ({message_id_number})]:\n{message}\n",
     );
 
     vk::FALSE
