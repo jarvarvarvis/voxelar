@@ -200,15 +200,15 @@ impl TriangleDemo {
 
         let vertices = [
             Vertex {
-                pos: Vec4::<f32>::new(-1.0, 1.0, 0.0, 1.0),
+                pos: Vec4::<f32>::new(-0.5, 0.5, 0.0, 1.0),
                 color: Vec4::<f32>::new(0.0, 1.0, 0.0, 1.0),
             },
             Vertex {
-                pos: Vec4::<f32>::new(1.0, 1.0, 0.0, 1.0),
+                pos: Vec4::<f32>::new(0.5, 0.5, 0.0, 1.0),
                 color: Vec4::<f32>::new(0.0, 0.0, 1.0, 1.0),
             },
             Vertex {
-                pos: Vec4::<f32>::new(0.0, -1.0, 0.0, 1.0),
+                pos: Vec4::<f32>::new(0.0, -0.5, 0.0, 1.0),
                 color: Vec4::<f32>::new(1.0, 0.0, 0.0, 1.0),
             },
         ];
