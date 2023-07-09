@@ -293,7 +293,7 @@ impl TriangleDemo {
         unsafe { Self::create(vulkan_context) }
     }
 
-    pub fn update_viewports_and_scissors<V: VerificationProvider>(
+    fn update_viewports_and_scissors<V: VerificationProvider>(
         &mut self,
         vulkan_context: &VulkanContext<V>,
         new_width: i32,
@@ -312,6 +312,16 @@ impl TriangleDemo {
             .get_surface_extent(new_width as u32, new_height as u32);
         self.scissors = [surface_extent.into()];
 
+        Ok(())
+    }
+
+    pub fn update_size<V: VerificationProvider>(
+        &mut self,
+        vulkan_context: &VulkanContext<V>,
+        new_width: i32,
+        new_height: i32,
+    ) -> crate::Result<()> {
+        self.update_viewports_and_scissors(vulkan_context, new_width, new_height)?;
         Ok(())
     }
 

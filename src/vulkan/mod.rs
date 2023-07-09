@@ -222,6 +222,17 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
 
         Ok(())
     }
+
+    pub fn create_default_data_structures(&mut self, window_size: (i32, i32)) -> crate::Result<()> {
+        self.find_usable_physical_device()?;
+        self.create_virtual_device()?;
+        self.create_swapchain(window_size)?;
+        self.create_command_logic()?;
+        self.create_present_images()?;
+        self.create_sync_primitives()?;
+        self.create_depth_image(window_size)?;
+        Ok(())
+    }
 }
 
 impl<Verification: VerificationProvider> VulkanContext<Verification> {
@@ -338,7 +349,7 @@ impl<Verification: VerificationProvider> RenderContext for VulkanContext<Verific
 
             let surface_loader = Surface::new(&entry, &instance);
 
-            Ok(Self {
+            let mut ctx = Self {
                 entry,
                 instance,
                 verification,
@@ -351,7 +362,10 @@ impl<Verification: VerificationProvider> RenderContext for VulkanContext<Verific
                 present_images: None,
                 depth_image: None,
                 internal_sync_primitives: None,
-            })
+            };
+            ctx.create_default_data_structures(window.get_size())?;
+
+            Ok(ctx)
         }
     }
 
