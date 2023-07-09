@@ -37,6 +37,7 @@ use self::debug::VerificationProvider;
 use self::depth_image::SetUpDepthImage;
 use self::physical_device::SetUpPhysicalDevice;
 use self::present_images::SetUpPresentImages;
+use self::shader::CompiledShaderModule;
 use self::swapchain::SetUpSwapchain;
 use self::sync::InternalSyncPrimitives;
 use self::virtual_device::SetUpVirtualDevice;
@@ -279,6 +280,18 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
                 self.physical_device()?,
                 data,
             )
+        }
+    }
+
+    pub fn create_vertex_shader(&self, compiled_bytes: Vec<u8>) -> crate::Result<CompiledShaderModule> {
+        unsafe {
+            CompiledShaderModule::create_vertex_shader(compiled_bytes, self.virtual_device()?)
+        }
+    }
+
+    pub fn create_fragment_shader(&self, compiled_bytes: Vec<u8>) -> crate::Result<CompiledShaderModule> {
+        unsafe {
+            CompiledShaderModule::create_fragment_shader(compiled_bytes, self.virtual_device()?)
         }
     }
 }

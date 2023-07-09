@@ -1,11 +1,6 @@
-use std::ffi::CStr;
-use std::io::Cursor;
-
-use voxelar::ash::util::read_spv;
 use voxelar::ash::vk;
 use voxelar::ash::vk::Framebuffer;
 use voxelar::ash::vk::RenderPass;
-use voxelar::ash::vk::ShaderModule;
 use voxelar::ash::vk::{Pipeline, PipelineLayout};
 use voxelar::ash::vk::{Rect2D, Viewport};
 use voxelar::compile_shader;
@@ -13,6 +8,7 @@ use voxelar::shaderc::ShaderKind;
 use voxelar::voxelar_math::vec4::Vec4;
 use voxelar::vulkan::buffer::AllocatedBuffer;
 use voxelar::vulkan::debug::VerificationProvider;
+use voxelar::vulkan::shader::CompiledShaderModule;
 use voxelar::vulkan::VulkanContext;
 
 use voxelar_vertex::*;
@@ -29,8 +25,8 @@ pub struct TriangleDemo {
     vertex_buffer: AllocatedBuffer<Vertex>,
     index_buffer_data: Vec<u32>,
     index_buffer: AllocatedBuffer<u32>,
-    vertex_shader_module: ShaderModule,
-    fragment_shader_module: ShaderModule,
+    vertex_shader_module: CompiledShaderModule,
+    fragment_shader_module: CompiledShaderModule,
 }
 
 impl TriangleDemo {
@@ -82,9 +78,9 @@ impl TriangleDemo {
             .subpasses(std::slice::from_ref(&subpass))
             .dependencies(&dependencies);
 
-        let device = vulkan_context.virtual_device()?;
+        let virtual_device = vulkan_context.virtual_device()?;
 
-        let renderpass = device
+        let renderpass = virtual_device
             .device
             .create_render_pass(&renderpass_create_info, None)?;
 
@@ -104,7 +100,7 @@ impl TriangleDemo {
                 .height(surface_height)
                 .layers(1);
 
-            let framebuffer = device
+            let framebuffer = virtual_device
                 .device
                 .create_framebuffer(&frame_buffer_create_info, None)?;
             framebuffers.push(framebuffer);
@@ -130,45 +126,20 @@ impl TriangleDemo {
         let vertex_buffer = vulkan_context.create_vertex_buffer(&vertices)?;
 
         let compiled_vert = compile_shader!(ShaderKind::Vertex, "../shader/triangle.vert")?;
-        let mut compiled_vert_cursor = Cursor::new(&compiled_vert[..]);
+        let vertex_shader_module = vulkan_context.create_vertex_shader(compiled_vert)?;
+        
         let compiled_frag = compile_shader!(ShaderKind::Fragment, "../shader/triangle.frag")?;
-        let mut compiled_frag_cursor = Cursor::new(&compiled_frag[..]);
-
-        let vertex_code = read_spv(&mut compiled_vert_cursor)?;
-        let vertex_shader_info = vk::ShaderModuleCreateInfo::builder().code(&vertex_code);
-
-        let frag_code = read_spv(&mut compiled_frag_cursor)?;
-        let frag_shader_info = vk::ShaderModuleCreateInfo::builder().code(&frag_code);
-
-        let vertex_shader_module = device
-            .device
-            .create_shader_module(&vertex_shader_info, None)?;
-
-        let fragment_shader_module = device
-            .device
-            .create_shader_module(&frag_shader_info, None)?;
+        let fragment_shader_module = vulkan_context.create_fragment_shader(compiled_frag)?;
 
         let layout_create_info = vk::PipelineLayoutCreateInfo::default();
 
-        let pipeline_layout = device
+        let pipeline_layout = virtual_device
             .device
             .create_pipeline_layout(&layout_create_info, None)?;
 
-        let shader_entry_name = CStr::from_bytes_with_nul_unchecked(b"main\0");
         let shader_stage_create_infos = [
-            vk::PipelineShaderStageCreateInfo {
-                module: vertex_shader_module,
-                p_name: shader_entry_name.as_ptr(),
-                stage: vk::ShaderStageFlags::VERTEX,
-                ..Default::default()
-            },
-            vk::PipelineShaderStageCreateInfo {
-                s_type: vk::StructureType::PIPELINE_SHADER_STAGE_CREATE_INFO,
-                module: fragment_shader_module,
-                p_name: shader_entry_name.as_ptr(),
-                stage: vk::ShaderStageFlags::FRAGMENT,
-                ..Default::default()
-            },
+            vertex_shader_module.get_stage_create_info(),
+            fragment_shader_module.get_stage_create_info(),
         ];
 
         let (_data, vertex_input_state_info) = Vertex::input_state_info();
@@ -249,7 +220,7 @@ impl TriangleDemo {
             .render_pass(renderpass)
             .build();
 
-        let graphics_pipelines = device
+        let graphics_pipelines = virtual_device
             .device
             .create_graphics_pipelines(vk::PipelineCache::null(), &[graphic_pipeline_info], None)
             .map_err(|(_, err)| err)?;
@@ -432,8 +403,8 @@ impl TriangleDemo {
 
             device.destroy_pipeline_layout(self.pipeline_layout, None);
 
-            device.destroy_shader_module(self.vertex_shader_module, None);
-            device.destroy_shader_module(self.fragment_shader_module, None);
+            self.vertex_shader_module.destroy(&virtual_device);
+            self.fragment_shader_module.destroy(&virtual_device);
 
             self.index_buffer.destroy(&virtual_device);
             self.vertex_buffer.destroy(&virtual_device);
