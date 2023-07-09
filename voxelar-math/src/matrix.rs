@@ -42,10 +42,6 @@ impl<T: MathType, const COLUMNS: usize, const ROWS: usize> Matrix<T, COLUMNS, RO
     pub fn get_mut(&mut self, row: usize, column: usize) -> &mut T {
         &mut self.values[column * ROWS + row]
     }
-
-    pub fn as_ptr(&self) -> *const T {
-        self.values.as_ptr()
-    }
 }
 
 impl<T: MathType, const COLUMNS: usize, const ROWS: usize> std::ops::Index<(usize, usize)>

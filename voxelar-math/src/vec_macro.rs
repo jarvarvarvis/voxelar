@@ -23,10 +23,6 @@ macro_rules! make_vec_type {
                 self.values[$idx]
             }
             )*
-
-            pub fn as_ptr(&self) -> *const T {
-                self.values.as_ptr()
-            }
         }
 
         impl<T: MathType + std::ops::Add<Output = T>> std::ops::Add for $name<T> {
