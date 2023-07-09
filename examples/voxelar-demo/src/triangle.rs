@@ -80,7 +80,7 @@ impl TriangleDemo {
 
         let virtual_device = vulkan_context.virtual_device()?;
 
-        let renderpass = virtual_device
+        let render_pass = virtual_device
             .device
             .create_render_pass(&renderpass_create_info, None)?;
 
@@ -94,7 +94,7 @@ impl TriangleDemo {
         for present_image_view in present_image_views.iter() {
             let framebuffer_attachments = [*present_image_view, depth_image_view];
             let frame_buffer_create_info = vk::FramebufferCreateInfo::builder()
-                .render_pass(renderpass)
+                .render_pass(render_pass)
                 .attachments(&framebuffer_attachments)
                 .width(surface_width)
                 .height(surface_height)
@@ -127,7 +127,7 @@ impl TriangleDemo {
 
         let compiled_vert = compile_shader!(ShaderKind::Vertex, "../shader/triangle.vert")?;
         let vertex_shader_module = vulkan_context.create_vertex_shader(compiled_vert)?;
-        
+
         let compiled_frag = compile_shader!(ShaderKind::Fragment, "../shader/triangle.frag")?;
         let fragment_shader_module = vulkan_context.create_fragment_shader(compiled_frag)?;
 
@@ -217,7 +217,7 @@ impl TriangleDemo {
             .color_blend_state(&color_blend_state)
             .dynamic_state(&dynamic_state_info)
             .layout(pipeline_layout)
-            .render_pass(renderpass)
+            .render_pass(render_pass)
             .build();
 
         let graphics_pipelines = virtual_device
@@ -226,7 +226,7 @@ impl TriangleDemo {
             .map_err(|(_, err)| err)?;
 
         Ok(Self {
-            render_pass: renderpass,
+            render_pass,
             framebuffers,
             pipeline_layout,
             graphics_pipelines,
@@ -296,6 +296,7 @@ impl TriangleDemo {
                         .present_complete_semaphore,
                     vk::Fence::null(),
                 )?;
+
             let clear_values = [
                 vk::ClearValue {
                     color: vk::ClearColorValue {
