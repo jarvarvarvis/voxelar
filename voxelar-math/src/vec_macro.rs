@@ -6,7 +6,7 @@ macro_rules! make_vec_type {
         ),*
     }) => {
         #[repr(C)]
-        #[derive(PartialEq, Debug)]
+        #[derive(PartialEq, Debug, Clone, Copy)]
         pub struct $name<T: MathType> {
             values: [T; $size]
         }

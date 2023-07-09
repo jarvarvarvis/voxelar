@@ -2,6 +2,7 @@ use std::ffi::CStr;
 use std::io::Cursor;
 use std::mem::align_of;
 
+use voxelar::voxelar_math::vec4::Vec4;
 use voxelar::vulkan::{physical_device, VulkanContext};
 use voxelar::{compile_shader, offset_of};
 
@@ -198,16 +199,16 @@ impl TriangleDemo {
 
         let vertices = [
             Vertex {
-                pos: [-1.0, 1.0, 0.0, 1.0],
-                color: [0.0, 1.0, 0.0, 1.0],
+                pos: Vec4::<f32>::new(-1.0, 1.0, 0.0, 1.0),
+                color: Vec4::<f32>::new(0.0, 1.0, 0.0, 1.0),
             },
             Vertex {
-                pos: [1.0, 1.0, 0.0, 1.0],
-                color: [0.0, 0.0, 1.0, 1.0],
+                pos: Vec4::<f32>::new(1.0, 1.0, 0.0, 1.0),
+                color: Vec4::<f32>::new(0.0, 0.0, 1.0, 1.0),
             },
             Vertex {
-                pos: [0.0, -1.0, 0.0, 1.0],
-                color: [1.0, 0.0, 0.0, 1.0],
+                pos: Vec4::<f32>::new(0.0, -1.0, 0.0, 1.0),
+                color: Vec4::<f32>::new(1.0, 0.0, 0.0, 1.0),
             },
         ];
 
