@@ -1,0 +1,2 @@
+[alias]
+run-example = "run --manifest-path examples/voxelar-demo/Cargo.toml"
