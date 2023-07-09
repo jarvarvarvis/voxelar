@@ -172,7 +172,11 @@ impl TriangleDemo {
         ];
 
         let (_data, vertex_input_state_info) = Vertex::input_state_info();
-        let vertex_input_assembly_state_info = Vertex::input_assembly_state_info();
+
+        let vertex_input_assembly_state_info = PipelineInputAssemblyStateCreateInfo {
+            topology: PrimitiveTopology::TRIANGLE_LIST,
+            ..Default::default()
+        };
 
         let viewports = [vk::Viewport {
             x: 0.0,

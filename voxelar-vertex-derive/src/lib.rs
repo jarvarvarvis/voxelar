@@ -15,7 +15,6 @@ struct VertexInputSpecArgs {
     ident: syn::Ident,
 
     binding: syn::LitInt,
-    topology: syn::Expr,
 
     data: ast::Data<(), FieldInputArgs>,
 }
@@ -81,7 +80,6 @@ pub fn vertex_input_derive(input: proc_macro::TokenStream) -> proc_macro::TokenS
         })
         .fields;
     let input_binding = spec_args.binding;
-    let topology = spec_args.topology;
 
     let expanded = quote! {
         impl voxelar_vertex::VertexInput for #name {
@@ -107,14 +105,6 @@ pub fn vertex_input_derive(input: proc_macro::TokenStream) -> proc_macro::TokenS
                     .build();
 
                 (construction_data, vertex_input_state_info)
-            }
-
-            fn input_assembly_state_info() -> PipelineInputAssemblyStateCreateInfo {
-                let vertex_input_assembly_state_info = PipelineInputAssemblyStateCreateInfo {
-                    topology: #topology,
-                    ..Default::default()
-                };
-                vertex_input_assembly_state_info
             }
         }
     };

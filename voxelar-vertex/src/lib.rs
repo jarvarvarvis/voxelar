@@ -20,7 +20,6 @@ pub struct VertexInputStateInfoConstructionData {
 
 pub trait VertexInput {
     fn input_state_info() -> (VertexInputStateInfoConstructionData, PipelineVertexInputStateCreateInfo);
-    fn input_assembly_state_info() -> PipelineInputAssemblyStateCreateInfo;
 }
 
 // Simple offset_of macro akin to C++ offsetof
