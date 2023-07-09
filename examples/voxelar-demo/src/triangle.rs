@@ -89,8 +89,7 @@ impl TriangleDemo {
 
         let renderpass = device
             .device
-            .create_render_pass(&renderpass_create_info, None)
-            .unwrap();
+            .create_render_pass(&renderpass_create_info, None)?;
 
         let depth_image_view = vulkan_context.depth_image()?.depth_image_view;
         let surface_resolution = vulkan_context.swapchain()?.surface_extent;
@@ -124,8 +123,7 @@ impl TriangleDemo {
 
         let index_buffer = device
             .device
-            .create_buffer(&index_buffer_info, None)
-            .unwrap();
+            .create_buffer(&index_buffer_info, None)?;
         let index_buffer_memory_req = device.device.get_buffer_memory_requirements(index_buffer);
         let index_buffer_memory_index = physical_device::find_memory_type_index(
             &index_buffer_memory_req,
@@ -141,8 +139,7 @@ impl TriangleDemo {
         };
         let index_buffer_memory = device
             .device
-            .allocate_memory(&index_allocate_info, None)
-            .unwrap();
+            .allocate_memory(&index_allocate_info, None)?;
         let index_ptr = device
             .device
             .map_memory(
@@ -150,8 +147,7 @@ impl TriangleDemo {
                 0,
                 index_buffer_memory_req.size,
                 vk::MemoryMapFlags::empty(),
-            )
-            .unwrap();
+            )?;
         let mut index_slice = Align::new(
             index_ptr,
             align_of::<u32>() as u64,
@@ -161,8 +157,7 @@ impl TriangleDemo {
         device.device.unmap_memory(index_buffer_memory);
         device
             .device
-            .bind_buffer_memory(index_buffer, index_buffer_memory, 0)
-            .unwrap();
+            .bind_buffer_memory(index_buffer, index_buffer_memory, 0)?;
 
         let vertex_input_buffer_info = vk::BufferCreateInfo {
             size: 3 * std::mem::size_of::<Vertex>() as u64,
@@ -173,8 +168,7 @@ impl TriangleDemo {
 
         let vertex_input_buffer = device
             .device
-            .create_buffer(&vertex_input_buffer_info, None)
-            .unwrap();
+            .create_buffer(&vertex_input_buffer_info, None)?;
 
         let vertex_input_buffer_memory_req = device
             .device
@@ -195,8 +189,7 @@ impl TriangleDemo {
 
         let vertex_input_buffer_memory = device
             .device
-            .allocate_memory(&vertex_buffer_allocate_info, None)
-            .unwrap();
+            .allocate_memory(&vertex_buffer_allocate_info, None)?;
 
         let vertices = [
             Vertex {
@@ -220,8 +213,7 @@ impl TriangleDemo {
                 0,
                 vertex_input_buffer_memory_req.size,
                 vk::MemoryMapFlags::empty(),
-            )
-            .unwrap();
+            )?;
 
         let mut vert_align = Align::new(
             vert_ptr,
@@ -232,8 +224,7 @@ impl TriangleDemo {
         device.device.unmap_memory(vertex_input_buffer_memory);
         device
             .device
-            .bind_buffer_memory(vertex_input_buffer, vertex_input_buffer_memory, 0)
-            .unwrap();
+            .bind_buffer_memory(vertex_input_buffer, vertex_input_buffer_memory, 0)?;
         let compiled_vert = compile_shader!(ShaderKind::Vertex, "../shader/triangle.vert")?;
         let mut compiled_vert_cursor = Cursor::new(&compiled_vert[..]);
         let compiled_frag = compile_shader!(ShaderKind::Fragment, "../shader/triangle.frag")?;
@@ -257,8 +248,7 @@ impl TriangleDemo {
 
         let pipeline_layout = device
             .device
-            .create_pipeline_layout(&layout_create_info, None)
-            .unwrap();
+            .create_pipeline_layout(&layout_create_info, None)?;
 
         let shader_entry_name = CStr::from_bytes_with_nul_unchecked(b"main\0");
         let shader_stage_create_infos = [
