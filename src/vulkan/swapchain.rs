@@ -14,6 +14,8 @@ use super::virtual_device::SetUpVirtualDevice;
 pub struct SetUpSwapchain {
     pub swapchain_loader: Swapchain,
     pub swapchain: SwapchainKHR,
+
+    pub surface_extent: Extent2D,
 }
 
 impl SetUpSwapchain {
@@ -21,7 +23,7 @@ impl SetUpSwapchain {
         instance: &Instance,
         surface: SurfaceKHR,
         desired_image_count: u32,
-        image_extent: Extent2D,
+        surface_extent: Extent2D,
         image_usage: ImageUsageFlags,
         image_sharing_mode: SharingMode,
         pre_transform: SurfaceTransformFlagsKHR,
@@ -41,7 +43,7 @@ impl SetUpSwapchain {
             .min_image_count(desired_image_count)
             .image_color_space(surface_format.color_space)
             .image_format(surface_format.format)
-            .image_extent(image_extent)
+            .image_extent(surface_extent)
             .image_usage(image_usage)
             .image_sharing_mode(image_sharing_mode)
             .pre_transform(pre_transform)
@@ -55,6 +57,7 @@ impl SetUpSwapchain {
         Ok(Self {
             swapchain_loader,
             swapchain,
+            surface_extent,
         })
     }
 
@@ -76,7 +79,7 @@ impl SetUpSwapchain {
             desired_image_count = surface_capabilities.max_image_count;
         }
 
-        let surface_resolution = match surface_capabilities.current_extent.width {
+        let surface_extent = match surface_capabilities.current_extent.width {
             std::u32::MAX => Extent2D {
                 width: window_width,
                 height: window_height,
@@ -106,7 +109,7 @@ impl SetUpSwapchain {
             instance,
             surface,
             desired_image_count,
-            surface_resolution,
+            surface_extent,
             ImageUsageFlags::COLOR_ATTACHMENT,
             SharingMode::EXCLUSIVE,
             pre_transform,

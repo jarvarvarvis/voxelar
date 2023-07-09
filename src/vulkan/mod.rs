@@ -19,6 +19,7 @@ pub mod debug;
 pub mod depth_image;
 pub mod physical_device;
 pub mod present_images;
+pub mod shader;
 pub mod swapchain;
 pub mod sync;
 pub mod util;

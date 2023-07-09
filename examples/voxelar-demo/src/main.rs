@@ -1,11 +1,16 @@
 extern crate voxelar;
 
+mod triangle;
+mod vertex;
+
 use voxelar::glfw::*;
 use voxelar::receivable_events::*;
 use voxelar::vulkan::debug::*;
 use voxelar::vulkan::VulkanContext;
 use voxelar::window::*;
 use voxelar::*;
+
+use crate::triangle::TriangleDemo;
 
 fn main() -> Result<()> {
     let mut ctx = Voxelar::new();
@@ -33,12 +38,17 @@ fn main() -> Result<()> {
     vulkan_context.create_sync_primitives()?;
     vulkan_context.create_depth_image(window.get_size())?;
 
+    let mut demo = TriangleDemo::new(&vulkan_context)?;
+
     while !window.should_close() {
+        demo.render(&vulkan_context)?;
         ctx.poll_events();
         for (_, event) in events.flush() {
             handle_window_event(&mut window, event);
         }
     }
+
+    demo.destroy(&vulkan_context)?;
 
     Ok(())
 }

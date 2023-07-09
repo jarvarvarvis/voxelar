@@ -191,6 +191,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
 
 [[package]]
+name = "lazy_static"
+version = "1.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
+
+[[package]]
 name = "libc"
 version = "0.2.147"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -249,13 +255,45 @@ dependencies = [
 ]
 
 [[package]]
+name = "roxmltree"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "921904a62e410e37e215c40381b7117f830d9d89ba60ab5236170541dd25646b"
+dependencies = [
+ "xmlparser",
+]
+
+[[package]]
+name = "shaderc"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "31cef52787a0db5108788ea20bed13d6bf4b96287c5c5201e55725f7070f3443"
+dependencies = [
+ "libc",
+ "shaderc-sys",
+]
+
+[[package]]
+name = "shaderc-sys"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e8f8439fffcffd6efcd74197204addf935dbab5752696bd990a6cd36d54cf64"
+dependencies = [
+ "cmake",
+ "libc",
+ "roxmltree",
+]
+
+[[package]]
 name = "voxelar"
 version = "0.1.0"
 dependencies = [
  "ash",
  "ash-window",
  "glfw",
+ "lazy_static",
  "raw-window-handle",
+ "shaderc",
  "voxelar-math",
 ]
 
@@ -300,3 +338,9 @@ name = "xml-rs"
 version = "0.8.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5a56c84a8ccd4258aed21c92f70c0f6dea75356b6892ae27c24139da456f9336"
+
+[[package]]
+name = "xmlparser"
+version = "0.13.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4d25c75bf9ea12c4040a97f829154768bbbce366287e2dc044af160cd79a13fd"
