@@ -1,11 +1,6 @@
 use std::ffi::CStr;
 use std::io::Cursor;
 
-use voxelar::voxelar_math::vec4::Vec4;
-use voxelar::vulkan::buffer::AllocatedBuffer;
-use voxelar::vulkan::VulkanContext;
-use voxelar::{compile_shader, offset_of};
-
 use voxelar::ash::util::read_spv;
 use voxelar::ash::vk;
 use voxelar::ash::vk::Framebuffer;
@@ -13,8 +8,14 @@ use voxelar::ash::vk::RenderPass;
 use voxelar::ash::vk::ShaderModule;
 use voxelar::ash::vk::{Pipeline, PipelineLayout};
 use voxelar::ash::vk::{Rect2D, Viewport};
+use voxelar::compile_shader;
 use voxelar::shaderc::ShaderKind;
+use voxelar::voxelar_math::vec4::Vec4;
+use voxelar::vulkan::buffer::AllocatedBuffer;
 use voxelar::vulkan::debug::VerificationProvider;
+use voxelar::vulkan::VulkanContext;
+
+use voxelar_vertex::*;
 
 use crate::vertex::Vertex;
 
@@ -169,6 +170,8 @@ impl TriangleDemo {
                 ..Default::default()
             },
         ];
+
+        /*
         let vertex_input_binding_descriptions = [vk::VertexInputBindingDescription {
             binding: 0,
             stride: std::mem::size_of::<Vertex>() as u32,
@@ -195,7 +198,11 @@ impl TriangleDemo {
         let vertex_input_assembly_state_info = vk::PipelineInputAssemblyStateCreateInfo {
             topology: vk::PrimitiveTopology::TRIANGLE_LIST,
             ..Default::default()
-        };
+        };*/
+
+        let vertex_input_state_info = Vertex::input_state_info();
+        let vertex_input_assembly_state_info = Vertex::input_assembly_state_info();
+
         let viewports = [vk::Viewport {
             x: 0.0,
             y: 0.0,
@@ -427,13 +434,10 @@ impl TriangleDemo {
                 .swapchains(&swapchains)
                 .image_indices(&image_indices);
 
-            vulkan_context
-                .swapchain()?
-                .swapchain_loader
-                .queue_present(
-                    vulkan_context.virtual_device()?.present_queue,
-                    &present_info,
-                )?;
+            vulkan_context.swapchain()?.swapchain_loader.queue_present(
+                vulkan_context.virtual_device()?.present_queue,
+                &present_info,
+            )?;
         }
         Ok(())
     }

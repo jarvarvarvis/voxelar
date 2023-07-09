@@ -1,0 +1,17 @@
+[package]
+name = "voxelar-vertex-derive"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+proc-macro = true
+
+[dependencies]
+ash = "0.37.3"
+
+darling = "0.20.1"
+proc-macro2 = "1.0.64"
+quote = "1.0.29"
+syn = { version = "2.0.24", features = ["full", "extra-traits"] }

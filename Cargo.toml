@@ -14,4 +14,5 @@ glfw = { version = "0.52.0", features = ["vulkan"] }
 raw-window-handle = "0.5.2"
 
 lazy_static = "1.4.0"
+
 voxelar-math = { path = "./voxelar-math" }
