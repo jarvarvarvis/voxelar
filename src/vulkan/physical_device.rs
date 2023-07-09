@@ -1,6 +1,7 @@
 use std::ffi::CStr;
 
 use ash::extensions::khr::Surface;
+use ash::vk::Extent2D;
 use ash::vk::{MemoryPropertyFlags, MemoryRequirements};
 use ash::vk::{PhysicalDevice, PhysicalDeviceMemoryProperties, PhysicalDeviceProperties};
 use ash::vk::{QueueFamilyProperties, QueueFlags};
@@ -98,5 +99,15 @@ impl SetUpPhysicalDevice {
 
     pub fn name(&self) -> &CStr {
         unsafe { CStr::from_ptr(self.device_properties.device_name.as_ptr()) }
+    }
+
+    pub fn get_surface_extent(&self, fallback_width: u32, fallback_height: u32) -> Extent2D {
+        match self.surface_capabilities.current_extent.width {
+            std::u32::MAX => Extent2D {
+                width: fallback_width,
+                height: fallback_height,
+            },
+            _ => self.surface_capabilities.current_extent,
+        }
     }
 }

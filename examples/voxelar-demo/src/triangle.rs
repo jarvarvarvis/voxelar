@@ -400,6 +400,28 @@ impl TriangleDemo {
         unsafe { Self::create(vulkan_context) }
     }
 
+    pub fn update_viewports_and_scissors<V: VerificationProvider>(
+        &mut self,
+        vulkan_context: &VulkanContext<V>,
+        new_width: i32,
+        new_height: i32,
+    ) -> crate::Result<()> {
+        self.viewports = [vk::Viewport {
+            x: 0.0,
+            y: 0.0,
+            width: new_width as f32,
+            height: new_height as f32,
+            min_depth: 0.0,
+            max_depth: 1.0,
+        }];
+        let surface_extent = vulkan_context
+            .physical_device()?
+            .get_surface_extent(new_width as u32, new_height as u32);
+        self.scissors = [surface_extent.into()];
+
+        Ok(())
+    }
+
     pub fn render<V: VerificationProvider>(
         &self,
         vulkan_context: &VulkanContext<V>,

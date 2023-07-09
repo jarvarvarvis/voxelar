@@ -79,13 +79,7 @@ impl SetUpSwapchain {
             desired_image_count = surface_capabilities.max_image_count;
         }
 
-        let surface_extent = match surface_capabilities.current_extent.width {
-            std::u32::MAX => Extent2D {
-                width: window_width,
-                height: window_height,
-            },
-            _ => surface_capabilities.current_extent,
-        };
+        let surface_extent = physical_device.get_surface_extent(window_width, window_height);
 
         let pre_transform = if surface_capabilities
             .supported_transforms

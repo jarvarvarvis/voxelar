@@ -44,7 +44,7 @@ fn main() -> Result<()> {
         demo.render(&vulkan_context)?;
         ctx.poll_events();
         for (_, event) in events.flush() {
-            handle_window_event(&mut window, event);
+            handle_window_event(&vulkan_context, &mut demo, &mut window, event)?;
         }
     }
 
@@ -53,9 +53,18 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn handle_window_event(window: &mut VoxelarWindow, event: glfw::WindowEvent) {
+fn handle_window_event<V: VerificationProvider>(
+    vulkan_context: &VulkanContext<V>,
+    triangle_demo: &mut TriangleDemo,
+    window: &mut VoxelarWindow,
+    event: glfw::WindowEvent,
+) -> crate::Result<()> {
     match event {
         glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => window.set_should_close(true),
+        glfw::WindowEvent::FramebufferSize(width, height) => {
+            triangle_demo.update_viewports_and_scissors(vulkan_context, width, height)?
+        }
         _ => {}
     }
+    Ok(())
 }
