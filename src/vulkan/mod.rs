@@ -267,7 +267,7 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
 
     pub fn create_render_pass(&mut self) -> crate::Result<()> {
         unsafe {
-            self.render_pass = Some(SetUpRenderPass::create(
+            self.render_pass = Some(SetUpRenderPass::create_with_defaults(
                 self.virtual_device()?,
                 self.physical_device()?,
             )?);
