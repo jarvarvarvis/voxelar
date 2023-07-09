@@ -53,9 +53,8 @@ impl SetUpDepthImage {
         let depth_image_memory_req = virtual_device
             .device
             .get_image_memory_requirements(depth_image);
-        let depth_image_memory_index = crate::vulkan::physical_device::find_memory_type_index(
+        let depth_image_memory_index = physical_device.find_memory_type_index(
             &depth_image_memory_req,
-            &physical_device.device_memory_properties,
             MemoryPropertyFlags::DEVICE_LOCAL,
         )
         .context("Unable to find suitable memory index for depth image!".to_string())?;
@@ -128,18 +127,6 @@ impl SetUpDepthImage {
         )
     }
 
-    pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice) {
-        unsafe {
-            virtual_device
-                .device
-                .free_memory(self.depth_image_memory, None);
-            virtual_device
-                .device
-                .destroy_image_view(self.depth_image_view, None);
-            virtual_device.device.destroy_image(self.depth_image, None);
-        }
-    }
-
     pub fn submit_pipeline_barrier_command_buffer(
         &self,
         virtual_device: &SetUpVirtualDevice,
@@ -166,6 +153,18 @@ impl SetUpDepthImage {
                 &[],
                 &[layout_transition_barriers],
             );
+        }
+    }
+    
+    pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice) {
+        unsafe {
+            virtual_device
+                .device
+                .free_memory(self.depth_image_memory, None);
+            virtual_device
+                .device
+                .destroy_image_view(self.depth_image_view, None);
+            virtual_device.device.destroy_image(self.depth_image, None);
         }
     }
 }

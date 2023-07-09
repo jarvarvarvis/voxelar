@@ -1,17 +1,16 @@
 use std::ffi::CStr;
 use std::io::Cursor;
-use std::mem::align_of;
 
-use voxelar::result::Context;
 use voxelar::voxelar_math::vec4::Vec4;
-use voxelar::vulkan::{physical_device, VulkanContext};
+use voxelar::vulkan::buffer::AllocatedBuffer;
+use voxelar::vulkan::VulkanContext;
 use voxelar::{compile_shader, offset_of};
 
-use voxelar::ash::util::{read_spv, Align};
+use voxelar::ash::util::read_spv;
 use voxelar::ash::vk;
 use voxelar::ash::vk::RenderPass;
 use voxelar::ash::vk::ShaderModule;
-use voxelar::ash::vk::{Buffer, DeviceMemory, Framebuffer};
+use voxelar::ash::vk::Framebuffer;
 use voxelar::ash::vk::{Pipeline, PipelineLayout};
 use voxelar::ash::vk::{Rect2D, Viewport};
 use voxelar::shaderc::ShaderKind;
@@ -26,11 +25,9 @@ pub struct TriangleDemo {
     graphics_pipelines: Vec<Pipeline>,
     viewports: [Viewport; 1],
     scissors: [Rect2D; 1],
-    vertex_input_buffer: Buffer,
-    vertex_input_buffer_memory: DeviceMemory,
-    index_buffer: Buffer,
-    index_buffer_data: [u32; 3],
-    index_buffer_memory: DeviceMemory,
+    vertex_buffer: AllocatedBuffer<Vertex>,
+    index_buffer_data: Vec<u32>,
+    index_buffer: AllocatedBuffer<u32>,
     vertex_shader_module: ShaderModule,
     fragment_shader_module: ShaderModule,
 }
@@ -85,7 +82,6 @@ impl TriangleDemo {
             .dependencies(&dependencies);
 
         let device = vulkan_context.virtual_device()?;
-        let physical_device = vulkan_context.physical_device()?;
 
         let renderpass = device
             .device
@@ -115,83 +111,10 @@ impl TriangleDemo {
             })
             .collect();
 
-        let index_buffer_data = [0u32, 1, 2];
-        let index_buffer_info = vk::BufferCreateInfo::builder()
-            .size(std::mem::size_of_val(&index_buffer_data) as u64)
-            .usage(vk::BufferUsageFlags::INDEX_BUFFER)
-            .sharing_mode(vk::SharingMode::EXCLUSIVE);
+        let index_buffer_data = vec![0u32, 1, 2];
+        let index_buffer = vulkan_context.create_index_buffer(&index_buffer_data)?;
 
-        let index_buffer = device
-            .device
-            .create_buffer(&index_buffer_info, None)?;
-        let index_buffer_memory_req = device.device.get_buffer_memory_requirements(index_buffer);
-        let index_buffer_memory_index = physical_device::find_memory_type_index(
-            &index_buffer_memory_req,
-            &physical_device.device_memory_properties,
-            vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-        )
-        .context("Unable to find suitable memorytype for the index buffer.".to_string())?;
-
-        let index_allocate_info = vk::MemoryAllocateInfo {
-            allocation_size: index_buffer_memory_req.size,
-            memory_type_index: index_buffer_memory_index,
-            ..Default::default()
-        };
-        let index_buffer_memory = device
-            .device
-            .allocate_memory(&index_allocate_info, None)?;
-        let index_ptr = device
-            .device
-            .map_memory(
-                index_buffer_memory,
-                0,
-                index_buffer_memory_req.size,
-                vk::MemoryMapFlags::empty(),
-            )?;
-        let mut index_slice = Align::new(
-            index_ptr,
-            align_of::<u32>() as u64,
-            index_buffer_memory_req.size,
-        );
-        index_slice.copy_from_slice(&index_buffer_data);
-        device.device.unmap_memory(index_buffer_memory);
-        device
-            .device
-            .bind_buffer_memory(index_buffer, index_buffer_memory, 0)?;
-
-        let vertex_input_buffer_info = vk::BufferCreateInfo {
-            size: 3 * std::mem::size_of::<Vertex>() as u64,
-            usage: vk::BufferUsageFlags::VERTEX_BUFFER,
-            sharing_mode: vk::SharingMode::EXCLUSIVE,
-            ..Default::default()
-        };
-
-        let vertex_input_buffer = device
-            .device
-            .create_buffer(&vertex_input_buffer_info, None)?;
-
-        let vertex_input_buffer_memory_req = device
-            .device
-            .get_buffer_memory_requirements(vertex_input_buffer);
-
-        let vertex_input_buffer_memory_index = physical_device::find_memory_type_index(
-            &vertex_input_buffer_memory_req,
-            &physical_device.device_memory_properties,
-            vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-        )
-        .context("Unable to find suitable memorytype for the vertex buffer.".to_string())?;
-
-        let vertex_buffer_allocate_info = vk::MemoryAllocateInfo {
-            allocation_size: vertex_input_buffer_memory_req.size,
-            memory_type_index: vertex_input_buffer_memory_index,
-            ..Default::default()
-        };
-
-        let vertex_input_buffer_memory = device
-            .device
-            .allocate_memory(&vertex_buffer_allocate_info, None)?;
-
-        let vertices = [
+        let vertices = vec![
             Vertex {
                 pos: Vec4::<f32>::new(-0.5, 0.5, 0.0, 1.0),
                 color: Vec4::<f32>::new(0.0, 1.0, 0.0, 1.0),
@@ -205,26 +128,8 @@ impl TriangleDemo {
                 color: Vec4::<f32>::new(1.0, 0.0, 0.0, 1.0),
             },
         ];
+        let vertex_buffer = vulkan_context.create_vertex_buffer(&vertices)?;
 
-        let vert_ptr = device
-            .device
-            .map_memory(
-                vertex_input_buffer_memory,
-                0,
-                vertex_input_buffer_memory_req.size,
-                vk::MemoryMapFlags::empty(),
-            )?;
-
-        let mut vert_align = Align::new(
-            vert_ptr,
-            align_of::<Vertex>() as u64,
-            vertex_input_buffer_memory_req.size,
-        );
-        vert_align.copy_from_slice(&vertices);
-        device.device.unmap_memory(vertex_input_buffer_memory);
-        device
-            .device
-            .bind_buffer_memory(vertex_input_buffer, vertex_input_buffer_memory, 0)?;
         let compiled_vert = compile_shader!(ShaderKind::Vertex, "../shader/triangle.vert")?;
         let mut compiled_vert_cursor = Cursor::new(&compiled_vert[..]);
         let compiled_frag = compile_shader!(ShaderKind::Fragment, "../shader/triangle.frag")?;
@@ -376,11 +281,9 @@ impl TriangleDemo {
             graphics_pipelines,
             viewports,
             scissors,
-            vertex_input_buffer,
-            vertex_input_buffer_memory,
+            vertex_buffer,
             index_buffer,
             index_buffer_data,
-            index_buffer_memory,
             vertex_shader_module,
             fragment_shader_module,
         })
@@ -482,12 +385,12 @@ impl TriangleDemo {
                     device.cmd_bind_vertex_buffers(
                         draw_command_buffer,
                         0,
-                        &[self.vertex_input_buffer],
+                        &[self.vertex_buffer.buffer],
                         &[0],
                     );
                     device.cmd_bind_index_buffer(
                         draw_command_buffer,
-                        self.index_buffer,
+                        self.index_buffer.buffer,
                         0,
                         vk::IndexType::UINT32,
                     );
@@ -532,11 +435,11 @@ impl TriangleDemo {
         &mut self,
         vulkan_context: &VulkanContext<V>,
     ) -> crate::Result<()> {
-        let device = vulkan_context.virtual_device()?;
+        let virtual_device = vulkan_context.virtual_device()?;
 
-        device.wait();
+        virtual_device.wait();
         unsafe {
-            let device = &device.device;
+            let device = &virtual_device.device;
             for pipeline in self.graphics_pipelines.iter() {
                 device.destroy_pipeline(*pipeline, None);
             }
@@ -546,11 +449,8 @@ impl TriangleDemo {
             device.destroy_shader_module(self.vertex_shader_module, None);
             device.destroy_shader_module(self.fragment_shader_module, None);
 
-            device.free_memory(self.index_buffer_memory, None);
-            device.destroy_buffer(self.index_buffer, None);
-
-            device.free_memory(self.vertex_input_buffer_memory, None);
-            device.destroy_buffer(self.vertex_input_buffer, None);
+            self.index_buffer.destroy(&virtual_device);
+            self.vertex_buffer.destroy(&virtual_device);
 
             for framebuffer in self.framebuffers.iter() {
                 device.destroy_framebuffer(*framebuffer, None);

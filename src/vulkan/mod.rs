@@ -14,6 +14,7 @@ use ash::{Entry, Instance};
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 use ash::vk::{KhrGetPhysicalDeviceProperties2Fn, KhrPortabilityEnumerationFn};
 
+pub mod buffer;
 pub mod command;
 pub mod debug;
 pub mod depth_image;
@@ -30,6 +31,7 @@ use crate::result::Context;
 use crate::window::VoxelarWindow;
 use crate::Voxelar;
 
+use self::buffer::AllocatedBuffer;
 use self::command::SetUpCommandLogic;
 use self::debug::VerificationProvider;
 use self::depth_image::SetUpDepthImage;
@@ -247,6 +249,26 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
             signal_semaphores,
             |_, buf| command_buffer_op(device, buf),
         )
+    }
+
+    pub fn create_vertex_buffer<T: Copy>(&self, data: &[T]) -> crate::Result<AllocatedBuffer<T>> {
+        unsafe {
+            AllocatedBuffer::<T>::create_vertex_buffer(
+                self.virtual_device()?,
+                self.physical_device()?,
+                data,
+            )
+        }
+    }
+
+    pub fn create_index_buffer<T: Copy>(&self, data: &[T]) -> crate::Result<AllocatedBuffer<T>> {
+        unsafe {
+            AllocatedBuffer::<T>::create_index_buffer(
+                self.virtual_device()?,
+                self.physical_device()?,
+                data,
+            )
+        }
     }
 }
 
