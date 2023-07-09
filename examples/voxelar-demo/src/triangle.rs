@@ -8,9 +8,9 @@ use voxelar::{compile_shader, offset_of};
 
 use voxelar::ash::util::read_spv;
 use voxelar::ash::vk;
+use voxelar::ash::vk::Framebuffer;
 use voxelar::ash::vk::RenderPass;
 use voxelar::ash::vk::ShaderModule;
-use voxelar::ash::vk::Framebuffer;
 use voxelar::ash::vk::{Pipeline, PipelineLayout};
 use voxelar::ash::vk::{Rect2D, Viewport};
 use voxelar::shaderc::ShaderKind;
@@ -91,25 +91,23 @@ impl TriangleDemo {
         let surface_resolution = vulkan_context.swapchain()?.surface_extent;
         let surface_width = surface_resolution.width;
         let surface_height = surface_resolution.height;
-        let framebuffers: Vec<vk::Framebuffer> = vulkan_context
-            .present_images()?
-            .present_image_views
-            .iter()
-            .map(|&present_image_view| {
-                let framebuffer_attachments = [present_image_view, depth_image_view];
-                let frame_buffer_create_info = vk::FramebufferCreateInfo::builder()
-                    .render_pass(renderpass)
-                    .attachments(&framebuffer_attachments)
-                    .width(surface_width)
-                    .height(surface_height)
-                    .layers(1);
+        let present_image_views = &vulkan_context.present_images()?.present_image_views;
 
-                device
-                    .device
-                    .create_framebuffer(&frame_buffer_create_info, None)
-                    .unwrap()
-            })
-            .collect();
+        let mut framebuffers: Vec<vk::Framebuffer> = Vec::with_capacity(present_image_views.len());
+        for present_image_view in present_image_views.iter() {
+            let framebuffer_attachments = [*present_image_view, depth_image_view];
+            let frame_buffer_create_info = vk::FramebufferCreateInfo::builder()
+                .render_pass(renderpass)
+                .attachments(&framebuffer_attachments)
+                .width(surface_width)
+                .height(surface_height)
+                .layers(1);
+
+            let framebuffer = device
+                .device
+                .create_framebuffer(&frame_buffer_create_info, None)?;
+            framebuffers.push(framebuffer);
+        }
 
         let index_buffer_data = vec![0u32, 1, 2];
         let index_buffer = vulkan_context.create_index_buffer(&index_buffer_data)?;
@@ -435,8 +433,7 @@ impl TriangleDemo {
                 .queue_present(
                     vulkan_context.virtual_device()?.present_queue,
                     &present_info,
-                )
-                .unwrap();
+                )?;
         }
         Ok(())
     }
