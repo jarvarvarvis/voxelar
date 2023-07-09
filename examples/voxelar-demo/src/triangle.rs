@@ -23,8 +23,8 @@ pub struct TriangleDemo {
     viewports: [Viewport; 1],
     scissors: [Rect2D; 1],
     vertex_buffer: AllocatedBuffer<Vertex>,
-    index_buffer_data: Vec<u32>,
     index_buffer: AllocatedBuffer<u32>,
+    index_count: usize,
     vertex_shader_module: CompiledShaderModule,
     fragment_shader_module: CompiledShaderModule,
 }
@@ -234,7 +234,7 @@ impl TriangleDemo {
             scissors,
             vertex_buffer,
             index_buffer,
-            index_buffer_data,
+            index_count: index_buffer_data.len(),
             vertex_shader_module,
             fragment_shader_module,
         })
@@ -357,7 +357,7 @@ impl TriangleDemo {
                     );
                     device.cmd_draw_indexed(
                         draw_command_buffer,
-                        self.index_buffer_data.len() as u32,
+                        self.index_count as u32,
                         1,
                         0,
                         0,
