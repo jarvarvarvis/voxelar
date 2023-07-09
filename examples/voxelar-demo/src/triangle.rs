@@ -2,6 +2,7 @@ use std::ffi::CStr;
 use std::io::Cursor;
 use std::mem::align_of;
 
+use voxelar::result::Context;
 use voxelar::voxelar_math::vec4::Vec4;
 use voxelar::vulkan::{physical_device, VulkanContext};
 use voxelar::{compile_shader, offset_of};
@@ -131,7 +132,7 @@ impl TriangleDemo {
             &physical_device.device_memory_properties,
             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
         )
-        .expect("Unable to find suitable memorytype for the index buffer.");
+        .context("Unable to find suitable memorytype for the index buffer.".to_string())?;
 
         let index_allocate_info = vk::MemoryAllocateInfo {
             allocation_size: index_buffer_memory_req.size,
@@ -184,7 +185,7 @@ impl TriangleDemo {
             &physical_device.device_memory_properties,
             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
         )
-        .expect("Unable to find suitable memorytype for the vertex buffer.");
+        .context("Unable to find suitable memorytype for the vertex buffer.".to_string())?;
 
         let vertex_buffer_allocate_info = vk::MemoryAllocateInfo {
             allocation_size: vertex_input_buffer_memory_req.size,
@@ -238,23 +239,19 @@ impl TriangleDemo {
         let compiled_frag = compile_shader!(ShaderKind::Fragment, "../shader/triangle.frag")?;
         let mut compiled_frag_cursor = Cursor::new(&compiled_frag[..]);
 
-        let vertex_code =
-            read_spv(&mut compiled_vert_cursor).expect("Failed to read vertex shader spv file");
+        let vertex_code = read_spv(&mut compiled_vert_cursor)?;
         let vertex_shader_info = vk::ShaderModuleCreateInfo::builder().code(&vertex_code);
 
-        let frag_code =
-            read_spv(&mut compiled_frag_cursor).expect("Failed to read fragment shader spv file");
+        let frag_code = read_spv(&mut compiled_frag_cursor)?;
         let frag_shader_info = vk::ShaderModuleCreateInfo::builder().code(&frag_code);
 
         let vertex_shader_module = device
             .device
-            .create_shader_module(&vertex_shader_info, None)
-            .expect("Vertex shader module error");
+            .create_shader_module(&vertex_shader_info, None)?;
 
         let fragment_shader_module = device
             .device
-            .create_shader_module(&frag_shader_info, None)
-            .expect("Fragment shader module error");
+            .create_shader_module(&frag_shader_info, None)?;
 
         let layout_create_info = vk::PipelineLayoutCreateInfo::default();
 
@@ -380,7 +377,7 @@ impl TriangleDemo {
         let graphics_pipelines = device
             .device
             .create_graphics_pipelines(vk::PipelineCache::null(), &[graphic_pipeline_info], None)
-            .expect("Unable to create graphics pipeline");
+            .map_err(|(_, err)| err)?;
 
         Ok(Self {
             render_pass: renderpass,

@@ -6,22 +6,28 @@ pub enum VoxelarError {
     Wrapped(Box<dyn std::error::Error>),
     Custom(String),
     NulError(NulError),
+    IOError(std::io::Error),
     Utf8Error(Utf8Error),
     VkError(ash::vk::Result),
     VkLoadingError(ash::LoadingError),
 }
 
+macro_rules! write_err {
+    ($fmt:ident, $kind:ident, $err:ident) => {
+        write!($fmt, "Voxelar error ({}): {}", stringify!($kind), $err)
+    };
+}
+
 impl std::fmt::Display for VoxelarError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            VoxelarError::Wrapped(err) => write!(f, "Voxelar error (Wrapped): {}", err),
-            VoxelarError::Custom(msg) => write!(f, "Voxelar error (Custom): {}", msg),
-            VoxelarError::NulError(err) => write!(f, "Voxelar error (NulError): {}", err),
-            VoxelarError::Utf8Error(err) => write!(f, "Voxelar error (Utf8Error): {}", err),
-            VoxelarError::VkError(err) => write!(f, "Voxelar error (VkError): {}", err),
-            VoxelarError::VkLoadingError(err) => {
-                write!(f, "Voxelar error (VkLoadingError): {}", err)
-            }
+            VoxelarError::Wrapped(err) => write_err!(f, Wrapped, err),
+            VoxelarError::Custom(err) => write_err!(f, Custom, err),
+            VoxelarError::NulError(err) => write_err!(f, NulError, err),
+            VoxelarError::IOError(err) => write_err!(f, IOError, err),
+            VoxelarError::Utf8Error(err) => write_err!(f, Utf8Error, err),
+            VoxelarError::VkError(err) => write_err!(f, VkError, err),
+            VoxelarError::VkLoadingError(err) => write_err!(f, VkLoadingError, err),
         }
     }
 }
@@ -38,6 +44,7 @@ macro_rules! error_impl_from {
 
 error_impl_from!(Box<dyn std::error::Error>, Self::Wrapped);
 error_impl_from!(String, Self::Custom);
+error_impl_from!(std::io::Error, Self::IOError);
 error_impl_from!(NulError, Self::NulError);
 error_impl_from!(Utf8Error, Self::Utf8Error);
 error_impl_from!(ash::vk::Result, Self::VkError);
