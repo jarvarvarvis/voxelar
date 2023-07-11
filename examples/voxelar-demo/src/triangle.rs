@@ -18,9 +18,9 @@ use voxelar_vertex::*;
 use crate::vertex::Vertex;
 
 pub struct TriangleDemo {
-    graphics_pipelines: Vec<Pipeline>,
-    viewports: [Viewport; 1],
-    scissors: [Rect2D; 1],
+    pipelines: Vec<Pipeline>,
+    viewport: Viewport,
+    scissor: Rect2D,
     vertex_buffer: AllocatedBuffer<Vertex>,
     index_buffer: AllocatedBuffer<u32>,
     index_count: usize,
@@ -67,16 +67,16 @@ impl TriangleDemo {
 
         let (_data, vertex_input_state_info) = Vertex::input_state_info();
 
-        let viewports = [vk::Viewport {
+        let viewport = Viewport {
             x: 0.0,
             y: 0.0,
             width: surface_width as f32,
             height: surface_height as f32,
             min_depth: 0.0,
             max_depth: 1.0,
-        }];
+        };
 
-        let scissors = [surface_resolution.into()];
+        let scissor = surface_resolution.into();
 
         let graphics_pipeline = GraphicsPipelineBuilder::new()
             .vertex_input(vertex_input_state_info)
@@ -89,16 +89,14 @@ impl TriangleDemo {
             .depth_stencil_with_default_ops()
             .add_dynamic_state(DynamicState::VIEWPORT)
             .add_dynamic_state(DynamicState::SCISSOR)
-            .viewport(viewports[0])
-            .scissor(scissors[0])
+            .viewport(viewport)
+            .scissor(scissor)
             .build(&virtual_device, &render_pass, &pipeline_layout)?;
 
-        let graphics_pipelines = vec![graphics_pipeline];
-
         Ok(Self {
-            graphics_pipelines,
-            viewports,
-            scissors,
+            pipelines: vec![graphics_pipeline],
+            viewport,
+            scissor,
             vertex_buffer,
             index_buffer,
             index_count: index_buffer_data.len(),
@@ -117,18 +115,18 @@ impl TriangleDemo {
         new_width: i32,
         new_height: i32,
     ) -> crate::Result<()> {
-        self.viewports = [vk::Viewport {
+        self.viewport = vk::Viewport {
             x: 0.0,
             y: 0.0,
             width: new_width as f32,
             height: new_height as f32,
             min_depth: 0.0,
             max_depth: 1.0,
-        }];
+        };
         let surface_extent = vulkan_context
             .physical_device()?
             .get_surface_extent(new_width as u32, new_height as u32);
-        self.scissors = [surface_extent.into()];
+        self.scissor = surface_extent.into();
 
         Ok(())
     }
@@ -149,7 +147,7 @@ impl TriangleDemo {
     ) -> crate::Result<()> {
         let surface_resolution = vulkan_context.swapchain()?.surface_extent;
 
-        let graphics_pipeline = self.graphics_pipelines[0];
+        let graphics_pipeline = self.pipelines[0];
 
         unsafe {
             let (present_index, _) = vulkan_context.acquire_next_image()?;
@@ -183,13 +181,16 @@ impl TriangleDemo {
                 &[vulkan_context.internal_sync_primitives()?.rendering_complete_semaphore],
                 |device, draw_command_buffer| {
                     let device = &device.device;
-                    device.cmd_begin_render_pass(draw_command_buffer ,&render_pass_begin_info, vk::SubpassContents::INLINE);
+                    device.cmd_begin_render_pass(draw_command_buffer, &render_pass_begin_info, vk::SubpassContents::INLINE);
+                    
                     device.cmd_bind_pipeline(draw_command_buffer, vk::PipelineBindPoint::GRAPHICS, graphics_pipeline);
-                    device.cmd_set_viewport(draw_command_buffer, 0, &self.viewports);
-                    device.cmd_set_scissor(draw_command_buffer, 0, &self.scissors);
+                    device.cmd_set_viewport(draw_command_buffer, 0, &[self.viewport]);
+                    device.cmd_set_scissor(draw_command_buffer, 0, &[self.scissor]);
+
                     device.cmd_bind_vertex_buffers(draw_command_buffer, 0, &[self.vertex_buffer.buffer], &[0]);
                     device.cmd_bind_index_buffer(draw_command_buffer, self.index_buffer.buffer, 0, vk::IndexType::UINT32);
                     device.cmd_draw_indexed(draw_command_buffer, self.index_count as u32, 1, 0, 0, 1);
+                    
                     device.cmd_end_render_pass(draw_command_buffer);
                     Ok(())
                 },
@@ -220,7 +221,7 @@ impl TriangleDemo {
         virtual_device.wait();
         unsafe {
             let device = &virtual_device.device;
-            for pipeline in self.graphics_pipelines.iter() {
+            for pipeline in self.pipelines.iter() {
                 device.destroy_pipeline(*pipeline, None);
             }
 
