@@ -1,11 +1,15 @@
 use voxelar::ash::vk;
-use voxelar::ash::vk::{Pipeline, PipelineLayout};
+use voxelar::ash::vk::DynamicState;
+use voxelar::ash::vk::Pipeline;
+use voxelar::ash::vk::PolygonMode;
+use voxelar::ash::vk::SampleCountFlags;
 use voxelar::ash::vk::{Rect2D, Viewport};
 use voxelar::compile_shader;
 use voxelar::shaderc::ShaderKind;
 use voxelar::voxelar_math::vec4::Vec4;
 use voxelar::vulkan::buffer::AllocatedBuffer;
 use voxelar::vulkan::debug::VerificationProvider;
+use voxelar::vulkan::graphics_pipeline_builder::GraphicsPipelineBuilder;
 use voxelar::vulkan::shader::CompiledShaderModule;
 use voxelar::vulkan::VulkanContext;
 
@@ -61,19 +65,7 @@ impl TriangleDemo {
         let compiled_frag = compile_shader!(ShaderKind::Fragment, "../shader/triangle.frag")?;
         let fragment_shader_module = vulkan_context.create_fragment_shader(compiled_frag)?;
 
-        let layout_create_info = vk::PipelineLayoutCreateInfo::default();
-
-        let shader_stage_create_infos = [
-            vertex_shader_module.get_stage_create_info(),
-            fragment_shader_module.get_stage_create_info(),
-        ];
-
         let (_data, vertex_input_state_info) = Vertex::input_state_info();
-
-        let vertex_input_assembly_state_info = PipelineInputAssemblyStateCreateInfo {
-            topology: PrimitiveTopology::TRIANGLE_LIST,
-            ..Default::default()
-        };
 
         let viewports = [vk::Viewport {
             x: 0.0,
@@ -83,73 +75,25 @@ impl TriangleDemo {
             min_depth: 0.0,
             max_depth: 1.0,
         }];
+
         let scissors = [surface_resolution.into()];
-        let viewport_state_info = vk::PipelineViewportStateCreateInfo::builder()
-            .scissors(&scissors)
-            .viewports(&viewports);
 
-        let rasterization_info = vk::PipelineRasterizationStateCreateInfo {
-            front_face: vk::FrontFace::COUNTER_CLOCKWISE,
-            line_width: 1.0,
-            polygon_mode: vk::PolygonMode::FILL,
-            ..Default::default()
-        };
-        let multisample_state_info = vk::PipelineMultisampleStateCreateInfo {
-            rasterization_samples: vk::SampleCountFlags::TYPE_1,
-            ..Default::default()
-        };
-        let noop_stencil_state = vk::StencilOpState {
-            fail_op: vk::StencilOp::KEEP,
-            pass_op: vk::StencilOp::KEEP,
-            depth_fail_op: vk::StencilOp::KEEP,
-            compare_op: vk::CompareOp::ALWAYS,
-            ..Default::default()
-        };
-        let depth_state_info = vk::PipelineDepthStencilStateCreateInfo {
-            depth_test_enable: 1,
-            depth_write_enable: 1,
-            depth_compare_op: vk::CompareOp::LESS_OR_EQUAL,
-            front: noop_stencil_state,
-            back: noop_stencil_state,
-            max_depth_bounds: 1.0,
-            ..Default::default()
-        };
-        let color_blend_attachment_states = [vk::PipelineColorBlendAttachmentState {
-            blend_enable: 0,
-            src_color_blend_factor: vk::BlendFactor::SRC_COLOR,
-            dst_color_blend_factor: vk::BlendFactor::ONE_MINUS_DST_COLOR,
-            color_blend_op: vk::BlendOp::ADD,
-            src_alpha_blend_factor: vk::BlendFactor::ZERO,
-            dst_alpha_blend_factor: vk::BlendFactor::ZERO,
-            alpha_blend_op: vk::BlendOp::ADD,
-            color_write_mask: vk::ColorComponentFlags::RGBA,
-        }];
-        let color_blend_state = vk::PipelineColorBlendStateCreateInfo::builder()
-            .logic_op(vk::LogicOp::CLEAR)
-            .attachments(&color_blend_attachment_states);
+        let graphics_pipeline = GraphicsPipelineBuilder::new()
+            .vertex_input(vertex_input_state_info)
+            .add_shader_stage(vertex_shader_module.get_stage_create_info())
+            .add_shader_stage(fragment_shader_module.get_stage_create_info())
+            .input_assembly_with_topology(PrimitiveTopology::TRIANGLE_LIST)
+            .rasterization_with_polygon_mode(PolygonMode::FILL)
+            .multisample_with_samples(SampleCountFlags::TYPE_1)
+            .color_blend_attachment_with_defaults()
+            .depth_stencil_with_default_ops()
+            .add_dynamic_state(DynamicState::VIEWPORT)
+            .add_dynamic_state(DynamicState::SCISSOR)
+            .viewport(viewports[0])
+            .scissor(scissors[0])
+            .build(&virtual_device, &render_pass, &pipeline_layout)?;
 
-        let dynamic_state = [vk::DynamicState::VIEWPORT, vk::DynamicState::SCISSOR];
-        let dynamic_state_info =
-            vk::PipelineDynamicStateCreateInfo::builder().dynamic_states(&dynamic_state);
-
-        let graphic_pipeline_info = vk::GraphicsPipelineCreateInfo::builder()
-            .stages(&shader_stage_create_infos)
-            .vertex_input_state(&vertex_input_state_info)
-            .input_assembly_state(&vertex_input_assembly_state_info)
-            .viewport_state(&viewport_state_info)
-            .rasterization_state(&rasterization_info)
-            .multisample_state(&multisample_state_info)
-            .depth_stencil_state(&depth_state_info)
-            .color_blend_state(&color_blend_state)
-            .dynamic_state(&dynamic_state_info)
-            .layout(pipeline_layout.pipeline_layout)
-            .render_pass(render_pass.render_pass)
-            .build();
-
-        let graphics_pipelines = virtual_device
-            .device
-            .create_graphics_pipelines(vk::PipelineCache::null(), &[graphic_pipeline_info], None)
-            .map_err(|(_, err)| err)?;
+        let graphics_pipelines = vec![graphics_pipeline];
 
         Ok(Self {
             graphics_pipelines,

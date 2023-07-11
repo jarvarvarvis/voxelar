@@ -21,6 +21,7 @@ pub mod command;
 pub mod debug;
 pub mod depth_image;
 pub mod framebuffers;
+pub mod graphics_pipeline_builder;
 pub mod physical_device;
 pub mod pipeline_layout;
 pub mod present_images;
