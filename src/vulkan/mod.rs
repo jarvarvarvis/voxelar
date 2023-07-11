@@ -422,7 +422,7 @@ impl<Verification: VerificationProvider> RenderContext for VulkanContext<Verific
 
             let surface_loader = Surface::new(&entry, &instance);
 
-            let mut ctx = Self {
+            Ok(Self {
                 entry,
                 instance,
                 verification,
@@ -437,10 +437,7 @@ impl<Verification: VerificationProvider> RenderContext for VulkanContext<Verific
                 framebuffers: None,
                 render_pass: None,
                 internal_sync_primitives: None,
-            };
-            ctx.create_default_data_structures(window.get_size())?;
-
-            Ok(ctx)
+            })
         }
     }
 
