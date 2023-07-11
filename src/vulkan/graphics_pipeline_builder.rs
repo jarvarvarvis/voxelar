@@ -5,7 +5,6 @@ use ash::vk::GraphicsPipelineCreateInfo;
 use ash::vk::Pipeline;
 use ash::vk::PipelineCache;
 use ash::vk::PipelineDynamicStateCreateInfo;
-use ash::vk::PipelineLayout;
 use ash::vk::PipelineShaderStageCreateInfo;
 use ash::vk::PipelineVertexInputStateCreateInfo;
 use ash::vk::PipelineViewportStateCreateInfo;

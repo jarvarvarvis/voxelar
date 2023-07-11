@@ -1,10 +1,4 @@
 use voxelar::ash::vk;
-use voxelar::ash::vk::DynamicState;
-use voxelar::ash::vk::IndexType;
-use voxelar::ash::vk::Pipeline;
-use voxelar::ash::vk::PolygonMode;
-use voxelar::ash::vk::SampleCountFlags;
-use voxelar::ash::vk::{Rect2D, Viewport};
 
 use voxelar::compile_shader;
 use voxelar::shaderc::ShaderKind;
@@ -20,9 +14,9 @@ use voxelar_vertex::*;
 use crate::vertex::Vertex;
 
 pub struct TriangleDemo {
-    pipelines: Vec<Pipeline>,
-    viewport: Viewport,
-    scissor: Rect2D,
+    pipelines: Vec<vk::Pipeline>,
+    viewport: vk::Viewport,
+    scissor: vk::Rect2D,
     vertex_buffer: AllocatedBuffer<Vertex>,
     index_buffer: AllocatedBuffer<u32>,
     index_count: usize,
@@ -69,7 +63,7 @@ impl TriangleDemo {
 
         let (_data, vertex_input_state_info) = Vertex::input_state_info();
 
-        let viewport = Viewport {
+        let viewport = vk::Viewport {
             x: 0.0,
             y: 0.0,
             width: surface_width as f32,
@@ -84,13 +78,13 @@ impl TriangleDemo {
             .vertex_input(vertex_input_state_info)
             .add_shader_stage(vertex_shader_module.get_stage_create_info())
             .add_shader_stage(fragment_shader_module.get_stage_create_info())
-            .input_assembly_with_topology(PrimitiveTopology::TRIANGLE_LIST)
-            .rasterization_with_polygon_mode(PolygonMode::FILL)
-            .multisample_with_samples(SampleCountFlags::TYPE_1)
+            .input_assembly_with_topology(vk::PrimitiveTopology::TRIANGLE_LIST)
+            .rasterization_with_polygon_mode(vk::PolygonMode::FILL)
+            .multisample_with_samples(vk::SampleCountFlags::TYPE_1)
             .color_blend_attachment_with_defaults()
             .depth_stencil_with_default_ops()
-            .add_dynamic_state(DynamicState::VIEWPORT)
-            .add_dynamic_state(DynamicState::SCISSOR)
+            .add_dynamic_state(vk::DynamicState::VIEWPORT)
+            .add_dynamic_state(vk::DynamicState::SCISSOR)
             .viewport(viewport)
             .scissor(scissor)
             .build(&virtual_device, &render_pass, &pipeline_layout)?;
@@ -189,7 +183,7 @@ impl TriangleDemo {
                         draw_command_buffer,
                         self.index_buffer.buffer,
                         0,
-                        IndexType::UINT32,
+                        vk::IndexType::UINT32,
                     );
                     device.cmd_draw_indexed(
                         draw_command_buffer,
