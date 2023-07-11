@@ -7,6 +7,7 @@ use ash::extensions::khr::Surface;
 use ash::vk;
 use ash::vk::ApplicationInfo;
 use ash::vk::PipelineStageFlags;
+use ash::vk::ShaderStageFlags;
 use ash::vk::SurfaceKHR;
 use ash::vk::{CommandBuffer, Queue};
 use ash::vk::{Fence, Semaphore};
@@ -373,22 +374,32 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         }
     }
 
+    pub fn create_shader_of_stage(
+        &self,
+        compiled_bytes: Vec<u8>,
+        stage: ShaderStageFlags,
+    ) -> crate::Result<CompiledShaderModule> {
+        unsafe {
+            CompiledShaderModule::create_shader_of_stage(
+                compiled_bytes,
+                self.virtual_device()?,
+                stage,
+            )
+        }
+    }
+
     pub fn create_vertex_shader(
         &self,
         compiled_bytes: Vec<u8>,
     ) -> crate::Result<CompiledShaderModule> {
-        unsafe {
-            CompiledShaderModule::create_vertex_shader(compiled_bytes, self.virtual_device()?)
-        }
+        self.create_shader_of_stage(compiled_bytes, ShaderStageFlags::VERTEX)
     }
 
     pub fn create_fragment_shader(
         &self,
         compiled_bytes: Vec<u8>,
     ) -> crate::Result<CompiledShaderModule> {
-        unsafe {
-            CompiledShaderModule::create_fragment_shader(compiled_bytes, self.virtual_device()?)
-        }
+        self.create_shader_of_stage(compiled_bytes, ShaderStageFlags::FRAGMENT)
     }
 }
 

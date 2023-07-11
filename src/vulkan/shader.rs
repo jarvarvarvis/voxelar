@@ -45,28 +45,12 @@ impl CompiledShaderModule {
         })
     }
 
-    pub unsafe fn create_vertex_shader(
+    pub unsafe fn create_shader_of_stage(
         compiled_bytes: Vec<u8>,
         virtual_device: &SetUpVirtualDevice,
+        stage: ShaderStageFlags,
     ) -> crate::Result<Self> {
-        Self::create(
-            compiled_bytes,
-            virtual_device,
-            ShaderStageFlags::VERTEX,
-            CString::new("main")?,
-        )
-    }
-
-    pub unsafe fn create_fragment_shader(
-        compiled_bytes: Vec<u8>,
-        virtual_device: &SetUpVirtualDevice,
-    ) -> crate::Result<Self> {
-        Self::create(
-            compiled_bytes,
-            virtual_device,
-            ShaderStageFlags::FRAGMENT,
-            CString::new("main")?,
-        )
+        Self::create(compiled_bytes, virtual_device, stage, CString::new("main")?)
     }
 
     pub fn get_stage_create_info(&self) -> PipelineShaderStageCreateInfo {
