@@ -55,6 +55,7 @@ impl SetUpCommandLogic {
 
     pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice) {
         unsafe {
+            virtual_device.device.free_command_buffers(self.pool, &self.command_buffers);
             virtual_device.device.destroy_command_pool(self.pool, None);
         }
     }
