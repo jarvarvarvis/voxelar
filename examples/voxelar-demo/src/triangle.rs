@@ -14,7 +14,6 @@ use voxelar_vertex::*;
 use crate::vertex::Vertex;
 
 pub struct TriangleDemo {
-    pipeline_layout: PipelineLayout,
     graphics_pipelines: Vec<Pipeline>,
     viewports: [Viewport; 1],
     scissors: [Rect2D; 1],
@@ -31,6 +30,7 @@ impl TriangleDemo {
     ) -> crate::Result<Self> {
         let render_pass = vulkan_context.render_pass()?;
         let virtual_device = vulkan_context.virtual_device()?;
+        let pipeline_layout = vulkan_context.pipeline_layout()?;
 
         let surface_resolution = vulkan_context.swapchain()?.surface_extent;
         let surface_width = surface_resolution.width;
@@ -62,10 +62,6 @@ impl TriangleDemo {
         let fragment_shader_module = vulkan_context.create_fragment_shader(compiled_frag)?;
 
         let layout_create_info = vk::PipelineLayoutCreateInfo::default();
-
-        let pipeline_layout = virtual_device
-            .device
-            .create_pipeline_layout(&layout_create_info, None)?;
 
         let shader_stage_create_infos = [
             vertex_shader_module.get_stage_create_info(),
@@ -146,7 +142,7 @@ impl TriangleDemo {
             .depth_stencil_state(&depth_state_info)
             .color_blend_state(&color_blend_state)
             .dynamic_state(&dynamic_state_info)
-            .layout(pipeline_layout)
+            .layout(pipeline_layout.pipeline_layout)
             .render_pass(render_pass.render_pass)
             .build();
 
@@ -156,7 +152,6 @@ impl TriangleDemo {
             .map_err(|(_, err)| err)?;
 
         Ok(Self {
-            pipeline_layout,
             graphics_pipelines,
             viewports,
             scissors,
@@ -329,8 +324,6 @@ impl TriangleDemo {
             for pipeline in self.graphics_pipelines.iter() {
                 device.destroy_pipeline(*pipeline, None);
             }
-
-            device.destroy_pipeline_layout(self.pipeline_layout, None);
 
             self.vertex_shader_module.destroy(&virtual_device);
             self.fragment_shader_module.destroy(&virtual_device);
