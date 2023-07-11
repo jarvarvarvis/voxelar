@@ -152,17 +152,7 @@ impl TriangleDemo {
         let graphics_pipeline = self.graphics_pipelines[0];
 
         unsafe {
-            let (present_index, _) = vulkan_context
-                .swapchain()?
-                .swapchain_loader
-                .acquire_next_image(
-                    vulkan_context.swapchain()?.swapchain,
-                    std::u64::MAX,
-                    vulkan_context
-                        .internal_sync_primitives()?
-                        .present_complete_semaphore,
-                    vk::Fence::null(),
-                )?;
+            let (present_index, _) = vulkan_context.acquire_next_image()?;
 
             let clear_values = [
                 vk::ClearValue {
@@ -184,53 +174,22 @@ impl TriangleDemo {
                 .render_area(surface_resolution.into())
                 .clear_values(&clear_values);
 
-            vulkan_context.submit_command_buffer(
+            vulkan_context.submit_record_command_buffer(
                 *vulkan_context.command_logic()?.get_command_buffer(1),
-                vulkan_context
-                    .internal_sync_primitives()?
-                    .draw_commands_reuse_fence,
+                vulkan_context.internal_sync_primitives()?.draw_commands_reuse_fence,
                 vulkan_context.virtual_device()?.present_queue,
                 &[vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT],
-                &[vulkan_context
-                    .internal_sync_primitives()?
-                    .present_complete_semaphore],
-                &[vulkan_context
-                    .internal_sync_primitives()?
-                    .rendering_complete_semaphore],
+                &[vulkan_context.internal_sync_primitives()?.present_complete_semaphore],
+                &[vulkan_context.internal_sync_primitives()?.rendering_complete_semaphore],
                 |device, draw_command_buffer| {
                     let device = &device.device;
-                    device.cmd_begin_render_pass(
-                        draw_command_buffer,
-                        &render_pass_begin_info,
-                        vk::SubpassContents::INLINE,
-                    );
-                    device.cmd_bind_pipeline(
-                        draw_command_buffer,
-                        vk::PipelineBindPoint::GRAPHICS,
-                        graphics_pipeline,
-                    );
+                    device.cmd_begin_render_pass(draw_command_buffer ,&render_pass_begin_info, vk::SubpassContents::INLINE);
+                    device.cmd_bind_pipeline(draw_command_buffer, vk::PipelineBindPoint::GRAPHICS, graphics_pipeline);
                     device.cmd_set_viewport(draw_command_buffer, 0, &self.viewports);
                     device.cmd_set_scissor(draw_command_buffer, 0, &self.scissors);
-                    device.cmd_bind_vertex_buffers(
-                        draw_command_buffer,
-                        0,
-                        &[self.vertex_buffer.buffer],
-                        &[0],
-                    );
-                    device.cmd_bind_index_buffer(
-                        draw_command_buffer,
-                        self.index_buffer.buffer,
-                        0,
-                        vk::IndexType::UINT32,
-                    );
-                    device.cmd_draw_indexed(
-                        draw_command_buffer,
-                        self.index_count as u32,
-                        1,
-                        0,
-                        0,
-                        1,
-                    );
+                    device.cmd_bind_vertex_buffers(draw_command_buffer, 0, &[self.vertex_buffer.buffer], &[0]);
+                    device.cmd_bind_index_buffer(draw_command_buffer, self.index_buffer.buffer, 0, vk::IndexType::UINT32);
+                    device.cmd_draw_indexed(draw_command_buffer, self.index_count as u32, 1, 0, 0, 1);
                     // Or draw without the index buffer
                     // device.cmd_draw(draw_command_buffer, 3, 1, 0, 0);
                     device.cmd_end_render_pass(draw_command_buffer);
@@ -238,9 +197,7 @@ impl TriangleDemo {
                 },
             )?;
 
-            let wait_semaphors = [vulkan_context
-                .internal_sync_primitives()?
-                .rendering_complete_semaphore];
+            let wait_semaphors = [vulkan_context.internal_sync_primitives()?.rendering_complete_semaphore];
             let swapchains = [vulkan_context.swapchain()?.swapchain];
             let image_indices = [present_index];
             let present_info = vk::PresentInfoKHR::builder()

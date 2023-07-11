@@ -64,7 +64,7 @@ impl SetUpCommandLogic {
 /// is executed. That way we can delay the waiting for the fences by 1 frame which is good for performance.
 /// Make sure to create the fence in a signaled state on the first use.
 #[allow(clippy::too_many_arguments)]
-pub fn submit_command_buffer<F: FnOnce(&Device, CommandBuffer) -> crate::Result<()>>(
+pub fn submit_record_command_buffer<F: FnOnce(&Device, CommandBuffer) -> crate::Result<()>>(
     device: &Device,
     command_buffer: CommandBuffer,
     command_buffer_reuse_fence: Fence,

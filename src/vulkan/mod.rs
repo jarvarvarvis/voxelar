@@ -231,22 +231,10 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
             )?);
 
             let depth_image = self.depth_image()?;
-            let setup_command_buffer = self.command_logic()?.get_command_buffer(0);
-            let setup_commands_reuse_fence =
-                self.internal_sync_primitives()?.setup_commands_reuse_fence;
-            let present_queue = self.virtual_device()?.present_queue;
-            self.submit_command_buffer(
-                *setup_command_buffer,
-                setup_commands_reuse_fence,
-                present_queue,
-                &[],
-                &[],
-                &[],
-                |device, setup_command_buffer| {
-                    depth_image.submit_pipeline_barrier_command(device, setup_command_buffer);
-                    Ok(())
-                },
-            )?;
+            self.submit_setup_command(|device, setup_command_buffer| {
+                depth_image.submit_pipeline_barrier_command(device, setup_command_buffer);
+                Ok(())
+            })?;
         }
         Ok(())
     }
@@ -308,7 +296,7 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
 }
 
 impl<Verification: VerificationProvider> VulkanContext<Verification> {
-    pub fn submit_command_buffer<F>(
+    pub fn submit_record_command_buffer<F>(
         &self,
         command_buffer: CommandBuffer,
         command_buffer_reuse_fence: Fence,
@@ -322,7 +310,7 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         F: FnOnce(&SetUpVirtualDevice, CommandBuffer) -> crate::Result<()>,
     {
         let device = self.virtual_device()?;
-        command::submit_command_buffer(
+        command::submit_record_command_buffer(
             &device.device,
             command_buffer,
             command_buffer_reuse_fence,
@@ -332,6 +320,37 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
             signal_semaphores,
             |_, buf| command_buffer_op(device, buf),
         )
+    }
+
+    pub fn submit_setup_command<F>(&self, command_buffer_op: F) -> crate::Result<()>
+    where
+        F: FnOnce(&SetUpVirtualDevice, CommandBuffer) -> crate::Result<()>,
+    {
+        let setup_command_buffer = self.command_logic()?.get_command_buffer(0);
+        let setup_commands_reuse_fence =
+            self.internal_sync_primitives()?.setup_commands_reuse_fence;
+        let present_queue = self.virtual_device()?.present_queue;
+        self.submit_record_command_buffer(
+            *setup_command_buffer,
+            setup_commands_reuse_fence,
+            present_queue,
+            &[],
+            &[],
+            &[],
+            command_buffer_op,
+        )
+    }
+
+    pub fn acquire_next_image(&self) -> crate::Result<(u32, bool)> {
+        unsafe {
+            let present_index_and_success = self.swapchain()?.swapchain_loader.acquire_next_image(
+                self.swapchain()?.swapchain,
+                std::u64::MAX,
+                self.internal_sync_primitives()?.present_complete_semaphore,
+                vk::Fence::null(),
+            )?;
+            Ok(present_index_and_success)
+        }
     }
 
     pub fn create_vertex_buffer<T: Copy>(&self, data: &[T]) -> crate::Result<AllocatedBuffer<T>> {
@@ -344,9 +363,9 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         }
     }
 
-    pub fn create_index_buffer<T: Copy>(&self, data: &[T]) -> crate::Result<AllocatedBuffer<T>> {
+    pub fn create_index_buffer(&self, data: &[u32]) -> crate::Result<AllocatedBuffer<u32>> {
         unsafe {
-            AllocatedBuffer::<T>::create_index_buffer(
+            AllocatedBuffer::<u32>::create_index_buffer(
                 self.virtual_device()?,
                 self.physical_device()?,
                 data,
