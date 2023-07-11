@@ -6,8 +6,10 @@ use ash::extensions::ext::DebugUtils;
 use ash::extensions::khr::Surface;
 use ash::vk;
 use ash::vk::ApplicationInfo;
+use ash::vk::ClearValue;
 use ash::vk::PipelineStageFlags;
 use ash::vk::ShaderStageFlags;
+use ash::vk::SubpassContents;
 use ash::vk::SurfaceKHR;
 use ash::vk::{CommandBuffer, Queue};
 use ash::vk::{Fence, Semaphore};
@@ -342,6 +344,50 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         )
     }
 
+    pub fn submit_render_pass_commands<F>(
+        &self,
+        present_index: u32,
+        clear_values: &[ClearValue],
+        command_buffer_op: F,
+    ) -> crate::Result<()>
+    where
+        F: FnOnce(&SetUpVirtualDevice, CommandBuffer) -> crate::Result<()>,
+    {
+        let surface_resolution = self.swapchain()?.surface_extent;
+        let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
+            .render_pass(self.render_pass()?.render_pass)
+            .framebuffer(self.framebuffers()?.framebuffers[present_index as usize])
+            .render_area(surface_resolution.into())
+            .clear_values(clear_values);
+
+        self.submit_record_command_buffer(
+            *self.command_logic()?.get_command_buffer(1),
+            self.internal_sync_primitives()?.draw_commands_reuse_fence,
+            self.virtual_device()?.present_queue,
+            &[PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT],
+            &[self.internal_sync_primitives()?.present_complete_semaphore],
+            &[self
+                .internal_sync_primitives()?
+                .rendering_complete_semaphore],
+            |device, draw_command_buffer| {
+                let vk_device = &device.device;
+                unsafe {
+                    vk_device.cmd_begin_render_pass(
+                        draw_command_buffer,
+                        &render_pass_begin_info,
+                        SubpassContents::INLINE,
+                    );
+                }
+                command_buffer_op(device, draw_command_buffer)?;
+                unsafe {
+                    vk_device.cmd_end_render_pass(draw_command_buffer);
+                }
+                Ok(())
+            },
+        )?;
+        Ok(())
+    }
+
     pub fn acquire_next_image(&self) -> crate::Result<(u32, bool)> {
         unsafe {
             let present_index_and_success = self.swapchain()?.swapchain_loader.acquire_next_image(
@@ -351,6 +397,25 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
                 vk::Fence::null(),
             )?;
             Ok(present_index_and_success)
+        }
+    }
+
+    pub fn present_image(&self, present_index: u32) -> crate::Result<()> {
+        let wait_semaphores = [self
+            .internal_sync_primitives()?
+            .rendering_complete_semaphore];
+        let swapchains = [self.swapchain()?.swapchain];
+        let image_indices = [present_index];
+        let present_info = vk::PresentInfoKHR::builder()
+            .wait_semaphores(&wait_semaphores) // &base.rendering_complete_semaphore)
+            .swapchains(&swapchains)
+            .image_indices(&image_indices);
+
+        unsafe {
+            self.swapchain()?
+                .swapchain_loader
+                .queue_present(self.virtual_device()?.present_queue, &present_info)?;
+            Ok(())
         }
     }
 

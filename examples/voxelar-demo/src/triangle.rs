@@ -1,9 +1,11 @@
 use voxelar::ash::vk;
 use voxelar::ash::vk::DynamicState;
+use voxelar::ash::vk::IndexType;
 use voxelar::ash::vk::Pipeline;
 use voxelar::ash::vk::PolygonMode;
 use voxelar::ash::vk::SampleCountFlags;
 use voxelar::ash::vk::{Rect2D, Viewport};
+
 use voxelar::compile_shader;
 use voxelar::shaderc::ShaderKind;
 use voxelar::voxelar_math::vec4::Vec4;
@@ -145,8 +147,6 @@ impl TriangleDemo {
         &self,
         vulkan_context: &VulkanContext<V>,
     ) -> crate::Result<()> {
-        let surface_resolution = vulkan_context.swapchain()?.surface_extent;
-
         let graphics_pipeline = self.pipelines[0];
 
         unsafe {
@@ -166,48 +166,45 @@ impl TriangleDemo {
                 },
             ];
 
-            let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
-                .render_pass(vulkan_context.render_pass()?.render_pass)
-                .framebuffer(vulkan_context.framebuffers()?.framebuffers[present_index as usize])
-                .render_area(surface_resolution.into())
-                .clear_values(&clear_values);
-
-            vulkan_context.submit_record_command_buffer(
-                *vulkan_context.command_logic()?.get_command_buffer(1),
-                vulkan_context.internal_sync_primitives()?.draw_commands_reuse_fence,
-                vulkan_context.virtual_device()?.present_queue,
-                &[vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT],
-                &[vulkan_context.internal_sync_primitives()?.present_complete_semaphore],
-                &[vulkan_context.internal_sync_primitives()?.rendering_complete_semaphore],
+            vulkan_context.submit_render_pass_commands(
+                present_index,
+                &clear_values,
                 |device, draw_command_buffer| {
                     let device = &device.device;
-                    device.cmd_begin_render_pass(draw_command_buffer, &render_pass_begin_info, vk::SubpassContents::INLINE);
-                    
-                    device.cmd_bind_pipeline(draw_command_buffer, vk::PipelineBindPoint::GRAPHICS, graphics_pipeline);
+                    device.cmd_bind_pipeline(
+                        draw_command_buffer,
+                        vk::PipelineBindPoint::GRAPHICS,
+                        graphics_pipeline,
+                    );
                     device.cmd_set_viewport(draw_command_buffer, 0, &[self.viewport]);
                     device.cmd_set_scissor(draw_command_buffer, 0, &[self.scissor]);
 
-                    device.cmd_bind_vertex_buffers(draw_command_buffer, 0, &[self.vertex_buffer.buffer], &[0]);
-                    device.cmd_bind_index_buffer(draw_command_buffer, self.index_buffer.buffer, 0, vk::IndexType::UINT32);
-                    device.cmd_draw_indexed(draw_command_buffer, self.index_count as u32, 1, 0, 0, 1);
-                    
-                    device.cmd_end_render_pass(draw_command_buffer);
+                    device.cmd_bind_vertex_buffers(
+                        draw_command_buffer,
+                        0,
+                        &[self.vertex_buffer.buffer],
+                        &[0],
+                    );
+                    device.cmd_bind_index_buffer(
+                        draw_command_buffer,
+                        self.index_buffer.buffer,
+                        0,
+                        IndexType::UINT32,
+                    );
+                    device.cmd_draw_indexed(
+                        draw_command_buffer,
+                        self.index_count as u32,
+                        1,
+                        0,
+                        0,
+                        1,
+                    );
+
                     Ok(())
                 },
             )?;
 
-            let wait_semaphores = [vulkan_context.internal_sync_primitives()?.rendering_complete_semaphore];
-            let swapchains = [vulkan_context.swapchain()?.swapchain];
-            let image_indices = [present_index];
-            let present_info = vk::PresentInfoKHR::builder()
-                .wait_semaphores(&wait_semaphores) // &base.rendering_complete_semaphore)
-                .swapchains(&swapchains)
-                .image_indices(&image_indices);
-
-            vulkan_context.swapchain()?.swapchain_loader.queue_present(
-                vulkan_context.virtual_device()?.present_queue,
-                &present_info,
-            )?;
+            vulkan_context.present_image(present_index)?;
         }
         Ok(())
     }
