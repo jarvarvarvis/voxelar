@@ -190,18 +190,16 @@ impl TriangleDemo {
                     device.cmd_bind_vertex_buffers(draw_command_buffer, 0, &[self.vertex_buffer.buffer], &[0]);
                     device.cmd_bind_index_buffer(draw_command_buffer, self.index_buffer.buffer, 0, vk::IndexType::UINT32);
                     device.cmd_draw_indexed(draw_command_buffer, self.index_count as u32, 1, 0, 0, 1);
-                    // Or draw without the index buffer
-                    // device.cmd_draw(draw_command_buffer, 3, 1, 0, 0);
                     device.cmd_end_render_pass(draw_command_buffer);
                     Ok(())
                 },
             )?;
 
-            let wait_semaphors = [vulkan_context.internal_sync_primitives()?.rendering_complete_semaphore];
+            let wait_semaphores = [vulkan_context.internal_sync_primitives()?.rendering_complete_semaphore];
             let swapchains = [vulkan_context.swapchain()?.swapchain];
             let image_indices = [present_index];
             let present_info = vk::PresentInfoKHR::builder()
-                .wait_semaphores(&wait_semaphors) // &base.rendering_complete_semaphore)
+                .wait_semaphores(&wait_semaphores) // &base.rendering_complete_semaphore)
                 .swapchains(&swapchains)
                 .image_indices(&image_indices);
 

@@ -66,6 +66,11 @@ impl GraphicsPipelineBuilder {
         Self::default()
     }
 
+    pub fn shader_stages(mut self, shader_stages: Vec<PipelineShaderStageCreateInfo>) -> Self {
+        self.shader_stages = shader_stages;
+        self
+    }
+
     pub fn add_shader_stage(mut self, shader_stage: PipelineShaderStageCreateInfo) -> Self {
         self.shader_stages.push(shader_stage);
         self
