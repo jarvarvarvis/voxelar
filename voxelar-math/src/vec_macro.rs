@@ -4,6 +4,12 @@ macro_rules! make_vec_type {
         $(
             $member:ident: $idx:expr
         ),*
+    }
+
+    impl {
+        $(
+            $further_impl_stmts:stmt
+        ),*
     }) => {
         #[repr(C)]
         #[derive(PartialEq, Debug, Clone, Copy)]
@@ -27,6 +33,20 @@ macro_rules! make_vec_type {
                 self.values[$idx]
             }
             )*
+
+            $(
+                $further_impl_stmts
+            )*
+        }
+
+        impl<T: MathType + std::ops::Neg<Output = T>> std::ops::Neg for $name<T> {
+            type Output = Self;
+
+            fn neg(self) -> Self {
+                Self::new(
+                    $( -self.$member() ),*
+                )
+            }
         }
 
         impl<T: MathType + std::ops::Add<Output = T>> std::ops::Add for $name<T> {
@@ -76,6 +96,25 @@ macro_rules! make_vec_type {
                 Self::new(
                     $( self.$member() / other ),*
                 )
+            }
+        }
+    };
+
+    ($name:ident {
+        size = $size:expr,
+        $(
+            $member:ident: $idx:expr
+        ),*
+    }) => {
+        crate::vec_macro::make_vec_type! {
+            $name {
+                size = $size,
+                $(
+                    $member: $idx
+                ),*
+            }
+
+            impl {
             }
         }
     }

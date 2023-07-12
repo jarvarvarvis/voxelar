@@ -21,6 +21,14 @@ mod tests {
         assert_eq!(1, vec.y());
         assert_eq!(3, vec.z());
     }
+    
+    #[test]
+    fn neg_vec3() {
+        let vec = Vec3::new(-1.0, 0.125, 5.0);
+        let expected = Vec3::new(1.0, -0.125, -5.0);
+
+        assert_eq!(expected, -vec);
+    }
 
     #[test]
     fn add_vec3() {

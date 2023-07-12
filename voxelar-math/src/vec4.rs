@@ -25,6 +25,14 @@ mod tests {
     }
 
     #[test]
+    fn neg_vec4() {
+        let vec = Vec4::new(-1.0, 0.125, 5.0, 0.0);
+        let expected = Vec4::new(1.0, -0.125, -5.0, 0.0);
+
+        assert_eq!(expected, -vec);
+    }
+
+    #[test]
     fn add_vec4() {
         let first = Vec4::new(1, 2, 9, -3);
         let second = Vec4::new(-1, 3, 0, -4);
