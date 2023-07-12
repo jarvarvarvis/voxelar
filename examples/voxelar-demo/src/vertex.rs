@@ -2,6 +2,7 @@ use voxelar::voxelar_math::vec4::Vec4;
 
 use voxelar_vertex::*;
 
+#[repr(C)]
 #[derive(Clone, Debug, Copy, VertexInput)]
 #[vertex_input_spec(binding = 0)]
 pub struct Vertex {
