@@ -7,7 +7,12 @@ layout (location = 1) in vec4 color;
 
 layout (location = 0) out vec4 o_color;
 
+layout (push_constant) uniform constants
+{
+    mat4 mvp_matrix;
+} PushConstants;
+
 void main() {
+    gl_Position = PushConstants.mvp_matrix * pos;
     o_color = color;
-    gl_Position = pos;
 }

@@ -1,7 +1,9 @@
 use voxelar::ash::vk;
+use voxelar::ash::vk::ShaderStageFlags;
 
 use voxelar::compile_shader;
 use voxelar::shaderc::ShaderKind;
+use voxelar::voxelar_math::matrix::Matrix;
 use voxelar::voxelar_math::vec4::Vec4;
 use voxelar::vulkan::buffer::AllocatedBuffer;
 use voxelar::vulkan::debug::VerificationProvider;
@@ -13,6 +15,18 @@ use voxelar::vulkan::VulkanContext;
 use voxelar_vertex::*;
 
 use crate::vertex::Vertex;
+
+const MAT4_IDENTITY: Matrix<f32, 4, 4> = Matrix::<f32, 4, 4>::new([
+    [1.0, 0.0, 0.0, 0.0],
+    [0.0, 1.0, 0.0, 0.0],
+    [0.0, 0.0, 1.0, 0.0],
+    [0.0, 0.0, 0.0, 1.0],
+]);
+
+#[repr(C)]
+pub struct TrianglePushConstants {
+    pub mvp_matrix: Matrix<f32, 4, 4>,
+}
 
 pub struct TriangleDemo {
     pipeline_layout: SetUpPipelineLayout,
@@ -32,7 +46,10 @@ impl TriangleDemo {
     ) -> crate::Result<Self> {
         let render_pass = vulkan_context.render_pass()?;
         let virtual_device = vulkan_context.virtual_device()?;
-        let pipeline_layout = vulkan_context.create_default_pipeline_layout()?;
+        let pipeline_layout = vulkan_context
+            .create_push_constant_pipeline_layout::<TrianglePushConstants>(
+                ShaderStageFlags::VERTEX,
+            )?;
 
         let surface_resolution = vulkan_context.swapchain()?.surface_extent;
         let surface_width = surface_resolution.width;
@@ -188,6 +205,17 @@ impl TriangleDemo {
                         self.index_buffer.buffer,
                         0,
                         vk::IndexType::UINT32,
+                    );
+
+                    let constants = TrianglePushConstants {
+                        mvp_matrix: MAT4_IDENTITY,
+                    };
+                    device.cmd_push_constants(
+                        draw_command_buffer,
+                        self.pipeline_layout.pipeline_layout,
+                        ShaderStageFlags::VERTEX,
+                        0,
+                        voxelar::vulkan::util::transmute_as_u8_slice(&constants),
                     );
                     device.cmd_draw_indexed(
                         draw_command_buffer,

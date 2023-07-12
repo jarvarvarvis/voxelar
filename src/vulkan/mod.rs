@@ -350,6 +350,18 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         unsafe { SetUpPipelineLayout::create(self.virtual_device()?) }
     }
 
+    pub fn create_push_constant_pipeline_layout<PushConstants>(
+        &self,
+        shader_stages: ShaderStageFlags,
+    ) -> crate::Result<SetUpPipelineLayout> {
+        unsafe {
+            SetUpPipelineLayout::create_with_push_constants::<PushConstants>(
+                self.virtual_device()?,
+                shader_stages,
+            )
+        }
+    }
+
     pub fn acquire_next_image(&self) -> crate::Result<(u32, bool)> {
         unsafe {
             let present_index_and_success = self.swapchain()?.swapchain_loader.acquire_next_image(
