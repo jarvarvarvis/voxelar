@@ -1,3 +1,4 @@
+use crate::identity::Identity;
 use crate::matrix::Matrix;
 use crate::MathType;
 
@@ -5,40 +6,21 @@ pub trait MatrixIdentityOp<T: MathType, const SIZE: usize> {
     fn identity() -> Matrix<T, SIZE, SIZE>;
 }
 
-macro_rules! impl_identity_for_type {
-    ($type:ty, $identity_value:expr) => {
-        impl<const SIZE: usize> MatrixIdentityOp<$type, SIZE> for Matrix<$type, SIZE, SIZE> {
-            fn identity() -> Matrix<$type, SIZE, SIZE> {
-                let mut values = [[<$type>::default(); SIZE]; SIZE];
-                for column in 0..SIZE {
-                    for row in 0..SIZE {
-                        if row == column {
-                            values[row][column] = $identity_value;
-                        }
-                    }
+impl<T: MathType + Identity, const SIZE: usize> MatrixIdentityOp<T, SIZE>
+    for Matrix<T, SIZE, SIZE>
+{
+    fn identity() -> Matrix<T, SIZE, SIZE> {
+        let mut values = [[T::default(); SIZE]; SIZE];
+        for column in 0..SIZE {
+            for row in 0..SIZE {
+                if row == column {
+                    values[row][column] = T::identity();
                 }
-                Matrix::new(values)
             }
         }
-    };
+        Self::new(values)
+    }
 }
-
-impl_identity_for_type!(usize, 1);
-impl_identity_for_type!(u8, 1);
-impl_identity_for_type!(u16, 1);
-impl_identity_for_type!(u32, 1);
-impl_identity_for_type!(u64, 1);
-impl_identity_for_type!(u128, 1);
-
-impl_identity_for_type!(isize, 1);
-impl_identity_for_type!(i8, 1);
-impl_identity_for_type!(i16, 1);
-impl_identity_for_type!(i32, 1);
-impl_identity_for_type!(i64, 1);
-impl_identity_for_type!(i128, 1);
-
-impl_identity_for_type!(f32, 1.0);
-impl_identity_for_type!(f64, 1.0);
 
 #[cfg(test)]
 mod tests {

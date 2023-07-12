@@ -1,5 +1,7 @@
 #![feature(trait_alias)]
 
+pub mod identity;
+
 pub mod vec_macro;
 pub mod vec2;
 pub mod vec3;
