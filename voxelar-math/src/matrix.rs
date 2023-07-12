@@ -46,6 +46,14 @@ impl<T: MathType, const COLUMNS: usize, const ROWS: usize> std::ops::Index<(usiz
     }
 }
 
+impl<T: MathType, const COLUMNS: usize, const ROWS: usize> std::ops::IndexMut<(usize, usize)>
+    for Matrix<T, COLUMNS, ROWS>
+{
+    fn index_mut(&mut self, index: (usize, usize)) -> &mut Self::Output {
+        self.get_mut(index.0, index.1)
+    }
+}
+
 impl<T: MathType + std::ops::Add<Output = T>, const COLUMNS: usize, const ROWS: usize> std::ops::Add
     for Matrix<T, COLUMNS, ROWS>
 {

@@ -10,5 +10,6 @@ pub mod vec4;
 pub mod matrix;
 pub mod matrix_types;
 pub mod matrix_identity;
+pub mod matrix_transform;
 
 pub trait MathType = PartialEq + Clone + Copy + Default + Sized;
