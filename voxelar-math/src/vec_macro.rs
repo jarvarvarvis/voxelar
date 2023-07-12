@@ -4,12 +4,6 @@ macro_rules! make_vec_type {
         $(
             $member:ident: $idx:expr
         ),*
-    }
-
-    impl {
-        $(
-            $further_impl_stmts:stmt
-        ),*
     }) => {
         #[repr(C)]
         #[derive(PartialEq, Debug, Clone, Copy)]
@@ -32,10 +26,6 @@ macro_rules! make_vec_type {
             pub fn $member(&self) -> T {
                 self.values[$idx]
             }
-            )*
-
-            $(
-                $further_impl_stmts
             )*
         }
 
@@ -99,25 +89,6 @@ macro_rules! make_vec_type {
             }
         }
     };
-
-    ($name:ident {
-        size = $size:expr,
-        $(
-            $member:ident: $idx:expr
-        ),*
-    }) => {
-        crate::vec_macro::make_vec_type! {
-            $name {
-                size = $size,
-                $(
-                    $member: $idx
-                ),*
-            }
-
-            impl {
-            }
-        }
-    }
 }
 
 pub(super) use make_vec_type;
