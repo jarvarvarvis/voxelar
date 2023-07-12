@@ -1,10 +1,6 @@
-use ash::vk::CompareOp;
-use ash::vk::DynamicState;
-use ash::vk::FrontFace;
 use ash::vk::GraphicsPipelineCreateInfo;
 use ash::vk::Pipeline;
 use ash::vk::PipelineCache;
-use ash::vk::PipelineDynamicStateCreateInfo;
 use ash::vk::PipelineShaderStageCreateInfo;
 use ash::vk::PipelineVertexInputStateCreateInfo;
 use ash::vk::PipelineViewportStateCreateInfo;
@@ -12,10 +8,11 @@ use ash::vk::{
     BlendFactor, BlendOp, ColorComponentFlags, LogicOp, PipelineColorBlendAttachmentState,
     PipelineColorBlendStateCreateInfo,
 };
-use ash::vk::{PipelineDepthStencilStateCreateInfo, StencilOp, StencilOpState};
+use ash::vk::{CompareOp, PipelineDepthStencilStateCreateInfo, StencilOp, StencilOpState};
+use ash::vk::{DynamicState, PipelineDynamicStateCreateInfo};
+use ash::vk::{FrontFace, PipelineRasterizationStateCreateInfo, PolygonMode};
 use ash::vk::{PipelineInputAssemblyStateCreateInfo, PrimitiveTopology};
 use ash::vk::{PipelineMultisampleStateCreateInfo, SampleCountFlags};
-use ash::vk::{PipelineRasterizationStateCreateInfo, PolygonMode};
 use ash::vk::{Rect2D, Viewport};
 
 use crate::result::Context;
