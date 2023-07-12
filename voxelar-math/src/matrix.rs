@@ -11,7 +11,7 @@ impl<T: MathType, const COLUMNS: usize, const ROWS: usize> Matrix<T, COLUMNS, RO
         Self { values }
     }
 
-    pub fn new(values: [[T; COLUMNS]; ROWS]) -> Self {
+    pub const fn new(values: [[T; COLUMNS]; ROWS]) -> Self {
         Self { values }
     }
 
