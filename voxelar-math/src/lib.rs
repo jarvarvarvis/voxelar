@@ -8,6 +8,7 @@ pub mod vec3;
 pub mod vec4;
 
 pub mod matrix;
+pub mod matrix_types;
 pub mod matrix_identity;
 
 pub trait MathType = PartialEq + Clone + Copy + Default + Sized;
