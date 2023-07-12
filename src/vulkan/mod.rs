@@ -71,7 +71,6 @@ pub struct VulkanContext<Verification: VerificationProvider> {
     pub depth_image: Option<SetUpDepthImage>,
     pub render_pass: Option<SetUpRenderPass>,
     pub framebuffers: Option<SetUpFramebuffers>,
-    pub pipeline_layout: Option<SetUpPipelineLayout>,
 
     pub internal_sync_primitives: Option<InternalSyncPrimitives>,
 }
@@ -156,12 +155,6 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         framebuffers,
         SetUpFramebuffers,
         "No framebuffers were set up yet! Use VulkanContext::create_framebuffers to do so"
-    );
-
-    generate_safe_getter!(
-        pipeline_layout,
-        SetUpPipelineLayout,
-        "No pipeline layout was set up yet! Use VulkanContext::create_pipeline_layout to do so"
     );
 
     pub fn find_usable_physical_device(&mut self) -> crate::Result<()> {
@@ -277,13 +270,6 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         Ok(())
     }
 
-    pub fn create_pipeline_layout(&mut self) -> crate::Result<()> {
-        unsafe {
-            self.pipeline_layout = Some(SetUpPipelineLayout::create(self.virtual_device()?)?);
-        }
-        Ok(())
-    }
-
     pub fn create_default_data_structures(&mut self, window_size: (i32, i32)) -> crate::Result<()> {
         self.find_usable_physical_device()?;
         self.create_virtual_device()?;
@@ -294,7 +280,6 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         self.create_depth_image(window_size)?;
         self.create_render_pass()?;
         self.create_framebuffers()?;
-        self.create_pipeline_layout()?;
         Ok(())
     }
 }
@@ -359,6 +344,10 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         )?;
 
         Ok(())
+    }
+
+    pub fn create_default_pipeline_layout(&self) -> crate::Result<SetUpPipelineLayout> {
+        unsafe { SetUpPipelineLayout::create(self.virtual_device()?) }
     }
 
     pub fn acquire_next_image(&self) -> crate::Result<(u32, bool)> {
@@ -522,7 +511,6 @@ impl<Verification: VerificationProvider> RenderContext for VulkanContext<Verific
                 depth_image: None,
                 render_pass: None,
                 framebuffers: None,
-                pipeline_layout: None,
 
                 internal_sync_primitives: None,
             })
@@ -539,10 +527,6 @@ impl<Verification: VerificationProvider> Drop for VulkanContext<Verification> {
         unsafe {
             if let Some(device) = self.virtual_device.as_mut() {
                 device.wait();
-
-                if let Some(pipeline_layout) = self.pipeline_layout.as_mut() {
-                    pipeline_layout.destroy(&device);
-                }
 
                 if let Some(render_pass) = self.render_pass.as_mut() {
                     render_pass.destroy(&device);

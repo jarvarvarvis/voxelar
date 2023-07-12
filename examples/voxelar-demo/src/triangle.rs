@@ -6,6 +6,7 @@ use voxelar::voxelar_math::vec4::Vec4;
 use voxelar::vulkan::buffer::AllocatedBuffer;
 use voxelar::vulkan::debug::VerificationProvider;
 use voxelar::vulkan::graphics_pipeline_builder::GraphicsPipelineBuilder;
+use voxelar::vulkan::pipeline_layout::SetUpPipelineLayout;
 use voxelar::vulkan::shader::CompiledShaderModule;
 use voxelar::vulkan::VulkanContext;
 
@@ -14,6 +15,7 @@ use voxelar_vertex::*;
 use crate::vertex::Vertex;
 
 pub struct TriangleDemo {
+    pipeline_layout: SetUpPipelineLayout,
     pipelines: Vec<vk::Pipeline>,
     viewport: vk::Viewport,
     scissor: vk::Rect2D,
@@ -30,7 +32,7 @@ impl TriangleDemo {
     ) -> crate::Result<Self> {
         let render_pass = vulkan_context.render_pass()?;
         let virtual_device = vulkan_context.virtual_device()?;
-        let pipeline_layout = vulkan_context.pipeline_layout()?;
+        let pipeline_layout = vulkan_context.create_default_pipeline_layout()?;
 
         let surface_resolution = vulkan_context.swapchain()?.surface_extent;
         let surface_width = surface_resolution.width;
@@ -90,6 +92,7 @@ impl TriangleDemo {
             .build(&virtual_device, &render_pass, &pipeline_layout)?;
 
         Ok(Self {
+            pipeline_layout,
             pipelines: vec![graphics_pipeline],
             viewport,
             scissor,
@@ -212,6 +215,8 @@ impl TriangleDemo {
 
         virtual_device.wait();
         unsafe {
+            self.pipeline_layout.destroy(&virtual_device);
+
             let device = &virtual_device.device;
             for pipeline in self.pipelines.iter() {
                 device.destroy_pipeline(*pipeline, None);
