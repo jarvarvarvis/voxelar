@@ -2,24 +2,16 @@ use crate::MathType;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Matrix<T: MathType, const COLUMNS: usize, const ROWS: usize> {
-    values: Vec<T>,
+    values: [[T; COLUMNS]; ROWS],
 }
 
 impl<T: MathType, const COLUMNS: usize, const ROWS: usize> Matrix<T, COLUMNS, ROWS> {
     pub fn empty() -> Self {
-        let values = vec![T::default(); ROWS * COLUMNS];
+        let values = [[T::default(); COLUMNS]; ROWS];
         Self { values }
     }
 
-    pub fn new(matrix: [[T; COLUMNS]; ROWS]) -> Self {
-        let mut values = Vec::with_capacity(ROWS * COLUMNS);
-
-        for column in 0..COLUMNS {
-            for row in 0..ROWS {
-                values.push(matrix[row][column]);
-            }
-        }
-
+    pub fn new(values: [[T; COLUMNS]; ROWS]) -> Self {
         Self { values }
     }
 
@@ -32,15 +24,15 @@ impl<T: MathType, const COLUMNS: usize, const ROWS: usize> Matrix<T, COLUMNS, RO
     }
 
     pub fn get(&self, row: usize, column: usize) -> T {
-        self.values[column * ROWS + row]
+        self.values[row][column]
     }
 
     pub fn get_ref(&self, row: usize, column: usize) -> &T {
-        &self.values[column * ROWS + row]
+        &self.values[row][column]
     }
 
     pub fn get_mut(&mut self, row: usize, column: usize) -> &mut T {
-        &mut self.values[column * ROWS + row]
+        &mut self.values[row][column]
     }
 }
 
@@ -181,13 +173,13 @@ mod tests {
     #[test]
     fn new_mat2() {
         let matrix = Mat2::new([[0, 1], [4, 2]]);
-        assert_eq!(vec![0, 4, 1, 2], matrix.values);
+        assert_eq!([[0, 1], [4, 2]], matrix.values);
     }
 
     #[test]
     fn new_mat2x3() {
         let matrix = Mat2x3::new([[0, 3], [-6, 1], [2, 5]]);
-        assert_eq!(vec![0, -6, 2, 3, 1, 5], matrix.values);
+        assert_eq!([[0, 3], [-6, 1], [2, 5]], matrix.values);
     }
 
     #[test]
