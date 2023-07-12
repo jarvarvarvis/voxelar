@@ -1,19 +1,12 @@
-use ash::vk::PipelineStageFlags;
-use ash::vk::Queue;
-use ash::vk::SubmitInfo;
-use ash::vk::{
-    CommandBuffer, CommandBufferAllocateInfo, CommandBufferBeginInfo, CommandBufferLevel,
-    CommandBufferResetFlags, CommandBufferUsageFlags,
-};
+use ash::vk::{CommandBufferAllocateInfo, CommandBufferLevel};
 use ash::vk::{CommandPool, CommandPoolCreateFlags, CommandPoolCreateInfo};
-use ash::vk::{Fence, Semaphore};
-use ash::Device;
 
+use super::command_buffer::SetUpCommandBufferWithFence;
 use super::virtual_device::SetUpVirtualDevice;
 
 pub struct SetUpCommandLogic {
     pub pool: CommandPool,
-    pub command_buffers: Vec<CommandBuffer>,
+    pub command_buffers: Vec<SetUpCommandBufferWithFence>,
 }
 
 impl SetUpCommandLogic {
@@ -35,9 +28,17 @@ impl SetUpCommandLogic {
             .command_pool(pool)
             .level(level);
 
-        let command_buffers = virtual_device
+        let just_command_buffers = virtual_device
             .device
             .allocate_command_buffers(&command_buffer_allocate_info)?;
+
+        let mut command_buffers = Vec::with_capacity(just_command_buffers.len());
+        for command_buffer in just_command_buffers {
+            command_buffers.push(SetUpCommandBufferWithFence::create(
+                virtual_device,
+                command_buffer,
+            )?);
+        }
 
         Ok(Self {
             pool,
@@ -49,56 +50,16 @@ impl SetUpCommandLogic {
         Self::create(virtual_device, 2, CommandBufferLevel::PRIMARY)
     }
 
-    pub fn get_command_buffer(&self, index: usize) -> &CommandBuffer {
+    pub fn get_command_buffer(&self, index: usize) -> &SetUpCommandBufferWithFence {
         &self.command_buffers[index]
     }
 
     pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice) {
         unsafe {
-            virtual_device.device.free_command_buffers(self.pool, &self.command_buffers);
+            for command_buffer in self.command_buffers.iter_mut() {
+                command_buffer.destroy(self.pool, &virtual_device);
+            }
             virtual_device.device.destroy_command_pool(self.pool, None);
         }
     }
-}
-
-/// Helper function for submitting command buffers. Immediately waits for the fence before the command buffer
-/// is executed. That way we can delay the waiting for the fences by 1 frame which is good for performance.
-/// Make sure to create the fence in a signaled state on the first use.
-#[allow(clippy::too_many_arguments)]
-pub fn submit_record_command_buffer<F: FnOnce(&Device, CommandBuffer) -> crate::Result<()>>(
-    device: &Device,
-    command_buffer: CommandBuffer,
-    command_buffer_reuse_fence: Fence,
-    submit_queue: Queue,
-    wait_mask: &[PipelineStageFlags],
-    wait_semaphores: &[Semaphore],
-    signal_semaphores: &[Semaphore],
-    f: F,
-) -> crate::Result<()> {
-    unsafe {
-        device.wait_for_fences(&[command_buffer_reuse_fence], true, std::u64::MAX)?;
-        device.reset_fences(&[command_buffer_reuse_fence])?;
-
-        device.reset_command_buffer(command_buffer, CommandBufferResetFlags::RELEASE_RESOURCES)?;
-
-        let command_buffer_begin_info =
-            CommandBufferBeginInfo::builder().flags(CommandBufferUsageFlags::ONE_TIME_SUBMIT);
-
-        device.begin_command_buffer(command_buffer, &command_buffer_begin_info)?;
-        f(device, command_buffer)?;
-        device.end_command_buffer(command_buffer)?;
-
-        let command_buffers = vec![command_buffer];
-
-        let submit_info = SubmitInfo::builder()
-            .wait_semaphores(wait_semaphores)
-            .wait_dst_stage_mask(wait_mask)
-            .command_buffers(&command_buffers)
-            .signal_semaphores(signal_semaphores)
-            .build();
-
-        device.queue_submit(submit_queue, &[submit_info], command_buffer_reuse_fence)?;
-    }
-
-    Ok(())
 }

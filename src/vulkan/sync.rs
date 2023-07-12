@@ -1,13 +1,10 @@
-use ash::vk::{Fence, FenceCreateFlags, FenceCreateInfo, Semaphore, SemaphoreCreateInfo};
+use ash::vk::{Semaphore, SemaphoreCreateInfo};
 
 use super::virtual_device::SetUpVirtualDevice;
 
 pub struct InternalSyncPrimitives {
     pub present_complete_semaphore: Semaphore,
     pub rendering_complete_semaphore: Semaphore,
-
-    pub draw_commands_reuse_fence: Fence,
-    pub setup_commands_reuse_fence: Fence,
 }
 
 impl InternalSyncPrimitives {
@@ -21,20 +18,9 @@ impl InternalSyncPrimitives {
             .device
             .create_semaphore(&semaphore_create_info, None)?;
 
-        let fence_create_info = FenceCreateInfo::builder().flags(FenceCreateFlags::SIGNALED);
-
-        let draw_commands_reuse_fence = virtual_device
-            .device
-            .create_fence(&fence_create_info, None)?;
-        let setup_commands_reuse_fence = virtual_device
-            .device
-            .create_fence(&fence_create_info, None)?;
-
         Ok(Self {
             present_complete_semaphore,
             rendering_complete_semaphore,
-            draw_commands_reuse_fence,
-            setup_commands_reuse_fence,
         })
     }
 
@@ -46,12 +32,6 @@ impl InternalSyncPrimitives {
             virtual_device
                 .device
                 .destroy_semaphore(self.rendering_complete_semaphore, None);
-            virtual_device
-                .device
-                .destroy_fence(self.draw_commands_reuse_fence, None);
-            virtual_device
-                .device
-                .destroy_fence(self.setup_commands_reuse_fence, None);
         }
     }
 }

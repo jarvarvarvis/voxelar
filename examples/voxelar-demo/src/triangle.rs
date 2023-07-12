@@ -160,11 +160,12 @@ impl TriangleDemo {
                 },
             ];
 
-            vulkan_context.submit_render_pass_commands(
+            vulkan_context.submit_render_pass_command(
                 present_index,
                 &clear_values,
                 |device, draw_command_buffer| {
                     let device = &device.device;
+                    let draw_command_buffer = draw_command_buffer.command_buffer;
                     device.cmd_bind_pipeline(
                         draw_command_buffer,
                         vk::PipelineBindPoint::GRAPHICS,

@@ -11,8 +11,6 @@ use ash::vk::PipelineStageFlags;
 use ash::vk::ShaderStageFlags;
 use ash::vk::SubpassContents;
 use ash::vk::SurfaceKHR;
-use ash::vk::{CommandBuffer, Queue};
-use ash::vk::{Fence, Semaphore};
 use ash::vk::{InstanceCreateFlags, InstanceCreateInfo};
 use ash::{Entry, Instance};
 
@@ -21,6 +19,7 @@ use ash::vk::{KhrGetPhysicalDeviceProperties2Fn, KhrPortabilityEnumerationFn};
 
 pub mod buffer;
 pub mod command;
+pub mod command_buffer;
 pub mod debug;
 pub mod depth_image;
 pub mod framebuffers;
@@ -42,6 +41,7 @@ use crate::Voxelar;
 
 use self::buffer::AllocatedBuffer;
 use self::command::SetUpCommandLogic;
+use self::command_buffer::SetUpCommandBufferWithFence;
 use self::debug::VerificationProvider;
 use self::depth_image::SetUpDepthImage;
 use self::framebuffers::SetUpFramebuffers;
@@ -235,7 +235,8 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
 
             let depth_image = self.depth_image()?;
             self.submit_setup_command(|device, setup_command_buffer| {
-                depth_image.submit_pipeline_barrier_command(device, setup_command_buffer);
+                depth_image
+                    .submit_pipeline_barrier_command(device, setup_command_buffer.command_buffer);
                 Ok(())
             })?;
         }
@@ -299,43 +300,14 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
 }
 
 impl<Verification: VerificationProvider> VulkanContext<Verification> {
-    pub fn submit_record_command_buffer<F>(
-        &self,
-        command_buffer: CommandBuffer,
-        command_buffer_reuse_fence: Fence,
-        submit_queue: Queue,
-        wait_mask: &[PipelineStageFlags],
-        wait_semaphores: &[Semaphore],
-        signal_semaphores: &[Semaphore],
-        command_buffer_op: F,
-    ) -> crate::Result<()>
-    where
-        F: FnOnce(&SetUpVirtualDevice, CommandBuffer) -> crate::Result<()>,
-    {
-        let device = self.virtual_device()?;
-        command::submit_record_command_buffer(
-            &device.device,
-            command_buffer,
-            command_buffer_reuse_fence,
-            submit_queue,
-            wait_mask,
-            wait_semaphores,
-            signal_semaphores,
-            |_, buf| command_buffer_op(device, buf),
-        )
-    }
-
     pub fn submit_setup_command<F>(&self, command_buffer_op: F) -> crate::Result<()>
     where
-        F: FnOnce(&SetUpVirtualDevice, CommandBuffer) -> crate::Result<()>,
+        F: FnOnce(&SetUpVirtualDevice, &SetUpCommandBufferWithFence) -> crate::Result<()>,
     {
         let setup_command_buffer = self.command_logic()?.get_command_buffer(0);
-        let setup_commands_reuse_fence =
-            self.internal_sync_primitives()?.setup_commands_reuse_fence;
         let present_queue = self.virtual_device()?.present_queue;
-        self.submit_record_command_buffer(
-            *setup_command_buffer,
-            setup_commands_reuse_fence,
+        setup_command_buffer.submit(
+            self.virtual_device()?,
             present_queue,
             &[],
             &[],
@@ -344,14 +316,14 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         )
     }
 
-    pub fn submit_render_pass_commands<F>(
+    pub fn submit_render_pass_command<F>(
         &self,
         present_index: u32,
         clear_values: &[ClearValue],
         command_buffer_op: F,
     ) -> crate::Result<()>
     where
-        F: FnOnce(&SetUpVirtualDevice, CommandBuffer) -> crate::Result<()>,
+        F: FnOnce(&SetUpVirtualDevice, &SetUpCommandBufferWithFence) -> crate::Result<()>,
     {
         let surface_resolution = self.swapchain()?.surface_extent;
         let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
@@ -360,10 +332,12 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
             .render_area(surface_resolution.into())
             .clear_values(clear_values);
 
-        self.submit_record_command_buffer(
-            *self.command_logic()?.get_command_buffer(1),
-            self.internal_sync_primitives()?.draw_commands_reuse_fence,
-            self.virtual_device()?.present_queue,
+        let draw_command_buffer = self.command_logic()?.get_command_buffer(1);
+        let present_queue = self.virtual_device()?.present_queue;
+
+        draw_command_buffer.submit(
+            self.virtual_device()?,
+            present_queue,
             &[PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT],
             &[self.internal_sync_primitives()?.present_complete_semaphore],
             &[self
@@ -373,18 +347,17 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
                 let vk_device = &device.device;
                 unsafe {
                     vk_device.cmd_begin_render_pass(
-                        draw_command_buffer,
+                        draw_command_buffer.command_buffer,
                         &render_pass_begin_info,
                         SubpassContents::INLINE,
                     );
+                    command_buffer_op(device, draw_command_buffer)?;
+                    vk_device.cmd_end_render_pass(draw_command_buffer.command_buffer);
+                    Ok(())
                 }
-                command_buffer_op(device, draw_command_buffer)?;
-                unsafe {
-                    vk_device.cmd_end_render_pass(draw_command_buffer);
-                }
-                Ok(())
             },
         )?;
+
         Ok(())
     }
 
