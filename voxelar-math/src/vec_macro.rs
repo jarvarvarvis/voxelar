@@ -18,6 +18,10 @@ macro_rules! make_vec_type {
                 }
             }
 
+            pub fn into_values(self) -> [T; $size] {
+                self.values
+            }
+
             $(
             pub fn $member(&self) -> T {
                 self.values[$idx]
