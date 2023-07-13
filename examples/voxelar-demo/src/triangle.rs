@@ -1,10 +1,7 @@
 use voxelar::ash::vk;
 use voxelar::ash::vk::ShaderStageFlags;
-
 use voxelar::compile_shader;
 use voxelar::shaderc::ShaderKind;
-use voxelar::voxelar_math::matrix::Matrix;
-use voxelar::voxelar_math::vec4::Vec4;
 use voxelar::vulkan::buffer::AllocatedBuffer;
 use voxelar::vulkan::debug::VerificationProvider;
 use voxelar::vulkan::graphics_pipeline_builder::GraphicsPipelineBuilder;
@@ -12,20 +9,17 @@ use voxelar::vulkan::pipeline_layout::SetUpPipelineLayout;
 use voxelar::vulkan::shader::CompiledShaderModule;
 use voxelar::vulkan::VulkanContext;
 
+use voxelar::nalgebra::Matrix4;
+use voxelar::nalgebra::Unit;
+use voxelar::nalgebra::Vector3;
+use voxelar::nalgebra::Vector4;
 use voxelar_vertex::*;
 
 use crate::vertex::Vertex;
 
-const MAT4_IDENTITY: Matrix<f32, 4, 4> = Matrix::<f32, 4, 4>::new([
-    [1.0, 0.0, 0.0, 0.0],
-    [0.0, 1.0, 0.0, 0.0],
-    [0.0, 0.0, 1.0, 0.0],
-    [0.0, 0.0, 0.0, 1.0],
-]);
-
 #[repr(C)]
 pub struct TrianglePushConstants {
-    pub mvp_matrix: Matrix<f32, 4, 4>,
+    pub mvp_matrix: Matrix4<f32>,
 }
 
 pub struct TriangleDemo {
@@ -55,21 +49,25 @@ impl TriangleDemo {
         let surface_width = surface_resolution.width;
         let surface_height = surface_resolution.height;
 
-        let index_buffer_data = vec![0u32, 1, 2];
+        let index_buffer_data = vec![0, 1, 2, 0, 2, 3];
         let index_buffer = vulkan_context.create_index_buffer(&index_buffer_data)?;
 
         let vertices = vec![
             Vertex {
-                pos: Vec4::<f32>::new(-0.5, 0.5, 0.0, 1.0),
-                color: Vec4::<f32>::new(0.0, 1.0, 0.0, 1.0),
+                pos: Vector4::<f32>::new(-0.5, -0.5, 0.0, 1.0),
+                color: Vector4::<f32>::new(1.0, 0.0, 1.0, 1.0),
             },
             Vertex {
-                pos: Vec4::<f32>::new(0.5, 0.5, 0.0, 1.0),
-                color: Vec4::<f32>::new(0.0, 0.0, 1.0, 1.0),
+                pos: Vector4::<f32>::new(-0.5, 0.5, 0.0, 1.0),
+                color: Vector4::<f32>::new(0.0, 1.0, 1.0, 1.0),
             },
             Vertex {
-                pos: Vec4::<f32>::new(0.0, -0.5, 0.0, 1.0),
-                color: Vec4::<f32>::new(1.0, 0.0, 0.0, 1.0),
+                pos: Vector4::<f32>::new(0.5, 0.5, 0.0, 1.0),
+                color: Vector4::<f32>::new(1.0, 1.0, 0.0, 1.0),
+            },
+            Vertex {
+                pos: Vector4::<f32>::new(0.5, -0.5, 0.0, 1.0),
+                color: Vector4::<f32>::new(1.0, 0.0, 0.0, 1.0),
             },
         ];
         let vertex_buffer = vulkan_context.create_vertex_buffer(&vertices)?;
@@ -207,8 +205,10 @@ impl TriangleDemo {
                         vk::IndexType::UINT32,
                     );
 
+                    let z_axis = Unit::new_normalize(Vector3::new(0.0, 0.0, 1.0));
+                    let rotation_matrix = Matrix4::from_axis_angle(&z_axis, 45.0f32.to_radians());
                     let constants = TrianglePushConstants {
-                        mvp_matrix: MAT4_IDENTITY,
+                        mvp_matrix: rotation_matrix,
                     };
                     device.cmd_push_constants(
                         draw_command_buffer,

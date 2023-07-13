@@ -1,7 +1,7 @@
 pub extern crate glfw;
-pub extern crate voxelar_math;
 pub extern crate ash;
 pub extern crate shaderc;
+pub extern crate nalgebra;
 
 use glfw::*;
 
