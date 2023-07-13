@@ -32,6 +32,7 @@ fn main() -> Result<()> {
 
     let creation_info = DataStructureCreationInfo {
         swapchain_present_mode: PresentModeInitMode::Find(PresentModeKHR::FIFO),
+        frame_overlap: 2,
     };
     vulkan_context.create_default_data_structures(window.get_size(), creation_info)?;
 

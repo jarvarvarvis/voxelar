@@ -1,4 +1,3 @@
-use ash::vk::CommandPool;
 use ash::vk::PipelineStageFlags;
 use ash::vk::Queue;
 use ash::vk::SubmitInfo;

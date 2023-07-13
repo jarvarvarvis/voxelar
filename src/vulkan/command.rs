@@ -46,8 +46,8 @@ impl SetUpCommandLogic {
         })
     }
 
-    pub unsafe fn create_with_defaults(virtual_device: &SetUpVirtualDevice) -> crate::Result<Self> {
-        Self::create(virtual_device, 2, CommandBufferLevel::PRIMARY)
+    pub unsafe fn create_with_one_primary_buffer(virtual_device: &SetUpVirtualDevice) -> crate::Result<Self> {
+        Self::create(virtual_device, 1, CommandBufferLevel::PRIMARY)
     }
 
     pub fn get_command_buffer(&self, index: usize) -> &SetUpCommandBufferWithFence {

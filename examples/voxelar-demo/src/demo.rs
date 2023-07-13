@@ -1,7 +1,7 @@
 use voxelar::ash::vk;
 use voxelar::ash::vk::ShaderStageFlags;
 use voxelar::compile_shader;
-use voxelar::engine::time::TimeManager;
+use voxelar::engine::frame_time::FrameTimeManager;
 use voxelar::nalgebra::Matrix4;
 use voxelar::nalgebra::Point3;
 use voxelar::nalgebra::Rotation3;
@@ -37,7 +37,7 @@ pub struct Demo {
     vertex_shader_module: CompiledShaderModule,
     fragment_shader_module: CompiledShaderModule,
 
-    time_manager: TimeManager,
+    frame_time_manager: FrameTimeManager,
     camera_position: Point3<f32>,
 }
 
@@ -144,7 +144,7 @@ impl Demo {
             vertex_shader_module,
             fragment_shader_module,
 
-            time_manager: TimeManager::new(&voxelar_context),
+            frame_time_manager: FrameTimeManager::new(&voxelar_context),
             camera_position: Point3::new(0.0, 2.0, -4.0),
         })
     }
@@ -195,10 +195,11 @@ impl Demo {
     ) -> crate::Result<()> {
         let graphics_pipeline = self.pipelines[0];
 
-        window.set_title(&format!("FPS: {}", self.time_manager.fps()));
+        window.set_title(&format!("FPS: {}", self.frame_time_manager.fps()));
 
         unsafe {
-            let (present_index, _) = vulkan_context.acquire_next_image()?;
+            let current_frame_index = (self.frame_time_manager.total_frames() % vulkan_context.frame_overlap() as u128) as u32;
+            let (present_index, _) = vulkan_context.acquire_next_image(current_frame_index)?;
 
             let clear_values = [
                 vk::ClearValue {
@@ -216,6 +217,7 @@ impl Demo {
 
             vulkan_context.submit_render_pass_command(
                 present_index,
+                current_frame_index,
                 &clear_values,
                 |device, draw_command_buffer| {
                     let device = &device.device;
@@ -252,7 +254,7 @@ impl Demo {
                     let rotated_origin_camera_vector = Rotation3::from_axis_angle(&Vector3::y_axis(), 1.0f32.to_radians())
                         .transform_vector(&(self.camera_position - origin));
                     self.camera_position = origin + rotated_origin_camera_vector;
-                    self.camera_position.y = ((self.time_manager.total_frames() % 360) as f32).to_radians().sin() * 2.0;
+                    self.camera_position.y = ((self.frame_time_manager.total_frames() % 360) as f32).to_radians().sin() * 2.0;
 
                     // Compute matrices
                     let view = Matrix4::from(
@@ -283,18 +285,18 @@ impl Demo {
                 },
             )?;
 
-            vulkan_context.present_image(present_index)?;
+            vulkan_context.present_image(present_index, current_frame_index)?;
         }
 
         Ok(())
     }
     
     pub fn prepare_frame_for_time_manager(&mut self, context: &Voxelar) {
-        self.time_manager.prepare_frame(context);
+        self.frame_time_manager.prepare_frame(context);
     }
 
     pub fn complete_frame_for_time_manager(&mut self, context: &Voxelar) {
-        self.time_manager.complete_frame(context);
+        self.frame_time_manager.complete_frame(context);
     }
 
     pub fn destroy<V: VerificationProvider>(

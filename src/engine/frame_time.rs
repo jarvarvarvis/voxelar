@@ -1,6 +1,6 @@
 use crate::Voxelar;
 
-pub struct TimeManager {
+pub struct FrameTimeManager {
     // Frame counter and FPS
     frames: u64,
     total_frames: u128,
@@ -14,7 +14,7 @@ pub struct TimeManager {
     delta_time: f64,
 }
 
-impl TimeManager {
+impl FrameTimeManager {
     pub fn new(context: &Voxelar) -> Self {
         Self {
             frames: 0,
