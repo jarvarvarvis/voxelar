@@ -70,6 +70,7 @@ impl SetUpRenderPass {
                 format: Format::D16_UNORM,
                 samples: SampleCountFlags::TYPE_1,
                 load_op: AttachmentLoadOp::CLEAR,
+                store_op: AttachmentStoreOp::STORE,
                 initial_layout: ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                 final_layout: ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                 ..Default::default()
