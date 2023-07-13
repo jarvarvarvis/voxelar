@@ -5,6 +5,7 @@ pub extern crate nalgebra;
 
 use glfw::*;
 
+pub mod engine;
 pub mod receivable_events;
 pub mod render_context;
 pub mod result;
@@ -72,5 +73,9 @@ impl Voxelar {
         window: &mut VoxelarWindow,
     ) -> crate::Result<C> {
         C::load(self, window)
+    }
+
+    pub fn current_time(&self) -> f64 {
+        self.glfw.get_time()
     }
 }

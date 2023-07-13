@@ -3,8 +3,11 @@ extern crate voxelar;
 mod demo;
 mod vertex;
 
+use voxelar::ash::vk::PresentModeKHR;
+
 use voxelar::glfw::*;
 use voxelar::receivable_events::*;
+use voxelar::vulkan::creation_info::*;
 use voxelar::vulkan::debug::*;
 use voxelar::vulkan::VulkanContext;
 use voxelar::window::*;
@@ -26,15 +29,20 @@ fn main() -> Result<()> {
         .load_render_context_for_window::<VulkanContext<KHRVerificationAndDebugMessenger>>(
             &mut window,
         )?;
-    vulkan_context.create_default_data_structures(window.get_size())?;
+
+    let creation_info = DataStructureCreationInfo {
+        swapchain_present_mode: PresentModeInitMode::Find(PresentModeKHR::FIFO),
+    };
+    vulkan_context.create_default_data_structures(window.get_size(), creation_info)?;
 
     let phys_device = vulkan_context.physical_device.as_ref().unwrap();
     println!("Found physical device: {:?}", phys_device.name());
 
-    let mut demo = Demo::new(&vulkan_context)?;
+    let mut demo = Demo::new(&ctx, &vulkan_context)?;
 
     while !window.should_close() {
-        demo.render(&window, &vulkan_context)?;
+        demo.render(&mut window, &vulkan_context)?;
+        demo.complete_frame_for_timer(&ctx);
         ctx.poll_events();
         for (_, event) in events.flush() {
             handle_window_event(&mut vulkan_context, &mut demo, &mut window, event)?;

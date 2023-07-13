@@ -20,6 +20,7 @@ use ash::vk::{KhrGetPhysicalDeviceProperties2Fn, KhrPortabilityEnumerationFn};
 pub mod buffer;
 pub mod command;
 pub mod command_buffer;
+pub mod creation_info;
 pub mod debug;
 pub mod depth_image;
 pub mod framebuffers;
@@ -42,6 +43,8 @@ use crate::Voxelar;
 use self::buffer::AllocatedBuffer;
 use self::command::SetUpCommandLogic;
 use self::command_buffer::SetUpCommandBufferWithFence;
+use self::creation_info::DataStructureCreationInfo;
+use self::creation_info::PresentModeInitMode;
 use self::debug::VerificationProvider;
 use self::depth_image::SetUpDepthImage;
 use self::framebuffers::SetUpFramebuffers;
@@ -179,7 +182,11 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         Ok(())
     }
 
-    pub fn create_swapchain(&mut self, window_size: (i32, i32)) -> crate::Result<()> {
+    pub fn create_swapchain(
+        &mut self,
+        window_size: (i32, i32),
+        present_mode_init_mode: PresentModeInitMode,
+    ) -> crate::Result<()> {
         unsafe {
             self.swapchain = Some(SetUpSwapchain::create_with_defaults(
                 &self.instance,
@@ -189,6 +196,7 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
                 self.virtual_device()?,
                 window_size.0 as u32,
                 window_size.1 as u32,
+                present_mode_init_mode,
             )?);
         }
 
@@ -270,10 +278,14 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         Ok(())
     }
 
-    pub fn create_default_data_structures(&mut self, window_size: (i32, i32)) -> crate::Result<()> {
+    pub fn create_default_data_structures(
+        &mut self,
+        window_size: (i32, i32),
+        creation_info: DataStructureCreationInfo,
+    ) -> crate::Result<()> {
         self.find_usable_physical_device()?;
         self.create_virtual_device()?;
-        self.create_swapchain(window_size)?;
+        self.create_swapchain(window_size, creation_info.swapchain_present_mode)?;
         self.create_command_logic()?;
         self.create_present_images()?;
         self.create_sync_primitives()?;

@@ -1,6 +1,11 @@
 use voxelar::ash::vk;
 use voxelar::ash::vk::ShaderStageFlags;
 use voxelar::compile_shader;
+use voxelar::engine::time::FramesTimer;
+use voxelar::nalgebra::Matrix4;
+use voxelar::nalgebra::Rotation3;
+use voxelar::nalgebra::Translation3;
+use voxelar::nalgebra::Vector3;
 use voxelar::shaderc::ShaderKind;
 use voxelar::vulkan::buffer::AllocatedBuffer;
 use voxelar::vulkan::debug::VerificationProvider;
@@ -8,11 +13,9 @@ use voxelar::vulkan::graphics_pipeline_builder::GraphicsPipelineBuilder;
 use voxelar::vulkan::pipeline_layout::SetUpPipelineLayout;
 use voxelar::vulkan::shader::CompiledShaderModule;
 use voxelar::vulkan::VulkanContext;
-
-use voxelar::nalgebra::Matrix4;
-use voxelar::nalgebra::Rotation3;
-use voxelar::nalgebra::Vector3;
 use voxelar::window::VoxelarWindow;
+use voxelar::Voxelar;
+
 use voxelar_vertex::*;
 
 use crate::vertex::Vertex;
@@ -32,10 +35,14 @@ pub struct Demo {
     index_count: usize,
     vertex_shader_module: CompiledShaderModule,
     fragment_shader_module: CompiledShaderModule,
+
+    frames_timer: FramesTimer,
+    camera_position: Vector3<f32>,
 }
 
 impl Demo {
     pub unsafe fn create<V: VerificationProvider>(
+        voxelar_context: &Voxelar,
         vulkan_context: &VulkanContext<V>,
     ) -> crate::Result<Self> {
         let render_pass = vulkan_context.render_pass()?;
@@ -48,31 +55,41 @@ impl Demo {
         let surface_height = surface_resolution.height;
 
         let vertices = vec![
-            Vertex { pos: Vector3::new(-1.0, -1.0,  1.0) },
-            Vertex { pos: Vector3::new( 1.0, -1.0,  1.0) },
-            Vertex { pos: Vector3::new( 1.0,  1.0,  1.0) },
-            Vertex { pos: Vector3::new(-1.0,  1.0,  1.0) },
-            
-            Vertex { pos: Vector3::new(-1.0, -1.0, -1.0) },
-            Vertex { pos: Vector3::new( 1.0, -1.0, -1.0) },
-            Vertex { pos: Vector3::new( 1.0,  1.0, -1.0) },
-            Vertex { pos: Vector3::new(-1.0,  1.0, -1.0) }
+            Vertex {
+                pos: Vector3::new(-1.0, -1.0, 1.0),
+            },
+            Vertex {
+                pos: Vector3::new(1.0, -1.0, 1.0),
+            },
+            Vertex {
+                pos: Vector3::new(1.0, 1.0, 1.0),
+            },
+            Vertex {
+                pos: Vector3::new(-1.0, 1.0, 1.0),
+            },
+            Vertex {
+                pos: Vector3::new(-1.0, -1.0, -1.0),
+            },
+            Vertex {
+                pos: Vector3::new(1.0, -1.0, -1.0),
+            },
+            Vertex {
+                pos: Vector3::new(1.0, 1.0, -1.0),
+            },
+            Vertex {
+                pos: Vector3::new(-1.0, 1.0, -1.0),
+            },
         ];
         let vertex_buffer = vulkan_context.create_vertex_buffer(&vertices)?;
 
         let index_buffer_data = vec![
             // Front
-            0, 1, 2, 2, 3, 0,
-            // Right
-            1, 5, 6, 6, 2, 1,
-            // Back
-            7, 6, 5, 5, 4, 7,
-            // Left
-            4, 0, 3, 3, 7, 4,
-            // Bottom
-            4, 5, 1, 1, 0, 4,
-            // Top
-            3, 2, 6, 6, 7, 3
+            0, 1, 2, 2, 3, 0, // Right
+            1, 5, 6, 6, 2, 1, // Back
+            7, 6, 5, 5, 4, 7, // Left
+            4, 0, 3, 3, 7, 4, // Bottom
+            4, 5, 1, 1, 0, 4, // Top
+            3, 2, 6, 6, 7, 3,
         ];
         let index_buffer = vulkan_context.create_index_buffer(&index_buffer_data)?;
 
@@ -120,11 +137,17 @@ impl Demo {
             index_count: index_buffer_data.len(),
             vertex_shader_module,
             fragment_shader_module,
+
+            frames_timer: FramesTimer::new(&voxelar_context),
+            camera_position: Vector3::new(0.0, 0.0, -4.0),
         })
     }
 
-    pub fn new<V: VerificationProvider>(vulkan_context: &VulkanContext<V>) -> crate::Result<Self> {
-        unsafe { Self::create(vulkan_context) }
+    pub fn new<V: VerificationProvider>(
+        voxelar_context: &Voxelar,
+        vulkan_context: &VulkanContext<V>,
+    ) -> crate::Result<Self> {
+        unsafe { Self::create(voxelar_context, vulkan_context) }
     }
 
     fn update_viewports_and_scissors<V: VerificationProvider>(
@@ -161,10 +184,12 @@ impl Demo {
 
     pub fn render<V: VerificationProvider>(
         &self,
-        window: &VoxelarWindow,
+        window: &mut VoxelarWindow,
         vulkan_context: &VulkanContext<V>,
     ) -> crate::Result<()> {
         let graphics_pipeline = self.pipelines[0];
+
+        window.set_title(&format!("FPS: {}", self.frames_timer.fps()));
 
         unsafe {
             let (present_index, _) = vulkan_context.acquire_next_image()?;
@@ -210,9 +235,15 @@ impl Demo {
                         vk::IndexType::UINT32,
                     );
 
-                    let projection =
-                        Matrix4::new_perspective(window.aspect_ratio(), 60.0f32.to_radians(), 0.1, 100.0);
-                    let view = Matrix4::new_translation(&Vector3::new(0.0, 0.0, -5.0));
+                    let projection = Matrix4::new_perspective(
+                        window.aspect_ratio(),
+                        60.0f32.to_radians(),
+                        0.1,
+                        100.0,
+                    );
+                    let dir = Vector3::new(0.0, 0.0, 0.0) - self.camera_position;
+                    let view = Matrix4::from(Translation3::from(self.camera_position))
+                        * Matrix4::from(Rotation3::look_at_rh(&dir, &Vector3::y()));
                     let model = Matrix4::from(Rotation3::from_axis_angle(
                         &Vector3::y_axis(),
                         45.0f32.to_radians(),
@@ -242,7 +273,12 @@ impl Demo {
 
             vulkan_context.present_image(present_index)?;
         }
+
         Ok(())
+    }
+
+    pub fn complete_frame_for_timer(&mut self, context: &Voxelar) {
+        self.frames_timer.complete_frame(context)
     }
 
     pub fn destroy<V: VerificationProvider>(

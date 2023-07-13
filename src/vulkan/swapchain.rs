@@ -8,6 +8,7 @@ use ash::vk::{SurfaceKHR, SurfaceTransformFlagsKHR};
 use ash::vk::{SwapchainCreateInfoKHR, SwapchainKHR};
 use ash::Instance;
 
+use super::creation_info::PresentModeInitMode;
 use super::physical_device::SetUpPhysicalDevice;
 use super::virtual_device::SetUpVirtualDevice;
 
@@ -69,6 +70,7 @@ impl SetUpSwapchain {
         virtual_device: &SetUpVirtualDevice,
         window_width: u32,
         window_height: u32,
+        present_mode_init_mode: PresentModeInitMode,
     ) -> crate::Result<Self> {
         let surface_capabilities = &physical_device.surface_capabilities;
 
@@ -93,11 +95,7 @@ impl SetUpSwapchain {
         let present_modes = surface_loader
             .get_physical_device_surface_present_modes(physical_device.device, surface)
             .unwrap();
-        let present_mode = present_modes
-            .iter()
-            .cloned()
-            .find(|&mode| mode == PresentModeKHR::MAILBOX)
-            .unwrap_or(PresentModeKHR::FIFO);
+        let present_mode = present_mode_init_mode.find_present_mode(present_modes)?;
 
         Self::create(
             instance,
