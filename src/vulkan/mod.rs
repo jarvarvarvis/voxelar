@@ -328,15 +328,12 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
             .clear_values(clear_values);
 
         let current_frame = &self.frames[current_frame_index as usize];
-        let draw_command_buffer = current_frame.command_logic.get_command_buffer(0);
         let present_queue = self.virtual_device()?.present_queue;
 
-        draw_command_buffer.submit(
+        current_frame.submit_to_draw_buffer(
             self.virtual_device()?,
             present_queue,
             &[PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT],
-            &[current_frame.sync_primitives.present_complete_semaphore],
-            &[current_frame.sync_primitives.rendering_complete_semaphore],
             |device, draw_command_buffer| {
                 let vk_device = &device.device;
                 unsafe {
