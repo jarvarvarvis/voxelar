@@ -10,19 +10,19 @@ use voxelar::vulkan::shader::CompiledShaderModule;
 use voxelar::vulkan::VulkanContext;
 
 use voxelar::nalgebra::Matrix4;
-use voxelar::nalgebra::Unit;
+use voxelar::nalgebra::Rotation3;
 use voxelar::nalgebra::Vector3;
-use voxelar::nalgebra::Vector4;
+use voxelar::window::VoxelarWindow;
 use voxelar_vertex::*;
 
 use crate::vertex::Vertex;
 
 #[repr(C)]
-pub struct TrianglePushConstants {
+pub struct DemoPushConstants {
     pub mvp_matrix: Matrix4<f32>,
 }
 
-pub struct TriangleDemo {
+pub struct Demo {
     pipeline_layout: SetUpPipelineLayout,
     pipelines: Vec<vk::Pipeline>,
     viewport: vk::Viewport,
@@ -34,43 +34,47 @@ pub struct TriangleDemo {
     fragment_shader_module: CompiledShaderModule,
 }
 
-impl TriangleDemo {
+impl Demo {
     pub unsafe fn create<V: VerificationProvider>(
         vulkan_context: &VulkanContext<V>,
     ) -> crate::Result<Self> {
         let render_pass = vulkan_context.render_pass()?;
         let virtual_device = vulkan_context.virtual_device()?;
         let pipeline_layout = vulkan_context
-            .create_push_constant_pipeline_layout::<TrianglePushConstants>(
-                ShaderStageFlags::VERTEX,
-            )?;
+            .create_push_constant_pipeline_layout::<DemoPushConstants>(ShaderStageFlags::VERTEX)?;
 
         let surface_resolution = vulkan_context.swapchain()?.surface_extent;
         let surface_width = surface_resolution.width;
         let surface_height = surface_resolution.height;
 
-        let index_buffer_data = vec![0, 1, 2, 0, 2, 3];
-        let index_buffer = vulkan_context.create_index_buffer(&index_buffer_data)?;
-
         let vertices = vec![
-            Vertex {
-                pos: Vector4::<f32>::new(-0.5, -0.5, 0.0, 1.0),
-                color: Vector4::<f32>::new(1.0, 0.0, 1.0, 1.0),
-            },
-            Vertex {
-                pos: Vector4::<f32>::new(-0.5, 0.5, 0.0, 1.0),
-                color: Vector4::<f32>::new(0.0, 1.0, 1.0, 1.0),
-            },
-            Vertex {
-                pos: Vector4::<f32>::new(0.5, 0.5, 0.0, 1.0),
-                color: Vector4::<f32>::new(1.0, 1.0, 0.0, 1.0),
-            },
-            Vertex {
-                pos: Vector4::<f32>::new(0.5, -0.5, 0.0, 1.0),
-                color: Vector4::<f32>::new(1.0, 0.0, 0.0, 1.0),
-            },
+            Vertex { pos: Vector3::new(-1.0, -1.0,  1.0) },
+            Vertex { pos: Vector3::new( 1.0, -1.0,  1.0) },
+            Vertex { pos: Vector3::new( 1.0,  1.0,  1.0) },
+            Vertex { pos: Vector3::new(-1.0,  1.0,  1.0) },
+            
+            Vertex { pos: Vector3::new(-1.0, -1.0, -1.0) },
+            Vertex { pos: Vector3::new( 1.0, -1.0, -1.0) },
+            Vertex { pos: Vector3::new( 1.0,  1.0, -1.0) },
+            Vertex { pos: Vector3::new(-1.0,  1.0, -1.0) }
         ];
         let vertex_buffer = vulkan_context.create_vertex_buffer(&vertices)?;
+
+        let index_buffer_data = vec![
+            // Front
+            0, 1, 2, 2, 3, 0,
+            // Right
+            1, 5, 6, 6, 2, 1,
+            // Back
+            7, 6, 5, 5, 4, 7,
+            // Left
+            4, 0, 3, 3, 7, 4,
+            // Bottom
+            4, 5, 1, 1, 0, 4,
+            // Top
+            3, 2, 6, 6, 7, 3
+        ];
+        let index_buffer = vulkan_context.create_index_buffer(&index_buffer_data)?;
 
         let compiled_vert = compile_shader!(ShaderKind::Vertex, "../shader/triangle.vert")?;
         let vertex_shader_module = vulkan_context.create_vertex_shader(compiled_vert)?;
@@ -157,6 +161,7 @@ impl TriangleDemo {
 
     pub fn render<V: VerificationProvider>(
         &self,
+        window: &VoxelarWindow,
         vulkan_context: &VulkanContext<V>,
     ) -> crate::Result<()> {
         let graphics_pipeline = self.pipelines[0];
@@ -205,10 +210,15 @@ impl TriangleDemo {
                         vk::IndexType::UINT32,
                     );
 
-                    let z_axis = Unit::new_normalize(Vector3::new(0.0, 0.0, 1.0));
-                    let rotation_matrix = Matrix4::from_axis_angle(&z_axis, 45.0f32.to_radians());
-                    let constants = TrianglePushConstants {
-                        mvp_matrix: rotation_matrix,
+                    let projection =
+                        Matrix4::new_perspective(window.aspect_ratio(), 60.0f32.to_radians(), 0.1, 100.0);
+                    let view = Matrix4::new_translation(&Vector3::new(0.0, 0.0, -5.0));
+                    let model = Matrix4::from(Rotation3::from_axis_angle(
+                        &Vector3::y_axis(),
+                        45.0f32.to_radians(),
+                    ));
+                    let constants = DemoPushConstants {
+                        mvp_matrix: projection * view * model,
                     };
                     device.cmd_push_constants(
                         draw_command_buffer,

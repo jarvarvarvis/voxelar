@@ -56,4 +56,9 @@ impl VoxelarWindow {
     pub fn get_size(&self) -> (i32, i32) {
         self.glfw_window.get_size()
     }
+
+    pub fn aspect_ratio(&self) -> f32 {
+        let (width, height) = self.get_size();
+        width as f32 / height as f32
+    }
 }

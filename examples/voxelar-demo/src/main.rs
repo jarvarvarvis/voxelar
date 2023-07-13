@@ -1,6 +1,6 @@
 extern crate voxelar;
 
-mod triangle;
+mod demo;
 mod vertex;
 
 use voxelar::glfw::*;
@@ -10,7 +10,7 @@ use voxelar::vulkan::VulkanContext;
 use voxelar::window::*;
 use voxelar::*;
 
-use crate::triangle::TriangleDemo;
+use crate::demo::Demo;
 
 fn main() -> Result<()> {
     let mut ctx = Voxelar::new();
@@ -31,10 +31,10 @@ fn main() -> Result<()> {
     let phys_device = vulkan_context.physical_device.as_ref().unwrap();
     println!("Found physical device: {:?}", phys_device.name());
 
-    let mut demo = TriangleDemo::new(&vulkan_context)?;
+    let mut demo = Demo::new(&vulkan_context)?;
 
     while !window.should_close() {
-        demo.render(&vulkan_context)?;
+        demo.render(&window, &vulkan_context)?;
         ctx.poll_events();
         for (_, event) in events.flush() {
             handle_window_event(&mut vulkan_context, &mut demo, &mut window, event)?;
@@ -48,7 +48,7 @@ fn main() -> Result<()> {
 
 fn handle_window_event<V: VerificationProvider>(
     vulkan_context: &mut VulkanContext<V>,
-    triangle_demo: &mut TriangleDemo,
+    triangle_demo: &mut Demo,
     window: &mut VoxelarWindow,
     event: glfw::WindowEvent,
 ) -> crate::Result<()> {
