@@ -74,11 +74,8 @@ impl SetUpCommandBufferWithFence {
         Ok(())
     }
 
-    pub fn destroy(&mut self, pool: CommandPool, virtual_device: &SetUpVirtualDevice) {
+    pub fn destroy_fence(&mut self, virtual_device: &SetUpVirtualDevice) {
         unsafe {
-            virtual_device
-                .device
-                .free_command_buffers(pool, &[self.command_buffer]);
             virtual_device.device.destroy_fence(self.reuse_fence, None);
         }
     }

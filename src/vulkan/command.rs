@@ -56,8 +56,12 @@ impl SetUpCommandLogic {
 
     pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice) {
         unsafe {
+            // NOTE: It's not necessary to strictly destroy the command buffers
+            //       created from the pool. When destroy_command_pool is called,
+            //       all command buffers it was created from will be destroyed as
+            //       well.
             for command_buffer in self.command_buffers.iter_mut() {
-                command_buffer.destroy(self.pool, &virtual_device);
+                command_buffer.destroy_fence(&virtual_device);
             }
             virtual_device.device.destroy_command_pool(self.pool, None);
         }
