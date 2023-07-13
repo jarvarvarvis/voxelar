@@ -41,8 +41,10 @@ fn main() -> Result<()> {
     let mut demo = Demo::new(&ctx, &vulkan_context)?;
 
     while !window.should_close() {
+        demo.prepare_frame_for_time_manager(&ctx);
         demo.render(&mut window, &vulkan_context)?;
-        demo.complete_frame_for_timer(&ctx);
+        demo.complete_frame_for_time_manager(&ctx);
+
         ctx.poll_events();
         for (_, event) in events.flush() {
             handle_window_event(&mut vulkan_context, &mut demo, &mut window, event)?;
