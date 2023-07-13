@@ -291,11 +291,11 @@ impl Demo {
         Ok(())
     }
     
-    pub fn prepare_frame_for_time_manager(&mut self, context: &Voxelar) {
+    pub fn prepare_time_manager_frame(&mut self, context: &Voxelar) {
         self.frame_time_manager.prepare_frame(context);
     }
 
-    pub fn complete_frame_for_time_manager(&mut self, context: &Voxelar) {
+    pub fn complete_time_manager_frame(&mut self, context: &Voxelar) {
         self.frame_time_manager.complete_frame(context);
     }
 
