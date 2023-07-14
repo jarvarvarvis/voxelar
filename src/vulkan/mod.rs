@@ -39,6 +39,7 @@ pub mod render_pass;
 pub mod shader;
 pub mod swapchain;
 pub mod sync;
+pub mod typed_buffer;
 pub mod util;
 pub mod virtual_device;
 
@@ -49,7 +50,6 @@ use crate::Voxelar;
 
 use crate::engine::per_frame::PerFrame;
 
-use self::buffer::AllocatedBuffer;
 use self::command::SetUpCommandLogic;
 use self::command_buffer::SetUpCommandBufferWithFence;
 use self::creation_info::DataStructureCreationInfo;
@@ -63,6 +63,7 @@ use self::present_images::SetUpPresentImages;
 use self::render_pass::SetUpRenderPass;
 use self::shader::CompiledShaderModule;
 use self::swapchain::SetUpSwapchain;
+use self::typed_buffer::TypedAllocatedBuffer;
 use self::virtual_device::SetUpVirtualDevice;
 
 pub struct VulkanContext<Verification: VerificationProvider> {
@@ -274,7 +275,7 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         unsafe {
             let virtual_device = self.virtual_device()?;
             self.frames = PerFrame::try_init(
-                || FrameData::create_with_defaults(virtual_device),
+                |_| FrameData::create_with_defaults(virtual_device),
                 frame_overlap,
             )?;
             Ok(())
@@ -396,9 +397,12 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         }
     }
 
-    pub fn create_vertex_buffer<T: Copy>(&self, data: &[T]) -> crate::Result<AllocatedBuffer<T>> {
+    pub fn create_vertex_buffer<T: Copy>(
+        &self,
+        data: &[T],
+    ) -> crate::Result<TypedAllocatedBuffer<T>> {
         unsafe {
-            AllocatedBuffer::<T>::create_vertex_buffer(
+            TypedAllocatedBuffer::<T>::create_vertex_buffer(
                 self.virtual_device()?,
                 self.physical_device()?,
                 data,
@@ -406,9 +410,9 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         }
     }
 
-    pub fn create_index_buffer(&self, data: &[u32]) -> crate::Result<AllocatedBuffer<u32>> {
+    pub fn create_index_buffer(&self, data: &[u32]) -> crate::Result<TypedAllocatedBuffer<u32>> {
         unsafe {
-            AllocatedBuffer::<u32>::create_index_buffer(
+            TypedAllocatedBuffer::<u32>::create_index_buffer(
                 self.virtual_device()?,
                 self.physical_device()?,
                 data,

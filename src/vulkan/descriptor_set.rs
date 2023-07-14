@@ -1,7 +1,7 @@
 use ash::vk::DescriptorBufferInfo;
 use ash::vk::{DescriptorSet, DescriptorType, WriteDescriptorSet};
 
-use super::buffer::AllocatedBuffer;
+use super::typed_buffer::TypedAllocatedBuffer;
 use super::virtual_device::SetUpVirtualDevice;
 
 pub struct SetUpDescriptorSet {
@@ -16,14 +16,14 @@ impl SetUpDescriptorSet {
     pub fn attach_buffer_to_descriptor<T>(
         &self,
         virtual_device: &SetUpVirtualDevice,
-        buffer: &AllocatedBuffer<T>,
+        buffer: &TypedAllocatedBuffer<T>,
         buffer_offset: u64,
         destination_binding: u32,
         descriptor_type: DescriptorType,
     ) -> crate::Result<()> {
         unsafe {
             let descriptor_buffer_info = DescriptorBufferInfo::builder()
-                .buffer(buffer.buffer)
+                .buffer(buffer.raw_buffer())
                 .offset(buffer_offset)
                 .range(std::mem::size_of::<T>() as u64)
                 .build();
@@ -46,7 +46,7 @@ impl SetUpDescriptorSet {
     pub fn attach_uniform_buffer_to_descriptor<T>(
         &self,
         virtual_device: &SetUpVirtualDevice,
-        buffer: &AllocatedBuffer<T>,
+        buffer: &TypedAllocatedBuffer<T>,
         buffer_offset: u64,
         destination_binding: u32,
     ) -> crate::Result<()> {

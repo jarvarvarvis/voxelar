@@ -10,7 +10,6 @@ use voxelar::nalgebra::Rotation3;
 use voxelar::nalgebra::Translation3;
 use voxelar::nalgebra::Vector3;
 use voxelar::shaderc::ShaderKind;
-use voxelar::vulkan::buffer::AllocatedBuffer;
 use voxelar::vulkan::debug::VerificationProvider;
 use voxelar::vulkan::descriptor_set_layout::SetUpDescriptorSetLayout;
 use voxelar::vulkan::descriptor_set_layout_builder::DescriptorSetLayoutBuilder;
@@ -20,6 +19,7 @@ use voxelar::vulkan::graphics_pipeline_builder::GraphicsPipelineBuilder;
 use voxelar::vulkan::pipeline_layout::SetUpPipelineLayout;
 use voxelar::vulkan::pipeline_layout_builder::PipelineLayoutBuilder;
 use voxelar::vulkan::shader::CompiledShaderModule;
+use voxelar::vulkan::typed_buffer::TypedAllocatedBuffer;
 use voxelar::vulkan::VulkanContext;
 use voxelar::window::VoxelarWindow;
 use voxelar::Voxelar;
@@ -35,7 +35,7 @@ pub struct DemoCameraBuffer {
 
 pub struct DemoDescriptorSetData {
     descriptor_set_logic: SetUpDescriptorSetLogic,
-    camera_buffer: AllocatedBuffer<DemoCameraBuffer>,
+    camera_buffer: TypedAllocatedBuffer<DemoCameraBuffer>,
 }
 
 pub struct Demo {
@@ -46,8 +46,8 @@ pub struct Demo {
     pipelines: Vec<vk::Pipeline>,
     viewport: vk::Viewport,
     scissor: vk::Rect2D,
-    vertex_buffer: AllocatedBuffer<Vertex>,
-    index_buffer: AllocatedBuffer<u32>,
+    vertex_buffer: TypedAllocatedBuffer<Vertex>,
+    index_buffer: TypedAllocatedBuffer<u32>,
     index_count: usize,
     vertex_shader_module: CompiledShaderModule,
     fragment_shader_module: CompiledShaderModule,
@@ -75,17 +75,18 @@ impl Demo {
             .build(virtual_device)?;
 
         let per_frame_descriptor_set_data = PerFrame::try_init(
-            || {
+            |_| {
                 let descriptor_set_logic = DescriptorSetLogicBuilder::new()
                     .max_sets(1)
                     .add_pool_size(DescriptorType::UNIFORM_BUFFER, 1)
                     .set_layouts(std::slice::from_ref(&global_set_layout))
                     .build(virtual_device)?;
 
-                let camera_buffer = AllocatedBuffer::<DemoCameraBuffer>::allocate_uniform_buffer(
-                    virtual_device,
-                    physical_device,
-                )?;
+                let camera_buffer =
+                    TypedAllocatedBuffer::<DemoCameraBuffer>::allocate_uniform_buffer(
+                        virtual_device,
+                        physical_device,
+                    )?;
 
                 let camera_descriptor_set = descriptor_set_logic.get_set(0);
                 camera_descriptor_set.attach_uniform_buffer_to_descriptor(
@@ -313,12 +314,12 @@ impl Demo {
                     vk_device.cmd_bind_vertex_buffers(
                         draw_command_buffer,
                         0,
-                        &[self.vertex_buffer.buffer],
+                        &[self.vertex_buffer.raw_buffer()],
                         &[0],
                     );
                     vk_device.cmd_bind_index_buffer(
                         draw_command_buffer,
-                        self.index_buffer.buffer,
+                        self.index_buffer.raw_buffer(),
                         0,
                         vk::IndexType::UINT32,
                     );
@@ -326,7 +327,9 @@ impl Demo {
                     let mvp_matrix = self.update_camera_and_get_mvp_matrix(window.aspect_ratio());
                     let current_descriptor_data = &self.per_frame_descriptor_set_data.current();
                     let camera_buffer = DemoCameraBuffer { mvp_matrix };
-                    current_descriptor_data.camera_buffer.store(device, camera_buffer)?;
+                    current_descriptor_data
+                        .camera_buffer
+                        .store(device, camera_buffer)?;
 
                     vk_device.cmd_bind_descriptor_sets(
                         draw_command_buffer,

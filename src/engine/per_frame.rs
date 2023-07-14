@@ -23,13 +23,13 @@ impl<T> PerFrame<T> {
         }
     }
 
-    pub fn try_init<C: Fn() -> crate::Result<T>>(
+    pub fn try_init<C: Fn(usize) -> crate::Result<T>>(
         constructor: C,
         count: usize,
     ) -> crate::Result<Self> {
         let mut values = Vec::with_capacity(count);
-        for _ in 0..count {
-            values.push((constructor)()?);
+        for i in 0..count {
+            values.push((constructor)(i)?);
         }
 
         Ok(Self {
