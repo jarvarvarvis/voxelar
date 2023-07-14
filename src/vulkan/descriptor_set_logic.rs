@@ -2,11 +2,11 @@ use ash::vk::{DescriptorPool, DescriptorPoolCreateInfo};
 
 use super::virtual_device::SetUpVirtualDevice;
 
-pub struct SetUpDescriptorPool {
+pub struct SetUpDescriptorSetLogic {
     pub descriptor_pool: DescriptorPool,
 }
 
-impl SetUpDescriptorPool {
+impl SetUpDescriptorSetLogic {
     pub unsafe fn create_from_build_info(
         virtual_device: &SetUpVirtualDevice,
         descriptor_pool_create_info: DescriptorPoolCreateInfo,

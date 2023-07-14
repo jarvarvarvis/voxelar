@@ -1,16 +1,16 @@
 use ash::vk::DescriptorType;
 use ash::vk::{DescriptorPoolCreateFlags, DescriptorPoolCreateInfo, DescriptorPoolSize};
 
-use super::descriptor_pool::SetUpDescriptorPool;
+use super::descriptor_set_logic::SetUpDescriptorSetLogic;
 use super::virtual_device::SetUpVirtualDevice;
 
 #[derive(Default)]
-pub struct DescriptorPoolBuilder {
+pub struct DescriptorSetLogicBuilder {
     pool_sizes: Vec<DescriptorPoolSize>,
     max_sets: u32,
 }
 
-impl DescriptorPoolBuilder {
+impl DescriptorSetLogicBuilder {
     pub fn new() -> Self {
         Self::default()
     }
@@ -28,13 +28,13 @@ impl DescriptorPoolBuilder {
         self
     }
 
-    pub fn build(self, virtual_device: &SetUpVirtualDevice) -> crate::Result<SetUpDescriptorPool> {
+    pub fn build(self, virtual_device: &SetUpVirtualDevice) -> crate::Result<SetUpDescriptorSetLogic> {
         unsafe {
             let descriptor_pool_create_info = DescriptorPoolCreateInfo::builder()
                 .flags(DescriptorPoolCreateFlags::empty())
                 .max_sets(self.max_sets)
                 .pool_sizes(&self.pool_sizes);
-            SetUpDescriptorPool::create_from_build_info(
+            SetUpDescriptorSetLogic::create_from_build_info(
                 virtual_device,
                 *descriptor_pool_create_info,
             )
