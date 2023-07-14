@@ -10,6 +10,8 @@ use voxelar::nalgebra::Vector3;
 use voxelar::shaderc::ShaderKind;
 use voxelar::vulkan::buffer::AllocatedBuffer;
 use voxelar::vulkan::debug::VerificationProvider;
+use voxelar::vulkan::descriptor_set_layout::SetUpDescriptorSetLayout;
+use voxelar::vulkan::descriptor_set_layout_builder::DescriptorSetLayoutBuilder;
 use voxelar::vulkan::graphics_pipeline_builder::GraphicsPipelineBuilder;
 use voxelar::vulkan::pipeline_layout::SetUpPipelineLayout;
 use voxelar::vulkan::pipeline_layout_builder::PipelineLayoutBuilder;
@@ -28,6 +30,7 @@ pub struct DemoPushConstants {
 }
 
 pub struct Demo {
+    global_set_layout: SetUpDescriptorSetLayout,
     pipeline_layout: SetUpPipelineLayout,
     pipelines: Vec<vk::Pipeline>,
     viewport: vk::Viewport,
@@ -49,8 +52,11 @@ impl Demo {
     ) -> crate::Result<Self> {
         let render_pass = vulkan_context.render_pass()?;
         let virtual_device = vulkan_context.virtual_device()?;
+
+        let global_set_layout = DescriptorSetLayoutBuilder::new().build(virtual_device)?;
         let pipeline_layout = PipelineLayoutBuilder::new()
             .add_push_constant_range::<DemoPushConstants>(0, ShaderStageFlags::VERTEX)
+            .set_layouts(std::slice::from_ref(&global_set_layout))
             .build(virtual_device)?;
 
         let surface_resolution = vulkan_context.swapchain()?.surface_extent;
@@ -130,6 +136,7 @@ impl Demo {
             .build(&virtual_device, &render_pass, &pipeline_layout)?;
 
         Ok(Self {
+            global_set_layout,
             pipeline_layout,
             pipelines: vec![graphics_pipeline],
             viewport,
@@ -310,6 +317,7 @@ impl Demo {
 
         virtual_device.wait();
         unsafe {
+            self.global_set_layout.destroy(&virtual_device);
             self.pipeline_layout.destroy(&virtual_device);
 
             let device = &virtual_device.device;

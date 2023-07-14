@@ -23,6 +23,8 @@ pub mod command_buffer;
 pub mod creation_info;
 pub mod debug;
 pub mod depth_image;
+pub mod descriptor_set_layout;
+pub mod descriptor_set_layout_builder;
 pub mod framebuffers;
 pub mod graphics_pipeline_builder;
 pub mod per_frame_data;
@@ -517,7 +519,7 @@ impl<Verification: VerificationProvider> RenderContext for VulkanContext<Verific
                 depth_image: None,
                 render_pass: None,
                 framebuffers: None,
-            
+
                 frames: vec![],
             })
         }
