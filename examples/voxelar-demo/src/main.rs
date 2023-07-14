@@ -43,7 +43,7 @@ fn main() -> Result<()> {
 
     while !window.should_close() {
         demo.prepare_time_manager_frame(&ctx);
-        demo.render(&mut window, &vulkan_context)?;
+        demo.render(&mut window, &mut vulkan_context)?;
         demo.complete_time_manager_frame(&ctx);
 
         ctx.poll_events();

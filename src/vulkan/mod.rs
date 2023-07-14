@@ -27,9 +27,10 @@ pub mod descriptor_pool;
 pub mod descriptor_pool_builder;
 pub mod descriptor_set_layout;
 pub mod descriptor_set_layout_builder;
+pub mod frame_data;
 pub mod framebuffers;
 pub mod graphics_pipeline_builder;
-pub mod per_frame_data;
+pub mod per_frame;
 pub mod physical_device;
 pub mod pipeline_layout;
 pub mod pipeline_layout_builder;
@@ -53,8 +54,9 @@ use self::creation_info::DataStructureCreationInfo;
 use self::creation_info::PresentModeInitMode;
 use self::debug::VerificationProvider;
 use self::depth_image::SetUpDepthImage;
+use self::frame_data::FrameData;
 use self::framebuffers::SetUpFramebuffers;
-use self::per_frame_data::PerFrameData;
+use self::per_frame::PerFrame;
 use self::physical_device::SetUpPhysicalDevice;
 use self::present_images::SetUpPresentImages;
 use self::render_pass::SetUpRenderPass;
@@ -80,7 +82,7 @@ pub struct VulkanContext<Verification: VerificationProvider> {
     pub render_pass: Option<SetUpRenderPass>,
     pub framebuffers: Option<SetUpFramebuffers>,
 
-    pub frames: Vec<PerFrameData>,
+    pub frames: PerFrame<FrameData>,
 }
 
 macro_rules! generate_safe_getter {
@@ -270,11 +272,10 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
     pub fn create_per_frame_data(&mut self, frame_overlap: usize) -> crate::Result<()> {
         unsafe {
             let virtual_device = self.virtual_device()?;
-            let mut per_frame_data = Vec::with_capacity(frame_overlap);
-            for _ in 0..frame_overlap {
-                per_frame_data.push(PerFrameData::create_with_defaults(virtual_device)?);
-            }
-            self.frames = per_frame_data;
+            self.frames = PerFrame::try_init(
+                || FrameData::create_with_defaults(virtual_device),
+                frame_overlap,
+            )?;
             Ok(())
         }
     }
@@ -314,10 +315,13 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         )
     }
 
+    pub fn select_frame(&mut self, current_frame_index: usize) {
+        self.frames.select(current_frame_index);
+    }
+
     pub fn submit_render_pass_command<F>(
         &self,
         present_index: u32,
-        current_frame_index: u32,
         clear_values: &[ClearValue],
         command_buffer_op: F,
     ) -> crate::Result<()>
@@ -331,7 +335,7 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
             .render_area(surface_resolution.into())
             .clear_values(clear_values);
 
-        let current_frame = &self.frames[current_frame_index as usize];
+        let current_frame = self.frames.current();
         let present_queue = self.virtual_device()?.present_queue;
 
         current_frame.submit_to_draw_buffer(
@@ -360,9 +364,9 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         self.frames.len() as u32
     }
 
-    pub fn acquire_next_image(&self, current_frame_index: u32) -> crate::Result<(u32, bool)> {
+    pub fn acquire_next_image(&self) -> crate::Result<(u32, bool)> {
         unsafe {
-            let frame = &self.frames[current_frame_index as usize];
+            let frame = self.frames.current();
             let present_index_and_success = self.swapchain()?.swapchain_loader.acquire_next_image(
                 self.swapchain()?.swapchain,
                 std::u64::MAX,
@@ -373,8 +377,8 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         }
     }
 
-    pub fn present_image(&self, present_index: u32, current_frame_index: u32) -> crate::Result<()> {
-        let frame = &self.frames[current_frame_index as usize];
+    pub fn present_image(&self, present_index: u32) -> crate::Result<()> {
+        let frame = self.frames.current();
         let wait_semaphores = [frame.sync_primitives.rendering_complete_semaphore];
         let swapchains = [self.swapchain()?.swapchain];
         let image_indices = [present_index];
@@ -522,7 +526,7 @@ impl<Verification: VerificationProvider> RenderContext for VulkanContext<Verific
                 render_pass: None,
                 framebuffers: None,
 
-                frames: vec![],
+                frames: PerFrame::empty(),
             })
         }
     }

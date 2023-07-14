@@ -206,17 +206,18 @@ impl Demo {
     pub fn render<V: VerificationProvider>(
         &mut self,
         window: &mut VoxelarWindow,
-        vulkan_context: &VulkanContext<V>,
+        vulkan_context: &mut VulkanContext<V>,
     ) -> crate::Result<()> {
         let graphics_pipeline = self.pipelines[0];
 
         window.set_title(&format!("FPS: {}", self.frame_time_manager.fps()));
 
         unsafe {
-            let current_frame_index = (self.frame_time_manager.total_frames()
-                % vulkan_context.frame_overlap() as u128)
-                as u32;
-            let (present_index, _) = vulkan_context.acquire_next_image(current_frame_index)?;
+            let current_frame_index =
+                self.frame_time_manager.total_frames() % vulkan_context.frame_overlap() as u128;
+            vulkan_context.select_frame(current_frame_index as usize);
+
+            let (present_index, _) = vulkan_context.acquire_next_image()?;
 
             let clear_values = [
                 vk::ClearValue {
@@ -234,7 +235,6 @@ impl Demo {
 
             vulkan_context.submit_render_pass_command(
                 present_index,
-                current_frame_index,
                 &clear_values,
                 |device, draw_command_buffer| {
                     let device = &device.device;
@@ -307,7 +307,7 @@ impl Demo {
                 },
             )?;
 
-            vulkan_context.present_image(present_index, current_frame_index)?;
+            vulkan_context.present_image(present_index)?;
         }
 
         Ok(())
