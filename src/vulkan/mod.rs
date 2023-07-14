@@ -361,8 +361,8 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         Ok(())
     }
 
-    pub fn frame_overlap(&self) -> u32 {
-        self.frames.len() as u32
+    pub fn frame_overlap(&self) -> usize {
+        self.frames.len()
     }
 
     pub fn acquire_next_image(&self) -> crate::Result<(u32, bool)> {

@@ -38,6 +38,10 @@ impl SetUpDescriptorSetLogic {
         })
     }
 
+    pub fn get_set(&self, index: usize) -> &SetUpDescriptorSet {
+        &self.descriptor_sets[index]
+    }
+
     pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice) {
         unsafe {
             virtual_device

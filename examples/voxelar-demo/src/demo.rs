@@ -3,6 +3,7 @@ use voxelar::ash::vk::DescriptorType;
 use voxelar::ash::vk::ShaderStageFlags;
 use voxelar::compile_shader;
 use voxelar::engine::frame_time::FrameTimeManager;
+use voxelar::engine::per_frame::PerFrame;
 use voxelar::nalgebra::Matrix4;
 use voxelar::nalgebra::Point3;
 use voxelar::nalgebra::Rotation3;
@@ -28,13 +29,18 @@ use voxelar_vertex::*;
 use crate::vertex::Vertex;
 
 #[repr(C)]
-pub struct DemoPushConstants {
+pub struct DemoCameraBuffer {
     pub mvp_matrix: Matrix4<f32>,
+}
+
+pub struct DemoDescriptorSetData {
+    descriptor_set_logic: SetUpDescriptorSetLogic,
+    camera_buffer: AllocatedBuffer<DemoCameraBuffer>,
 }
 
 pub struct Demo {
     global_set_layout: SetUpDescriptorSetLayout,
-    descriptor_set_logic: SetUpDescriptorSetLogic,
+    per_frame_descriptor_set_data: PerFrame<DemoDescriptorSetData>,
 
     pipeline_layout: SetUpPipelineLayout,
     pipelines: Vec<vk::Pipeline>,
@@ -57,17 +63,47 @@ impl Demo {
     ) -> crate::Result<Self> {
         let render_pass = vulkan_context.render_pass()?;
         let virtual_device = vulkan_context.virtual_device()?;
+        let physical_device = vulkan_context.physical_device()?;
 
-        let global_set_layout = DescriptorSetLayoutBuilder::new().build(virtual_device)?;
-
-        let pipeline_layout = PipelineLayoutBuilder::new()
-            .add_push_constant_range::<DemoPushConstants>(0, ShaderStageFlags::VERTEX)
-            .set_layouts(std::slice::from_ref(&global_set_layout))
+        let global_set_layout = DescriptorSetLayoutBuilder::new()
+            .add_binding(
+                0,
+                1,
+                DescriptorType::UNIFORM_BUFFER,
+                ShaderStageFlags::VERTEX,
+            )
             .build(virtual_device)?;
 
-        let descriptor_set_logic = DescriptorSetLogicBuilder::new()
-            .max_sets(1)
-            .add_pool_size(DescriptorType::UNIFORM_BUFFER, 1)
+        let per_frame_descriptor_set_data = PerFrame::try_init(
+            || {
+                let descriptor_set_logic = DescriptorSetLogicBuilder::new()
+                    .max_sets(1)
+                    .add_pool_size(DescriptorType::UNIFORM_BUFFER, 1)
+                    .set_layouts(std::slice::from_ref(&global_set_layout))
+                    .build(virtual_device)?;
+
+                let camera_buffer = AllocatedBuffer::<DemoCameraBuffer>::allocate_uniform_buffer(
+                    virtual_device,
+                    physical_device,
+                )?;
+
+                let camera_descriptor_set = descriptor_set_logic.get_set(0);
+                camera_descriptor_set.attach_uniform_buffer_to_descriptor(
+                    virtual_device,
+                    &camera_buffer,
+                    0,
+                    0,
+                )?;
+
+                Ok(DemoDescriptorSetData {
+                    descriptor_set_logic,
+                    camera_buffer,
+                })
+            },
+            vulkan_context.frame_overlap(),
+        )?;
+
+        let pipeline_layout = PipelineLayoutBuilder::new()
             .set_layouts(std::slice::from_ref(&global_set_layout))
             .build(virtual_device)?;
 
@@ -149,7 +185,7 @@ impl Demo {
 
         Ok(Self {
             global_set_layout,
-            descriptor_set_logic,
+            per_frame_descriptor_set_data,
 
             pipeline_layout,
             pipelines: vec![graphics_pipeline],
@@ -205,6 +241,28 @@ impl Demo {
         Ok(())
     }
 
+    pub fn update_camera_and_get_mvp_matrix(&mut self, aspect_ratio: f32) -> Matrix4<f32> {
+        let projection = Matrix4::new_perspective(aspect_ratio, 60.0f32.to_radians(), 0.1, 100.0);
+
+        let origin = Point3::new(0.0, 0.0, 0.0);
+        let rotated_origin_camera_vector =
+            Rotation3::from_axis_angle(&Vector3::y_axis(), 1.0f32.to_radians())
+                .transform_vector(&(self.camera_position - origin));
+        self.camera_position = origin + rotated_origin_camera_vector;
+        self.camera_position.y = ((self.frame_time_manager.total_frames() % 360) as f32)
+            .to_radians()
+            .sin()
+            * 2.0;
+
+        let view = Matrix4::from(
+            Rotation3::look_at_lh(&(origin - self.camera_position), &Vector3::y_axis())
+                * Translation3::from(self.camera_position),
+        );
+        let model = Matrix4::identity();
+
+        projection * view * model
+    }
+
     pub fn render<V: VerificationProvider>(
         &mut self,
         window: &mut VoxelarWindow,
@@ -216,8 +274,10 @@ impl Demo {
 
         unsafe {
             let current_frame_index =
-                self.frame_time_manager.total_frames() % vulkan_context.frame_overlap() as u128;
-            vulkan_context.select_frame(current_frame_index as usize);
+                self.frame_time_manager.total_frames() as usize % vulkan_context.frame_overlap();
+            vulkan_context.select_frame(current_frame_index);
+            self.per_frame_descriptor_set_data
+                .select(current_frame_index);
 
             let (present_index, _) = vulkan_context.acquire_next_image()?;
 
@@ -239,64 +299,49 @@ impl Demo {
                 present_index,
                 &clear_values,
                 |device, draw_command_buffer| {
-                    let device = &device.device;
+                    let vk_device = &device.device;
                     let draw_command_buffer = draw_command_buffer.command_buffer;
-                    device.cmd_bind_pipeline(
+                    vk_device.cmd_bind_pipeline(
                         draw_command_buffer,
                         vk::PipelineBindPoint::GRAPHICS,
                         graphics_pipeline,
                     );
-                    device.cmd_set_viewport(draw_command_buffer, 0, &[self.viewport]);
-                    device.cmd_set_scissor(draw_command_buffer, 0, &[self.scissor]);
 
-                    device.cmd_bind_vertex_buffers(
+                    vk_device.cmd_set_viewport(draw_command_buffer, 0, &[self.viewport]);
+                    vk_device.cmd_set_scissor(draw_command_buffer, 0, &[self.scissor]);
+
+                    vk_device.cmd_bind_vertex_buffers(
                         draw_command_buffer,
                         0,
                         &[self.vertex_buffer.buffer],
                         &[0],
                     );
-                    device.cmd_bind_index_buffer(
+                    vk_device.cmd_bind_index_buffer(
                         draw_command_buffer,
                         self.index_buffer.buffer,
                         0,
                         vk::IndexType::UINT32,
                     );
 
-                    let projection = Matrix4::new_perspective(
-                        window.aspect_ratio(),
-                        60.0f32.to_radians(),
-                        0.1,
-                        100.0,
-                    );
+                    let mvp_matrix = self.update_camera_and_get_mvp_matrix(window.aspect_ratio());
+                    let current_descriptor_data = &self.per_frame_descriptor_set_data.current();
+                    let buf_ptr = current_descriptor_data.camera_buffer.map_memory(device)?;
+                    *buf_ptr = DemoCameraBuffer { mvp_matrix };
+                    current_descriptor_data.camera_buffer.unmap_memory(device);
 
-                    let origin = Point3::new(0.0, 0.0, 0.0);
-                    let rotated_origin_camera_vector =
-                        Rotation3::from_axis_angle(&Vector3::y_axis(), 1.0f32.to_radians())
-                            .transform_vector(&(self.camera_position - origin));
-                    self.camera_position = origin + rotated_origin_camera_vector;
-                    self.camera_position.y = ((self.frame_time_manager.total_frames() % 360)
-                        as f32)
-                        .to_radians()
-                        .sin()
-                        * 2.0;
-
-                    // Compute matrices
-                    let view = Matrix4::from(
-                        Rotation3::look_at_lh(&(origin - self.camera_position), &Vector3::y_axis())
-                            * Translation3::from(self.camera_position),
-                    );
-                    let model = Matrix4::identity();
-                    let constants = DemoPushConstants {
-                        mvp_matrix: projection * view * model,
-                    };
-                    device.cmd_push_constants(
+                    vk_device.cmd_bind_descriptor_sets(
                         draw_command_buffer,
+                        vk::PipelineBindPoint::GRAPHICS,
                         self.pipeline_layout.pipeline_layout,
-                        ShaderStageFlags::VERTEX,
                         0,
-                        voxelar::vulkan::util::transmute_as_u8_slice(&constants),
+                        &[current_descriptor_data
+                            .descriptor_set_logic
+                            .get_set(0)
+                            .descriptor_set],
+                        &[],
                     );
-                    device.cmd_draw_indexed(
+
+                    vk_device.cmd_draw_indexed(
                         draw_command_buffer,
                         self.index_count as u32,
                         1,
@@ -331,21 +376,24 @@ impl Demo {
 
         virtual_device.wait();
         unsafe {
-            self.descriptor_set_logic.destroy(&virtual_device);
+            for descriptor_data in self.per_frame_descriptor_set_data.iter_mut() {
+                descriptor_data.camera_buffer.destroy(virtual_device);
+                descriptor_data.descriptor_set_logic.destroy(virtual_device);
+            }
 
-            self.global_set_layout.destroy(&virtual_device);
-            self.pipeline_layout.destroy(&virtual_device);
+            self.global_set_layout.destroy(virtual_device);
+            self.pipeline_layout.destroy(virtual_device);
 
             let device = &virtual_device.device;
             for pipeline in self.pipelines.iter() {
                 device.destroy_pipeline(*pipeline, None);
             }
 
-            self.vertex_shader_module.destroy(&virtual_device);
-            self.fragment_shader_module.destroy(&virtual_device);
+            self.vertex_shader_module.destroy(virtual_device);
+            self.fragment_shader_module.destroy(virtual_device);
 
-            self.index_buffer.destroy(&virtual_device);
-            self.vertex_buffer.destroy(&virtual_device);
+            self.index_buffer.destroy(virtual_device);
+            self.vertex_buffer.destroy(virtual_device);
         }
 
         Ok(())
