@@ -21,13 +21,12 @@ impl<T: Copy> AllocatedBuffer<T> {
     pub unsafe fn allocate(
         virtual_device: &SetUpVirtualDevice,
         physical_device: &SetUpPhysicalDevice,
-        allocation_size: u64,
         usage: BufferUsageFlags,
         sharing_mode: SharingMode,
         memory_property_flags: MemoryPropertyFlags,
     ) -> crate::Result<Self> {
         let buffer_info = BufferCreateInfo::builder()
-            .size(allocation_size)
+            .size(std::mem::size_of::<T>() as u64)
             .usage(usage)
             .sharing_mode(sharing_mode);
 
@@ -46,6 +45,10 @@ impl<T: Copy> AllocatedBuffer<T> {
         let buffer_memory = virtual_device
             .device
             .allocate_memory(&allocate_info, None)?;
+
+        virtual_device
+            .device
+            .bind_buffer_memory(buffer, buffer_memory, 0)?;
 
         Ok(Self {
             buffer_memory,
