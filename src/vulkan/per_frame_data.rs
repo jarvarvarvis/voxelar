@@ -3,17 +3,17 @@ use ash::vk::Queue;
 
 use super::command::SetUpCommandLogic;
 use super::command_buffer::SetUpCommandBufferWithFence;
-use super::sync::InternalSyncPrimitives;
+use super::sync::PerFrameSyncPrimitives;
 use super::virtual_device::SetUpVirtualDevice;
 
 pub struct PerFrameData {
-    pub sync_primitives: InternalSyncPrimitives,
+    pub sync_primitives: PerFrameSyncPrimitives,
     pub command_logic: SetUpCommandLogic,
 }
 
 impl PerFrameData {
     pub unsafe fn create_with_defaults(virtual_device: &SetUpVirtualDevice) -> crate::Result<Self> {
-        let sync_primitives = InternalSyncPrimitives::create(virtual_device)?;
+        let sync_primitives = PerFrameSyncPrimitives::create(virtual_device)?;
         let command_logic = SetUpCommandLogic::create_with_one_primary_buffer(virtual_device)?;
 
         Ok(Self {

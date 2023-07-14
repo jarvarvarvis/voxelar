@@ -2,12 +2,12 @@ use ash::vk::{Semaphore, SemaphoreCreateInfo};
 
 use super::virtual_device::SetUpVirtualDevice;
 
-pub struct InternalSyncPrimitives {
+pub struct PerFrameSyncPrimitives {
     pub present_complete_semaphore: Semaphore,
     pub rendering_complete_semaphore: Semaphore,
 }
 
-impl InternalSyncPrimitives {
+impl PerFrameSyncPrimitives {
     pub unsafe fn create(virtual_device: &SetUpVirtualDevice) -> crate::Result<Self> {
         let semaphore_create_info = SemaphoreCreateInfo::default();
 

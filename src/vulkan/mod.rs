@@ -358,10 +358,11 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
 
     pub fn acquire_next_image(&self, current_frame_index: u32) -> crate::Result<(u32, bool)> {
         unsafe {
+            let frame = &self.frames[current_frame_index as usize];
             let present_index_and_success = self.swapchain()?.swapchain_loader.acquire_next_image(
                 self.swapchain()?.swapchain,
                 std::u64::MAX,
-                self.frames[current_frame_index as usize].sync_primitives.present_complete_semaphore,
+                frame.sync_primitives.present_complete_semaphore,
                 vk::Fence::null(),
             )?;
             Ok(present_index_and_success)
@@ -369,7 +370,8 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
     }
 
     pub fn present_image(&self, present_index: u32, current_frame_index: u32) -> crate::Result<()> {
-        let wait_semaphores = [self.frames[current_frame_index as usize].sync_primitives.rendering_complete_semaphore];
+        let frame = &self.frames[current_frame_index as usize];
+        let wait_semaphores = [frame.sync_primitives.rendering_complete_semaphore];
         let swapchains = [self.swapchain()?.swapchain];
         let image_indices = [present_index];
         let present_info = vk::PresentInfoKHR::builder()
