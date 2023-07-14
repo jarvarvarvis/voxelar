@@ -11,14 +11,50 @@ use crate::result::Context;
 use super::physical_device::SetUpPhysicalDevice;
 use super::virtual_device::SetUpVirtualDevice;
 
-pub struct AllocatedBuffer<T: Copy> {
+pub struct AllocatedBuffer<T> {
     pub buffer_memory: DeviceMemory,
     pub buffer: Buffer,
-    phantom: PhantomData<T>,
+    phantom: PhantomData<T>
 }
 
 impl<T: Copy> AllocatedBuffer<T> {
-    pub unsafe fn create(
+    pub unsafe fn allocate(
+        virtual_device: &SetUpVirtualDevice,
+        physical_device: &SetUpPhysicalDevice,
+        allocation_size: u64,
+        usage: BufferUsageFlags,
+        sharing_mode: SharingMode,
+        memory_property_flags: MemoryPropertyFlags,
+    ) -> crate::Result<Self> {
+        let buffer_info = BufferCreateInfo::builder()
+            .size(allocation_size)
+            .usage(usage)
+            .sharing_mode(sharing_mode);
+
+        let buffer = virtual_device.device.create_buffer(&buffer_info, None)?;
+        let buffer_memory_req = virtual_device.device.get_buffer_memory_requirements(buffer);
+        let buffer_memory_index = physical_device
+            .find_memory_type_index(&buffer_memory_req, memory_property_flags)
+            .context("Unable to find suitable memory type for the buffer".to_string())?;
+
+        let allocate_info = MemoryAllocateInfo {
+            allocation_size: buffer_memory_req.size,
+            memory_type_index: buffer_memory_index,
+            ..Default::default()
+        };
+
+        let buffer_memory = virtual_device
+            .device
+            .allocate_memory(&allocate_info, None)?;
+
+        Ok(Self {
+            buffer_memory,
+            buffer,
+            phantom: PhantomData
+        })
+    }
+
+    pub unsafe fn create_from_data_slice(
         virtual_device: &SetUpVirtualDevice,
         physical_device: &SetUpPhysicalDevice,
         data: &[T],
@@ -35,7 +71,7 @@ impl<T: Copy> AllocatedBuffer<T> {
         let buffer_memory_req = virtual_device.device.get_buffer_memory_requirements(buffer);
         let buffer_memory_index = physical_device
             .find_memory_type_index(&buffer_memory_req, memory_property_flags)
-            .context("Unable to find suitable memory type for the index buffer.".to_string())?;
+            .context("Unable to find suitable memory type for the buffer".to_string())?;
 
         let allocate_info = MemoryAllocateInfo {
             allocation_size: buffer_memory_req.size,
@@ -63,7 +99,7 @@ impl<T: Copy> AllocatedBuffer<T> {
         Ok(Self {
             buffer,
             buffer_memory,
-            phantom: PhantomData,
+            phantom: PhantomData
         })
     }
 
@@ -72,7 +108,7 @@ impl<T: Copy> AllocatedBuffer<T> {
         physical_device: &SetUpPhysicalDevice,
         data: &[T],
     ) -> crate::Result<Self> {
-        Self::create(
+        Self::create_from_data_slice(
             virtual_device,
             physical_device,
             data,
@@ -87,7 +123,7 @@ impl<T: Copy> AllocatedBuffer<T> {
         physical_device: &SetUpPhysicalDevice,
         data: &[T],
     ) -> crate::Result<Self> {
-        Self::create(
+        Self::create_from_data_slice(
             virtual_device,
             physical_device,
             data,

@@ -12,6 +12,7 @@ use voxelar::vulkan::buffer::AllocatedBuffer;
 use voxelar::vulkan::debug::VerificationProvider;
 use voxelar::vulkan::graphics_pipeline_builder::GraphicsPipelineBuilder;
 use voxelar::vulkan::pipeline_layout::SetUpPipelineLayout;
+use voxelar::vulkan::pipeline_layout_builder::PipelineLayoutBuilder;
 use voxelar::vulkan::shader::CompiledShaderModule;
 use voxelar::vulkan::VulkanContext;
 use voxelar::window::VoxelarWindow;
@@ -48,8 +49,9 @@ impl Demo {
     ) -> crate::Result<Self> {
         let render_pass = vulkan_context.render_pass()?;
         let virtual_device = vulkan_context.virtual_device()?;
-        let pipeline_layout = vulkan_context
-            .create_push_constant_pipeline_layout::<DemoPushConstants>(ShaderStageFlags::VERTEX)?;
+        let pipeline_layout = PipelineLayoutBuilder::new()
+            .add_push_constant_range::<DemoPushConstants>(0, ShaderStageFlags::VERTEX)
+            .build(virtual_device)?;
 
         let surface_resolution = vulkan_context.swapchain()?.surface_extent;
         let surface_width = surface_resolution.width;
@@ -84,18 +86,12 @@ impl Demo {
         let vertex_buffer = vulkan_context.create_vertex_buffer(&vertices)?;
 
         let index_buffer_data = vec![
-            // Front
-            0, 1, 2, 2, 3, 0, 
-            // Right
-            1, 5, 6, 6, 2, 1, 
-            // Back
-            7, 6, 5, 5, 4, 7, 
-            // Left
-            4, 0, 3, 3, 7, 4, 
-            // Bottom
-            4, 5, 1, 1, 0, 4, 
-            // Top
-            3, 2, 6, 6, 7, 3,
+            0, 1, 2, 2, 3, 0, // Front
+            1, 5, 6, 6, 2, 1, // Right
+            7, 6, 5, 5, 4, 7, // Back
+            4, 0, 3, 3, 7, 4, // Left
+            4, 5, 1, 1, 0, 4, // Bottom
+            3, 2, 6, 6, 7, 3, // Top
         ];
         let index_buffer = vulkan_context.create_index_buffer(&index_buffer_data)?;
 
@@ -198,7 +194,9 @@ impl Demo {
         window.set_title(&format!("FPS: {}", self.frame_time_manager.fps()));
 
         unsafe {
-            let current_frame_index = (self.frame_time_manager.total_frames() % vulkan_context.frame_overlap() as u128) as u32;
+            let current_frame_index = (self.frame_time_manager.total_frames()
+                % vulkan_context.frame_overlap() as u128)
+                as u32;
             let (present_index, _) = vulkan_context.acquire_next_image(current_frame_index)?;
 
             let clear_values = [
@@ -251,15 +249,20 @@ impl Demo {
                     );
 
                     let origin = Point3::new(0.0, 0.0, 0.0);
-                    let rotated_origin_camera_vector = Rotation3::from_axis_angle(&Vector3::y_axis(), 1.0f32.to_radians())
-                        .transform_vector(&(self.camera_position - origin));
+                    let rotated_origin_camera_vector =
+                        Rotation3::from_axis_angle(&Vector3::y_axis(), 1.0f32.to_radians())
+                            .transform_vector(&(self.camera_position - origin));
                     self.camera_position = origin + rotated_origin_camera_vector;
-                    self.camera_position.y = ((self.frame_time_manager.total_frames() % 360) as f32).to_radians().sin() * 2.0;
+                    self.camera_position.y = ((self.frame_time_manager.total_frames() % 360)
+                        as f32)
+                        .to_radians()
+                        .sin()
+                        * 2.0;
 
                     // Compute matrices
                     let view = Matrix4::from(
-                        Rotation3::look_at_lh(&(origin - self.camera_position), &Vector3::y_axis()) *
-                        Translation3::from(self.camera_position)
+                        Rotation3::look_at_lh(&(origin - self.camera_position), &Vector3::y_axis())
+                            * Translation3::from(self.camera_position),
                     );
                     let model = Matrix4::identity();
                     let constants = DemoPushConstants {
@@ -290,7 +293,7 @@ impl Demo {
 
         Ok(())
     }
-    
+
     pub fn prepare_time_manager_frame(&mut self, context: &Voxelar) {
         self.frame_time_manager.prepare_frame(context);
     }

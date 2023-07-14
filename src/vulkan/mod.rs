@@ -28,6 +28,7 @@ pub mod graphics_pipeline_builder;
 pub mod per_frame_data;
 pub mod physical_device;
 pub mod pipeline_layout;
+pub mod pipeline_layout_builder;
 pub mod present_images;
 pub mod render_pass;
 pub mod shader;
@@ -51,7 +52,6 @@ use self::depth_image::SetUpDepthImage;
 use self::framebuffers::SetUpFramebuffers;
 use self::per_frame_data::PerFrameData;
 use self::physical_device::SetUpPhysicalDevice;
-use self::pipeline_layout::SetUpPipelineLayout;
 use self::present_images::SetUpPresentImages;
 use self::render_pass::SetUpRenderPass;
 use self::shader::CompiledShaderModule;
@@ -350,22 +350,6 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         )?;
 
         Ok(())
-    }
-
-    pub fn create_default_pipeline_layout(&self) -> crate::Result<SetUpPipelineLayout> {
-        unsafe { SetUpPipelineLayout::create(self.virtual_device()?) }
-    }
-
-    pub fn create_push_constant_pipeline_layout<PushConstants>(
-        &self,
-        shader_stages: ShaderStageFlags,
-    ) -> crate::Result<SetUpPipelineLayout> {
-        unsafe {
-            SetUpPipelineLayout::create_with_push_constants::<PushConstants>(
-                self.virtual_device()?,
-                shader_stages,
-            )
-        }
     }
 
     pub fn frame_overlap(&self) -> u32 {
