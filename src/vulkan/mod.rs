@@ -30,7 +30,6 @@ pub mod descriptor_set_layout_builder;
 pub mod frame_data;
 pub mod framebuffers;
 pub mod graphics_pipeline_builder;
-pub mod per_frame;
 pub mod physical_device;
 pub mod pipeline_layout;
 pub mod pipeline_layout_builder;
@@ -47,6 +46,8 @@ use crate::result::Context;
 use crate::window::VoxelarWindow;
 use crate::Voxelar;
 
+use crate::engine::per_frame::PerFrame;
+
 use self::buffer::AllocatedBuffer;
 use self::command::SetUpCommandLogic;
 use self::command_buffer::SetUpCommandBufferWithFence;
@@ -56,7 +57,6 @@ use self::debug::VerificationProvider;
 use self::depth_image::SetUpDepthImage;
 use self::frame_data::FrameData;
 use self::framebuffers::SetUpFramebuffers;
-use self::per_frame::PerFrame;
 use self::physical_device::SetUpPhysicalDevice;
 use self::present_images::SetUpPresentImages;
 use self::render_pass::SetUpRenderPass;
