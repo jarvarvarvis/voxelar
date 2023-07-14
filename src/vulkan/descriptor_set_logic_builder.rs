@@ -1,16 +1,20 @@
-use ash::vk::DescriptorType;
+use ash::vk::{DescriptorType, DescriptorSetLayout};
 use ash::vk::{DescriptorPoolCreateFlags, DescriptorPoolCreateInfo, DescriptorPoolSize};
 
+use crate::result::Context;
+
+use super::descriptor_set_layout::SetUpDescriptorSetLayout;
 use super::descriptor_set_logic::SetUpDescriptorSetLogic;
 use super::virtual_device::SetUpVirtualDevice;
 
 #[derive(Default)]
-pub struct DescriptorSetLogicBuilder {
+pub struct DescriptorSetLogicBuilder<'builder> {
     pool_sizes: Vec<DescriptorPoolSize>,
     max_sets: u32,
+    set_layouts: Option<&'builder [SetUpDescriptorSetLayout]>,
 }
 
-impl DescriptorSetLogicBuilder {
+impl<'builder> DescriptorSetLogicBuilder<'builder> {
     pub fn new() -> Self {
         Self::default()
     }
@@ -28,15 +32,34 @@ impl DescriptorSetLogicBuilder {
         self
     }
 
-    pub fn build(self, virtual_device: &SetUpVirtualDevice) -> crate::Result<SetUpDescriptorSetLogic> {
+    pub fn set_layouts(mut self, set_layouts: &'builder [SetUpDescriptorSetLayout]) -> Self {
+        self.set_layouts = Some(set_layouts);
+        self
+    }
+
+    pub fn build(
+        self,
+        virtual_device: &SetUpVirtualDevice,
+    ) -> crate::Result<SetUpDescriptorSetLogic> {
         unsafe {
+            let set_layouts = self
+                .set_layouts
+                .context("Descriptor set layouts must be set".to_string())?;
+            
             let descriptor_pool_create_info = DescriptorPoolCreateInfo::builder()
                 .flags(DescriptorPoolCreateFlags::empty())
                 .max_sets(self.max_sets)
                 .pool_sizes(&self.pool_sizes);
-            SetUpDescriptorSetLogic::create_from_build_info(
+
+            // SAFETY: Transmuting the set_layouts slice is safe because
+            //         SetUpDescriptorSetLayout is a repr(transparent) struct that holds one
+            //         value of DescriptorSetLayout. This guarantees that a slice over
+            //         SetUpDescriptorSetLayouts has the same memory layout as a slice over
+            //         DescriptorSetLayouts.
+            SetUpDescriptorSetLogic::create(
                 virtual_device,
                 *descriptor_pool_create_info,
+                std::mem::transmute::<&[SetUpDescriptorSetLayout], &[DescriptorSetLayout]>(set_layouts),
             )
         }
     }

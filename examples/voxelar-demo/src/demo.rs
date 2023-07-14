@@ -68,6 +68,7 @@ impl Demo {
         let descriptor_set_logic = DescriptorSetLogicBuilder::new()
             .max_sets(1)
             .add_pool_size(DescriptorType::UNIFORM_BUFFER, 1)
+            .set_layouts(std::slice::from_ref(&global_set_layout))
             .build(virtual_device)?;
 
         let surface_resolution = vulkan_context.swapchain()?.surface_extent;

@@ -44,15 +44,15 @@ impl<'builder> PipelineLayoutBuilder<'builder> {
                 pipeline_layout_create_info =
                     pipeline_layout_create_info.push_constant_ranges(&self.push_constant_ranges);
             }
-            if let Some(descriptor_sets) = self.set_layouts {
-                // SAFETY: Transmuting the descriptor_sets slice is safe because
+            if let Some(set_layouts) = self.set_layouts {
+                // SAFETY: Transmuting the set_layouts slice is safe because
                 //         SetUpDescriptorSetLayout is a repr(transparent) struct that holds one
                 //         value of DescriptorSetLayout. This guarantees that a slice over
-                //         SetUpDescriptorSetLayouts looks the same as a slice over
+                //         SetUpDescriptorSetLayouts has the same memory layout as a slice over
                 //         DescriptorSetLayouts.
                 pipeline_layout_create_info =
                     pipeline_layout_create_info.set_layouts(
-                        std::mem::transmute::<&[SetUpDescriptorSetLayout], &[DescriptorSetLayout]>(descriptor_sets)
+                        std::mem::transmute::<&[SetUpDescriptorSetLayout], &[DescriptorSetLayout]>(set_layouts)
                     );
             }
             SetUpPipelineLayout::create_from_build_info(

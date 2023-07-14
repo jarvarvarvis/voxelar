@@ -1,21 +1,41 @@
-use ash::vk::{DescriptorPool, DescriptorPoolCreateInfo};
+use ash::vk::DescriptorSetAllocateInfo;
+use ash::vk::{DescriptorPool, DescriptorPoolCreateInfo, DescriptorSetLayout};
 
+use super::descriptor_set::SetUpDescriptorSet;
 use super::virtual_device::SetUpVirtualDevice;
 
 pub struct SetUpDescriptorSetLogic {
     pub descriptor_pool: DescriptorPool,
+    pub descriptor_sets: Vec<SetUpDescriptorSet>,
 }
 
 impl SetUpDescriptorSetLogic {
-    pub unsafe fn create_from_build_info(
+    pub unsafe fn create(
         virtual_device: &SetUpVirtualDevice,
         descriptor_pool_create_info: DescriptorPoolCreateInfo,
+        set_layouts: &[DescriptorSetLayout],
     ) -> crate::Result<Self> {
         let descriptor_pool = virtual_device
             .device
             .create_descriptor_pool(&descriptor_pool_create_info, None)?;
 
-        Ok(Self { descriptor_pool })
+        let descriptor_set_allocate_info = DescriptorSetAllocateInfo::builder()
+            .descriptor_pool(descriptor_pool)
+            .set_layouts(&set_layouts);
+
+        let vk_descriptor_sets = virtual_device
+            .device
+            .allocate_descriptor_sets(&descriptor_set_allocate_info)?;
+
+        let mut descriptor_sets = Vec::with_capacity(vk_descriptor_sets.len());
+        for descriptor_set in vk_descriptor_sets {
+            descriptor_sets.push(SetUpDescriptorSet::create(descriptor_set)?);
+        }
+
+        Ok(Self {
+            descriptor_pool,
+            descriptor_sets,
+        })
     }
 
     pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice) {
