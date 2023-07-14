@@ -58,7 +58,7 @@ impl SetUpCommandLogic {
         unsafe {
             // NOTE: It's not necessary to strictly destroy the command buffers
             //       created from the pool. When destroy_command_pool is called,
-            //       all command buffers it was created from will be destroyed as
+            //       all command buffers created from that pool will be destroyed as
             //       well.
             for command_buffer in self.command_buffers.iter_mut() {
                 command_buffer.destroy_fence(&virtual_device);
