@@ -23,6 +23,8 @@ pub mod command_buffer;
 pub mod creation_info;
 pub mod debug;
 pub mod depth_image;
+pub mod descriptor_pool;
+pub mod descriptor_pool_builder;
 pub mod descriptor_set_layout;
 pub mod descriptor_set_layout_builder;
 pub mod framebuffers;

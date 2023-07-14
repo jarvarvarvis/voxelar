@@ -1,4 +1,5 @@
 use voxelar::ash::vk;
+use voxelar::ash::vk::DescriptorType;
 use voxelar::ash::vk::ShaderStageFlags;
 use voxelar::compile_shader;
 use voxelar::engine::frame_time::FrameTimeManager;
@@ -10,6 +11,8 @@ use voxelar::nalgebra::Vector3;
 use voxelar::shaderc::ShaderKind;
 use voxelar::vulkan::buffer::AllocatedBuffer;
 use voxelar::vulkan::debug::VerificationProvider;
+use voxelar::vulkan::descriptor_pool::SetUpDescriptorPool;
+use voxelar::vulkan::descriptor_pool_builder::DescriptorPoolBuilder;
 use voxelar::vulkan::descriptor_set_layout::SetUpDescriptorSetLayout;
 use voxelar::vulkan::descriptor_set_layout_builder::DescriptorSetLayoutBuilder;
 use voxelar::vulkan::graphics_pipeline_builder::GraphicsPipelineBuilder;
@@ -31,6 +34,8 @@ pub struct DemoPushConstants {
 
 pub struct Demo {
     global_set_layout: SetUpDescriptorSetLayout,
+    descriptor_pool: SetUpDescriptorPool,
+
     pipeline_layout: SetUpPipelineLayout,
     pipelines: Vec<vk::Pipeline>,
     viewport: vk::Viewport,
@@ -57,6 +62,11 @@ impl Demo {
         let pipeline_layout = PipelineLayoutBuilder::new()
             .add_push_constant_range::<DemoPushConstants>(0, ShaderStageFlags::VERTEX)
             .set_layouts(std::slice::from_ref(&global_set_layout))
+            .build(virtual_device)?;
+
+        let descriptor_pool = DescriptorPoolBuilder::new()
+            .max_sets(1)
+            .add_pool_size(DescriptorType::UNIFORM_BUFFER, 1)
             .build(virtual_device)?;
 
         let surface_resolution = vulkan_context.swapchain()?.surface_extent;
@@ -137,6 +147,8 @@ impl Demo {
 
         Ok(Self {
             global_set_layout,
+            descriptor_pool,
+
             pipeline_layout,
             pipelines: vec![graphics_pipeline],
             viewport,
@@ -317,6 +329,8 @@ impl Demo {
 
         virtual_device.wait();
         unsafe {
+            self.descriptor_pool.destroy(&virtual_device);
+
             self.global_set_layout.destroy(&virtual_device);
             self.pipeline_layout.destroy(&virtual_device);
 
