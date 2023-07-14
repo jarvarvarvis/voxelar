@@ -67,7 +67,7 @@ impl Demo {
 
         let global_set_layout = DescriptorSetLayoutBuilder::new()
             .add_binding(
-                0,
+                0, // In the shader, this will specify set = 0 in the uniform layout
                 1,
                 DescriptorType::UNIFORM_BUFFER,
                 ShaderStageFlags::VERTEX,
@@ -93,7 +93,7 @@ impl Demo {
                     virtual_device,
                     &camera_buffer,
                     0,
-                    0,
+                    0, // In the shader, this will specify binding = 0 in the uniform layout
                 )?;
 
                 Ok(DemoDescriptorSetData {
