@@ -325,9 +325,8 @@ impl Demo {
 
                     let mvp_matrix = self.update_camera_and_get_mvp_matrix(window.aspect_ratio());
                     let current_descriptor_data = &self.per_frame_descriptor_set_data.current();
-                    let buf_ptr = current_descriptor_data.camera_buffer.map_memory(device)?;
-                    *buf_ptr = DemoCameraBuffer { mvp_matrix };
-                    current_descriptor_data.camera_buffer.unmap_memory(device);
+                    let camera_buffer = DemoCameraBuffer { mvp_matrix };
+                    current_descriptor_data.camera_buffer.store(device, camera_buffer)?;
 
                     vk_device.cmd_bind_descriptor_sets(
                         draw_command_buffer,

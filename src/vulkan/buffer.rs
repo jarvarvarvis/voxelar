@@ -177,6 +177,13 @@ impl<T> AllocatedBuffer<T> {
         virtual_device.device.unmap_memory(self.buffer_memory);
     }
 
+    pub unsafe fn store(&self, virtual_device: &SetUpVirtualDevice, value: T) -> crate::Result<()> {
+        let ptr = self.map_memory(virtual_device)?;
+        *ptr = value;
+        self.unmap_memory(virtual_device);
+        Ok(())
+    }
+
     pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice) {
         unsafe {
             virtual_device.device.free_memory(self.buffer_memory, None);
