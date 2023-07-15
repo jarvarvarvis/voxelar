@@ -31,6 +31,7 @@ pub mod descriptor_set_logic_builder;
 pub mod frame_data;
 pub mod framebuffers;
 pub mod graphics_pipeline_builder;
+pub mod per_frame;
 pub mod physical_device;
 pub mod pipeline_layout;
 pub mod pipeline_layout_builder;
@@ -48,7 +49,7 @@ use crate::result::Context;
 use crate::window::VoxelarWindow;
 use crate::Voxelar;
 
-use crate::engine::per_frame::PerFrame;
+use crate::vulkan::per_frame::PerFrame;
 
 use self::command::SetUpCommandLogic;
 use self::command_buffer::SetUpCommandBufferWithFence;
