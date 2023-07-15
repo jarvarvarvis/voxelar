@@ -104,7 +104,7 @@ macro_rules! generate_safe_getter {
 
 impl<Verification: VerificationProvider> VulkanContext<Verification> {
     fn create_app_info(window: &VoxelarWindow) -> ApplicationInfo {
-        let app_name = CString::new(window.title()).unwrap();
+        let app_name = CString::new(window.get_title()).unwrap();
 
         let app_info = ApplicationInfo::builder()
             .application_name(&app_name)

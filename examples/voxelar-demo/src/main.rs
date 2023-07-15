@@ -47,7 +47,7 @@ fn main() -> Result<()> {
         demo.complete_time_manager_frame(&ctx);
 
         ctx.poll_events();
-        for (_, event) in events.flush() {
+        for event in events.flush() {
             handle_window_event(&mut vulkan_context, &mut demo, &mut window, event)?;
         }
     }

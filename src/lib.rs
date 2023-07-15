@@ -178,7 +178,7 @@ impl Voxelar {
     ///
     ///     while !window.should_close() {
     ///         ctx.poll_events();
-    ///         for (_, event) in events.flush() {
+    ///         for event in events.flush() {
     ///
     ///         }
     ///     }

@@ -71,7 +71,7 @@ impl ReceivableEvents {
     /// `VoxelarWindow`.
     ///
     /// This will move the current value of `ReceivableEvents`, so you can't use it afterwards.
-    pub fn set_for(self, window: &mut VoxelarWindow) {
+    pub(crate) fn set_for(self, window: &mut VoxelarWindow) {
         let glfw_window = window.glfw_window_mut();
 
         glfw_window.set_pos_polling(self.pos);
