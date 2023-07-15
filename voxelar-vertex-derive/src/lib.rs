@@ -12,6 +12,7 @@ use quote::ToTokens;
 #[derive(Debug, FromDeriveInput)]
 #[darling(attributes(vertex_input_spec), supports(struct_named))]
 struct VertexInputSpecArgs {
+    #[allow(unused)]
     ident: syn::Ident,
 
     binding: syn::LitInt,
@@ -23,6 +24,8 @@ struct VertexInputSpecArgs {
 #[darling(attributes(input))]
 struct FieldInputArgs {
     ident: Option<syn::Ident>,
+    
+    #[allow(unused)]
     ty: syn::Type,
 
     #[darling(skip)]
