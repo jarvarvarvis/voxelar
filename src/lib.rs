@@ -7,7 +7,7 @@
 //! - engine: Provides various game engine utilities (e.g. frame time/FPS measurement etc.)
 //! - receivable\_events: Contains the `ReceivableEvents` struct
 //! - render\_context: Contains the `RenderContext` trait
-//! - result: Provides voxelar's error type, a `Result` with that type and utility macros
+//! - result: Provides voxelar's error type, a `Result` with that type and more
 //! - vulkan: Provides all Vulkan functionality
 //! - window: Provides the window creation API
 //! - window_events: Provides the window event API
