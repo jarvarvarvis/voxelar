@@ -1,4 +1,4 @@
-//! This is a module that contains the `ReceivableEvents` struct, usefule for specifying all the
+//! This is a module that contains the `ReceivableEvents` struct, useful for specifying all the
 //! events that should be received by a `VoxelarWindow`.
 //!
 //! See the documentation of `ReceivableEvents` for more information on the available events.
