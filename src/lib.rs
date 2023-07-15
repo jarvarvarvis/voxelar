@@ -1,7 +1,7 @@
 //! The voxelar engine backend.
 //!
-//! Provides all functionality required to create windows, interact with the Vulkan graphics
-//! API for drawing etc. as well as voxel functionality (at least in the future).
+//! This is the main module that provides all functionality required to create windows, interact 
+//! with the Vulkan graphics API for drawing etc. as well as voxel functionality (at least in the future).
 //!
 //! Module overview:
 //! - engine: Provides various game engine utilities (e.g. frame time/FPS measurement etc.)
@@ -276,6 +276,9 @@ impl Voxelar {
     /// This function is a wrapper around `Glfw::get_time`.
     ///
     /// It is used to get the current value of glfw's internal timer.
+    ///
+    /// The returned value is a floating point value, with whole numbers equaling whole seconds.
+    /// Therefore, A value of 5.0 is equal to 5 seconds, a value of 0.5 is equal to 500 milliseconds.
     ///
     /// Unless the time has been reset using `set_time`, this time is equal to the time since the
     /// context has been created.

@@ -52,7 +52,7 @@ pub struct Demo {
     vertex_shader_module: CompiledShaderModule,
     fragment_shader_module: CompiledShaderModule,
 
-    frame_time_manager: FrameTimeManager,
+    pub frame_time_manager: FrameTimeManager,
     camera_position: Point3<f32>,
 }
 
@@ -271,7 +271,11 @@ impl Demo {
     ) -> crate::Result<()> {
         let graphics_pipeline = self.pipelines[0];
 
-        window.set_title(&format!("FPS: {}", self.frame_time_manager.fps()));
+        window.set_title(&format!(
+            "FPS: {:.4}, Delta Time: {:.4}",
+            self.frame_time_manager.fps(),
+            self.frame_time_manager.delta_time()
+        ));
 
         unsafe {
             let current_frame_index =
@@ -362,12 +366,8 @@ impl Demo {
         Ok(())
     }
 
-    pub fn prepare_time_manager_frame(&mut self, context: &Voxelar) {
-        self.frame_time_manager.prepare_frame(context);
-    }
-
-    pub fn complete_time_manager_frame(&mut self, context: &Voxelar) {
-        self.frame_time_manager.complete_frame(context);
+    pub fn update_frame_time_manager(&mut self, context: &Voxelar) {
+        self.frame_time_manager.update(context);
     }
 
     pub fn destroy<V: VerificationProvider>(
