@@ -16,7 +16,7 @@ use voxelar::*;
 use crate::demo::Demo;
 
 fn main() -> Result<()> {
-    let mut ctx = Voxelar::new();
+    let mut ctx = Voxelar::new()?;
 
     ctx.window_hint(WindowHint::Visible(true));
     ctx.window_hint(WindowHint::ClientApi(ClientApiHint::NoApi));

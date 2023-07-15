@@ -8,6 +8,7 @@ pub enum VoxelarError {
     NulError(NulError),
     IOError(std::io::Error),
     Utf8Error(Utf8Error),
+    GlfwInitError(glfw::InitError),
     VkError(ash::vk::Result),
     VkLoadingError(ash::LoadingError),
 }
@@ -26,6 +27,7 @@ impl std::fmt::Display for VoxelarError {
             VoxelarError::NulError(err) => write_err!(f, NulError, err),
             VoxelarError::IOError(err) => write_err!(f, IOError, err),
             VoxelarError::Utf8Error(err) => write_err!(f, Utf8Error, err),
+            VoxelarError::GlfwInitError(err) => write_err!(f, GlfwInitError, err),
             VoxelarError::VkError(err) => write_err!(f, VkError, err),
             VoxelarError::VkLoadingError(err) => write_err!(f, VkLoadingError, err),
         }
@@ -47,6 +49,7 @@ error_impl_from!(String, Self::Custom);
 error_impl_from!(std::io::Error, Self::IOError);
 error_impl_from!(NulError, Self::NulError);
 error_impl_from!(Utf8Error, Self::Utf8Error);
+error_impl_from!(glfw::InitError, Self::GlfwInitError);
 error_impl_from!(ash::vk::Result, Self::VkError);
 error_impl_from!(ash::LoadingError, Self::VkLoadingError);
 
