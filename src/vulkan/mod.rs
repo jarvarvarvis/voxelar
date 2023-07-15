@@ -537,8 +537,8 @@ impl<Verification: VerificationProvider> RenderContext for VulkanContext<Verific
         }
     }
 
-    fn get_info(&self) -> crate::Result<String> {
-        todo!()
+    fn get_info<T>(&self) -> crate::Result<T> {
+        unimplemented!()
     }
 }
 
