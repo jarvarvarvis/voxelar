@@ -300,7 +300,7 @@ impl Demo {
                 },
             ];
 
-            vulkan_context.submit_render_pass_command(
+            vulkan_context.submit_immediate_render_pass_commands(
                 present_index,
                 &clear_values,
                 |device, draw_command_buffer| {

@@ -22,14 +22,35 @@ impl FrameData {
         })
     }
 
-    pub fn submit_to_draw_buffer<
+    pub fn wait_for_draw_buffer_fence(
+        &self,
+        virtual_device: &SetUpVirtualDevice,
+    ) -> crate::Result<()> {
+        let draw_command_buffer = self.command_logic.get_command_buffer(0);
+        draw_command_buffer.wait_for_fence(virtual_device)
+    }
+
+    pub fn reset_draw_buffer(&self, virtual_device: &SetUpVirtualDevice) -> crate::Result<()> {
+        let draw_command_buffer = self.command_logic.get_command_buffer(0);
+        draw_command_buffer.reset(virtual_device)
+    }
+
+    pub fn record_draw_buffer_commands<
         F: FnOnce(&SetUpVirtualDevice, &SetUpCommandBufferWithFence) -> crate::Result<()>,
     >(
         &self,
         virtual_device: &SetUpVirtualDevice,
+        f: F,
+    ) -> crate::Result<()> {
+        let draw_command_buffer = self.command_logic.get_command_buffer(0);
+        draw_command_buffer.record_commands(virtual_device, f)
+    }
+
+    pub fn submit_draw_buffer(
+        &self,
+        virtual_device: &SetUpVirtualDevice,
         present_queue: Queue,
         wait_mask: &[PipelineStageFlags],
-        f: F,
     ) -> crate::Result<()> {
         let draw_command_buffer = self.command_logic.get_command_buffer(0);
         draw_command_buffer.submit(
@@ -38,7 +59,6 @@ impl FrameData {
             wait_mask,
             &[self.sync_primitives.present_complete_semaphore],
             &[self.sync_primitives.rendering_complete_semaphore],
-            f,
         )
     }
 

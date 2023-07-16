@@ -28,25 +28,32 @@ impl SetUpCommandBufferWithFence {
         })
     }
 
-    pub fn submit<F: FnOnce(&SetUpVirtualDevice, &Self) -> crate::Result<()>>(
-        &self,
-        virtual_device: &SetUpVirtualDevice,
-        submit_queue: Queue,
-        wait_mask: &[PipelineStageFlags],
-        wait_semaphores: &[Semaphore],
-        signal_semaphores: &[Semaphore],
-        f: F,
-    ) -> crate::Result<()> {
+    pub fn wait_for_fence(&self, virtual_device: &SetUpVirtualDevice) -> crate::Result<()> {
         unsafe {
-            let device = &virtual_device.device;
-            device.wait_for_fences(&[self.reuse_fence], true, std::u64::MAX)?;
-            device.reset_fences(&[self.reuse_fence])?;
+            virtual_device
+                .device
+                .wait_for_fences(&[self.reuse_fence], true, std::u64::MAX)?;
+            virtual_device.device.reset_fences(&[self.reuse_fence])?;
+            Ok(())
+        }
+    }
 
-            device.reset_command_buffer(
+    pub fn reset(&self, virtual_device: &SetUpVirtualDevice) -> crate::Result<()> {
+        unsafe {
+            virtual_device.device.reset_command_buffer(
                 self.command_buffer,
                 CommandBufferResetFlags::RELEASE_RESOURCES,
             )?;
+            Ok(())
+        }
+    }
 
+    pub fn record_commands<F: FnOnce(&SetUpVirtualDevice, &Self) -> crate::Result<()>>(
+        &self,
+        virtual_device: &SetUpVirtualDevice,
+        f: F,
+    ) -> crate::Result<()> {
+        unsafe {
             let command_buffer_begin_info =
                 CommandBufferBeginInfo::builder().flags(CommandBufferUsageFlags::ONE_TIME_SUBMIT);
 
@@ -58,19 +65,32 @@ impl SetUpCommandBufferWithFence {
                 .device
                 .end_command_buffer(self.command_buffer)?;
 
-            let command_buffers = vec![self.command_buffer];
+            Ok(())
+        }
+    }
+
+    pub fn submit(
+        &self,
+        virtual_device: &SetUpVirtualDevice,
+        submit_queue: Queue,
+        wait_mask: &[PipelineStageFlags],
+        wait_semaphores: &[Semaphore],
+        signal_semaphores: &[Semaphore],
+    ) -> crate::Result<()> {
+        unsafe {
+            let device = &virtual_device.device;
 
             let submit_info = SubmitInfo::builder()
                 .wait_semaphores(wait_semaphores)
                 .wait_dst_stage_mask(wait_mask)
-                .command_buffers(&command_buffers)
+                .command_buffers(&[self.command_buffer])
                 .signal_semaphores(signal_semaphores)
                 .build();
 
             device.queue_submit(submit_queue, &[submit_info], self.reuse_fence)?;
-        }
 
-        Ok(())
+            Ok(())
+        }
     }
 
     pub fn destroy_fence(&mut self, virtual_device: &SetUpVirtualDevice) {

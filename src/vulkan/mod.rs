@@ -238,7 +238,7 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
             )?);
 
             let depth_image = self.depth_image()?;
-            self.submit_setup_command(|device, setup_command_buffer| {
+            self.submit_immediate_setup_commands(|device, setup_command_buffer| {
                 depth_image
                     .submit_pipeline_barrier_command(device, setup_command_buffer.command_buffer);
                 Ok(())
@@ -302,27 +302,24 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
 }
 
 impl<Verification: VerificationProvider> VulkanContext<Verification> {
-    pub fn submit_setup_command<F>(&self, command_buffer_op: F) -> crate::Result<()>
+    pub fn submit_immediate_setup_commands<F>(&self, command_buffer_op: F) -> crate::Result<()>
     where
         F: FnOnce(&SetUpVirtualDevice, &SetUpCommandBufferWithFence) -> crate::Result<()>,
     {
         let setup_command_buffer = self.command_logic_for_setup()?.get_command_buffer(0);
-        let present_queue = self.virtual_device()?.present_queue;
-        setup_command_buffer.submit(
-            self.virtual_device()?,
-            present_queue,
-            &[],
-            &[],
-            &[],
-            command_buffer_op,
-        )
+        let virtual_device = self.virtual_device()?;
+        let present_queue = virtual_device.present_queue;
+        setup_command_buffer.wait_for_fence(virtual_device)?;
+        setup_command_buffer.reset(virtual_device)?;
+        setup_command_buffer.record_commands(virtual_device, command_buffer_op)?;
+        setup_command_buffer.submit(self.virtual_device()?, present_queue, &[], &[], &[])
     }
 
     pub fn select_frame(&mut self, current_frame_index: usize) {
         self.frames.select(current_frame_index);
     }
 
-    pub fn submit_render_pass_command<F>(
+    pub fn submit_immediate_render_pass_commands<F>(
         &self,
         present_index: u32,
         clear_values: &[ClearValue],
@@ -331,6 +328,8 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
     where
         F: FnOnce(&SetUpVirtualDevice, &SetUpCommandBufferWithFence) -> crate::Result<()>,
     {
+        let virtual_device = self.virtual_device()?;
+
         let surface_resolution = self.swapchain()?.surface_extent;
         let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
             .render_pass(self.render_pass()?.render_pass)
@@ -339,12 +338,12 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
             .clear_values(clear_values);
 
         let current_frame = self.frames.current();
-        let present_queue = self.virtual_device()?.present_queue;
+        let present_queue = virtual_device.present_queue;
 
-        current_frame.submit_to_draw_buffer(
-            self.virtual_device()?,
-            present_queue,
-            &[PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT],
+        current_frame.wait_for_draw_buffer_fence(virtual_device)?;
+        current_frame.reset_draw_buffer(virtual_device)?;
+        current_frame.record_draw_buffer_commands(
+            virtual_device,
             |device, draw_command_buffer| {
                 let vk_device = &device.device;
                 unsafe {
@@ -358,6 +357,11 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
                     Ok(())
                 }
             },
+        )?;
+        current_frame.submit_draw_buffer(
+            self.virtual_device()?,
+            present_queue,
+            &[PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT],
         )?;
 
         Ok(())
