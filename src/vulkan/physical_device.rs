@@ -3,7 +3,10 @@ use std::ffi::CStr;
 use ash::extensions::khr::Surface;
 use ash::vk::Extent2D;
 use ash::vk::{MemoryPropertyFlags, MemoryRequirements};
-use ash::vk::{PhysicalDevice, PhysicalDeviceMemoryProperties, PhysicalDeviceProperties};
+use ash::vk::{
+    PhysicalDevice, PhysicalDeviceFeatures, PhysicalDeviceMemoryProperties,
+    PhysicalDeviceProperties,
+};
 use ash::vk::{QueueFamilyProperties, QueueFlags};
 use ash::vk::{SurfaceCapabilitiesKHR, SurfaceFormatKHR, SurfaceKHR};
 use ash::Instance;
@@ -14,6 +17,7 @@ pub struct SetUpPhysicalDevice {
     pub device: PhysicalDevice,
     pub device_properties: PhysicalDeviceProperties,
     pub device_memory_properties: PhysicalDeviceMemoryProperties,
+    pub device_features: PhysicalDeviceFeatures,
 
     pub queue_family_index: u32,
 
@@ -71,11 +75,13 @@ impl SetUpPhysicalDevice {
             surface_loader.get_physical_device_surface_formats(device, surface)?[0];
         let surface_capabilities =
             surface_loader.get_physical_device_surface_capabilities(device, surface)?;
+        let device_features = instance.get_physical_device_features(device);
 
         Ok(Self {
             device,
             device_memory_properties,
             device_properties,
+            device_features,
             queue_family_index: queue_family_index as u32,
             surface_format,
             surface_capabilities,
