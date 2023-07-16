@@ -160,11 +160,11 @@ impl SetUpDepthImage {
         unsafe {
             virtual_device
                 .device
-                .free_memory(self.depth_image_memory, None);
-            virtual_device
-                .device
                 .destroy_image_view(self.depth_image_view, None);
             virtual_device.device.destroy_image(self.depth_image, None);
+            virtual_device
+                .device
+                .free_memory(self.depth_image_memory, None);
         }
     }
 }

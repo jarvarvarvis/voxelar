@@ -87,8 +87,8 @@ impl AllocatedBuffer {
 
     pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice) {
         unsafe {
-            virtual_device.device.free_memory(self.buffer_memory, None);
             virtual_device.device.destroy_buffer(self.buffer, None);
+            virtual_device.device.free_memory(self.buffer_memory, None);
         }
     }
 }
