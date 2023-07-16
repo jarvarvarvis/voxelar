@@ -28,8 +28,9 @@ impl DescriptorSetLayoutBuilder {
             .binding(binding)
             .descriptor_count(descriptor_count)
             .descriptor_type(descriptor_type)
-            .stage_flags(stage_flags);
-        self.bindings.push(*descriptor_set_layout_binding);
+            .stage_flags(stage_flags)
+            .build();
+        self.bindings.push(descriptor_set_layout_binding);
         self
     }
 
@@ -40,10 +41,11 @@ impl DescriptorSetLayoutBuilder {
         unsafe {
             let descriptor_set_layout_create_info = DescriptorSetLayoutCreateInfo::builder()
                 .flags(DescriptorSetLayoutCreateFlags::empty())
-                .bindings(&self.bindings);
+                .bindings(&self.bindings)
+                .build();
             SetUpDescriptorSetLayout::create_from_build_info(
                 virtual_device,
-                *descriptor_set_layout_create_info,
+                descriptor_set_layout_create_info,
             )
         }
     }

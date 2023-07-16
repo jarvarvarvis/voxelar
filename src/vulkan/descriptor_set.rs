@@ -4,6 +4,7 @@ use ash::vk::{DescriptorSet, DescriptorType, WriteDescriptorSet};
 use super::typed_buffer::TypedAllocatedBuffer;
 use super::virtual_device::SetUpVirtualDevice;
 
+#[repr(transparent)]
 pub struct SetUpDescriptorSet {
     pub descriptor_set: DescriptorSet,
 }
@@ -43,7 +44,7 @@ impl SetUpDescriptorSet {
         }
     }
 
-    pub fn attach_uniform_buffer_to_descriptor<T>(
+    pub fn write_uniform_buffer_to_descriptor<T>(
         &self,
         virtual_device: &SetUpVirtualDevice,
         buffer: &TypedAllocatedBuffer<T>,

@@ -1,5 +1,5 @@
-use ash::vk::DescriptorSetAllocateInfo;
 use ash::vk::{DescriptorPool, DescriptorPoolCreateInfo, DescriptorSetLayout};
+use ash::vk::{DescriptorSet, DescriptorSetAllocateInfo};
 
 use super::descriptor_set::SetUpDescriptorSet;
 use super::virtual_device::SetUpVirtualDevice;
@@ -40,6 +40,12 @@ impl SetUpDescriptorSetLogic {
 
     pub fn get_set(&self, index: usize) -> &SetUpDescriptorSet {
         &self.descriptor_sets[index]
+    }
+
+    pub fn get_descriptor_sets(&self) -> &[DescriptorSet] {
+        unsafe {
+            std::mem::transmute::<&[SetUpDescriptorSet], &[DescriptorSet]>(&self.descriptor_sets)
+        }
     }
 
     pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice) {

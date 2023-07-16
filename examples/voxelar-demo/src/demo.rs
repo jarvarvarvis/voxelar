@@ -39,7 +39,7 @@ pub struct DemoDescriptorSetData {
 }
 
 pub struct Demo {
-    global_set_layout: SetUpDescriptorSetLayout,
+    descriptor_set_layouts: Vec<SetUpDescriptorSetLayout>,
     per_frame_descriptor_set_data: PerFrame<DemoDescriptorSetData>,
 
     pipeline_layout: SetUpPipelineLayout,
@@ -67,19 +67,20 @@ impl Demo {
 
         let global_set_layout = DescriptorSetLayoutBuilder::new()
             .add_binding(
-                0, // In the shader, this will specify set = 0 in the uniform layout
+                0, // In the shader, this will specify binding = 0 in the uniform layout
                 1,
                 DescriptorType::UNIFORM_BUFFER,
                 ShaderStageFlags::VERTEX,
             )
             .build(virtual_device)?;
+        let descriptor_set_layouts = vec![global_set_layout];
 
         let per_frame_descriptor_set_data = PerFrame::try_init(
             |_| {
                 let descriptor_set_logic = DescriptorSetLogicBuilder::new()
                     .max_sets(1)
                     .add_pool_size(DescriptorType::UNIFORM_BUFFER, 1)
-                    .set_layouts(std::slice::from_ref(&global_set_layout))
+                    .set_layouts(&descriptor_set_layouts)
                     .build(virtual_device)?;
 
                 let camera_buffer =
@@ -89,11 +90,11 @@ impl Demo {
                     )?;
 
                 let camera_descriptor_set = descriptor_set_logic.get_set(0);
-                camera_descriptor_set.attach_uniform_buffer_to_descriptor(
+                camera_descriptor_set.write_uniform_buffer_to_descriptor(
                     virtual_device,
                     &camera_buffer,
                     0,
-                    0, // In the shader, this will specify binding = 0 in the uniform layout
+                    0, // The destination of this resource is binding = 0
                 )?;
 
                 Ok(DemoDescriptorSetData {
@@ -105,7 +106,7 @@ impl Demo {
         )?;
 
         let pipeline_layout = PipelineLayoutBuilder::new()
-            .set_layouts(std::slice::from_ref(&global_set_layout))
+            .set_layouts(&descriptor_set_layouts)
             .build(virtual_device)?;
 
         let surface_resolution = vulkan_context.swapchain()?.surface_extent;
@@ -185,7 +186,7 @@ impl Demo {
             .build(&virtual_device, &render_pass, &pipeline_layout)?;
 
         Ok(Self {
-            global_set_layout,
+            descriptor_set_layouts,
             per_frame_descriptor_set_data,
 
             pipeline_layout,
@@ -329,7 +330,7 @@ impl Demo {
                     );
 
                     let mvp_matrix = self.update_camera_and_get_mvp_matrix(window.aspect_ratio());
-                    let current_descriptor_data = &self.per_frame_descriptor_set_data.current();
+                    let current_descriptor_data = self.per_frame_descriptor_set_data.current();
                     let camera_buffer = DemoCameraBuffer { mvp_matrix };
                     current_descriptor_data
                         .camera_buffer
@@ -340,10 +341,9 @@ impl Demo {
                         vk::PipelineBindPoint::GRAPHICS,
                         self.pipeline_layout.pipeline_layout,
                         0,
-                        &[current_descriptor_data
+                        current_descriptor_data
                             .descriptor_set_logic
-                            .get_set(0)
-                            .descriptor_set],
+                            .get_descriptor_sets(),
                         &[],
                     );
 
@@ -383,7 +383,9 @@ impl Demo {
                 descriptor_data.descriptor_set_logic.destroy(virtual_device);
             }
 
-            self.global_set_layout.destroy(virtual_device);
+            for descriptor_set_layout in self.descriptor_set_layouts.iter_mut() {
+                descriptor_set_layout.destroy(virtual_device);
+            }
             self.pipeline_layout.destroy(virtual_device);
 
             let device = &virtual_device.device;
