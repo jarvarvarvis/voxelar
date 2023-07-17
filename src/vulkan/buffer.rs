@@ -56,33 +56,39 @@ impl AllocatedBuffer {
         })
     }
 
-    pub unsafe fn get_buffer_memory_req(
+    pub fn get_buffer_memory_req(
         &self,
         virtual_device: &SetUpVirtualDevice,
     ) -> MemoryRequirements {
-        virtual_device
-            .device
-            .get_buffer_memory_requirements(self.buffer)
+        unsafe {
+            virtual_device
+                .device
+                .get_buffer_memory_requirements(self.buffer)
+        }
     }
 
-    pub unsafe fn map_memory(
+    pub fn map_memory(
         &self,
         virtual_device: &SetUpVirtualDevice,
     ) -> crate::Result<*mut c_void> {
-        let buffer_memory_req = virtual_device
-            .device
-            .get_buffer_memory_requirements(self.buffer);
-        let buffer_ptr = virtual_device.device.map_memory(
-            self.buffer_memory,
-            0,
-            buffer_memory_req.size,
-            MemoryMapFlags::empty(),
-        )?;
-        Ok(buffer_ptr)
+        unsafe {
+            let buffer_memory_req = virtual_device
+                .device
+                .get_buffer_memory_requirements(self.buffer);
+            let buffer_ptr = virtual_device.device.map_memory(
+                self.buffer_memory,
+                0,
+                buffer_memory_req.size,
+                MemoryMapFlags::empty(),
+            )?;
+            Ok(buffer_ptr)
+        }
     }
 
-    pub unsafe fn unmap_memory(&self, virtual_device: &SetUpVirtualDevice) {
-        virtual_device.device.unmap_memory(self.buffer_memory);
+    pub fn unmap_memory(&self, virtual_device: &SetUpVirtualDevice) {
+        unsafe {
+            virtual_device.device.unmap_memory(self.buffer_memory);
+        }
     }
 
     pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice) {

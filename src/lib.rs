@@ -18,6 +18,8 @@
 //! - shaderc: Bindings for the Shaderc library
 //! - nalgebra: A linear algebra library
 
+#![feature(pointer_byte_offsets)]
+
 pub extern crate ash;
 pub extern crate glfw;
 pub extern crate nalgebra;

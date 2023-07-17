@@ -3,8 +3,7 @@
 #extension GL_ARB_shading_language_420pack : enable
 
 layout (location = 0) in vec3 pos;
-
-layout (location = 0) out vec4 o_color;
+layout (location = 0) out vec3 vertex_color;
 
 layout (set = 0, binding = 0) uniform camera_buffer
 {
@@ -13,5 +12,5 @@ layout (set = 0, binding = 0) uniform camera_buffer
 
 void main() {
     gl_Position = CameraBuffer.mvp_matrix * vec4(pos, 1.0);
-    o_color = vec4(1.0 - (pos + vec3(1.0)) / 2.0, 1.0);
+    vertex_color = 1.0 - (pos + vec3(1.0)) / 2.0;
 }

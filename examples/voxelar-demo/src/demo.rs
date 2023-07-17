@@ -8,12 +8,15 @@ use voxelar::nalgebra::Point3;
 use voxelar::nalgebra::Rotation3;
 use voxelar::nalgebra::Translation3;
 use voxelar::nalgebra::Vector3;
+use voxelar::nalgebra::Vector4;
 use voxelar::shaderc::ShaderKind;
 use voxelar::vulkan::debug::VerificationProvider;
 use voxelar::vulkan::descriptor_set_layout::SetUpDescriptorSetLayout;
 use voxelar::vulkan::descriptor_set_layout_builder::DescriptorSetLayoutBuilder;
 use voxelar::vulkan::descriptor_set_logic::SetUpDescriptorSetLogic;
 use voxelar::vulkan::descriptor_set_logic_builder::DescriptorSetLogicBuilder;
+use voxelar::vulkan::descriptor_set_update_builder::DescriptorSetUpdateBuilder;
+use voxelar::vulkan::dynamic_descriptor_buffer::DynamicDescriptorBuffer;
 use voxelar::vulkan::graphics_pipeline_builder::GraphicsPipelineBuilder;
 use voxelar::vulkan::per_frame::PerFrame;
 use voxelar::vulkan::pipeline_layout::SetUpPipelineLayout;
@@ -30,7 +33,7 @@ use crate::vertex::Vertex;
 
 #[repr(C)]
 pub struct DemoCameraBuffer {
-    pub mvp_matrix: Matrix4<f32>,
+    mvp_matrix: Matrix4<f32>,
 }
 
 pub struct DemoDescriptorSetData {
@@ -38,9 +41,19 @@ pub struct DemoDescriptorSetData {
     camera_buffer: TypedAllocatedBuffer<DemoCameraBuffer>,
 }
 
+#[repr(C)]
+pub struct DemoSceneBuffer {
+    ambient_color: Vector4<f32>,
+}
+
+pub struct DemoSceneData {
+    scene_buffer: DynamicDescriptorBuffer<DemoSceneBuffer>,
+}
+
 pub struct Demo {
     descriptor_set_layouts: Vec<SetUpDescriptorSetLayout>,
     per_frame_descriptor_set_data: PerFrame<DemoDescriptorSetData>,
+    scene_data: DemoSceneData,
 
     pipeline_layout: SetUpPipelineLayout,
     pipelines: Vec<vk::Pipeline>,
@@ -72,16 +85,32 @@ impl Demo {
                 DescriptorType::UNIFORM_BUFFER,
                 ShaderStageFlags::VERTEX,
             )
+            .add_binding(
+                1, // In the shader, this will specify binding = 1 in the uniform layout
+                1,
+                DescriptorType::UNIFORM_BUFFER_DYNAMIC,
+                ShaderStageFlags::FRAGMENT,
+            )
             .build(virtual_device)?;
         let descriptor_set_layouts = vec![global_set_layout];
+
+        let scene_data = DemoSceneData {
+            scene_buffer: DynamicDescriptorBuffer::allocate_uniform_buffer(
+                virtual_device,
+                physical_device,
+                vulkan_context.frame_overlap(),
+            )?,
+        };
 
         let per_frame_descriptor_set_data = PerFrame::try_init(
             |_| {
                 let descriptor_set_logic = DescriptorSetLogicBuilder::new()
                     .max_sets(1)
                     .add_pool_size(DescriptorType::UNIFORM_BUFFER, 1)
+                    .add_pool_size(DescriptorType::UNIFORM_BUFFER_DYNAMIC, 1)
                     .set_layouts(&descriptor_set_layouts)
                     .build(virtual_device)?;
+                let destination_set = descriptor_set_logic.get_set(0);
 
                 let camera_buffer =
                     TypedAllocatedBuffer::<DemoCameraBuffer>::allocate_uniform_buffer(
@@ -89,13 +118,15 @@ impl Demo {
                         physical_device,
                     )?;
 
-                let camera_descriptor_set = descriptor_set_logic.get_set(0);
-                camera_descriptor_set.write_uniform_buffer_to_descriptor(
-                    virtual_device,
-                    &camera_buffer,
-                    0,
-                    0, // The destination of this resource is binding = 0
-                )?;
+                DescriptorSetUpdateBuilder::new()
+                    .destination_set(*destination_set)
+                    .add_typed_buffer_write(&camera_buffer, 0, DescriptorType::UNIFORM_BUFFER)?
+                    .add_dynamic_descriptor_buffer_write(
+                        &scene_data.scene_buffer,
+                        1,
+                        DescriptorType::UNIFORM_BUFFER_DYNAMIC,
+                    )?
+                    .update(virtual_device)?;
 
                 Ok(DemoDescriptorSetData {
                     descriptor_set_logic,
@@ -188,6 +219,7 @@ impl Demo {
         Ok(Self {
             descriptor_set_layouts,
             per_frame_descriptor_set_data,
+            scene_data,
 
             pipeline_layout,
             pipelines: vec![graphics_pipeline],
@@ -279,8 +311,8 @@ impl Demo {
         ));
 
         unsafe {
-            let current_frame_index =
-                self.frame_time_manager.total_frames() as usize % vulkan_context.frame_overlap();
+            let total_frames = self.frame_time_manager.total_frames();
+            let current_frame_index = total_frames as usize % vulkan_context.frame_overlap();
             vulkan_context.select_frame(current_frame_index);
             self.per_frame_descriptor_set_data
                 .select(current_frame_index);
@@ -336,15 +368,27 @@ impl Demo {
                         .camera_buffer
                         .store(device, camera_buffer)?;
 
+                    let scene_buffer = DemoSceneBuffer {
+                        ambient_color: Vector4::new(0.0, 0.0, 0.0, 0.0),
+                    };
+                    self.scene_data.scene_buffer.store_at(
+                        device,
+                        scene_buffer,
+                        current_frame_index,
+                    )?;
+
+                    let scene_data_offset = self
+                        .scene_data
+                        .scene_buffer
+                        .get_dynamic_offset(current_frame_index);
+
                     vk_device.cmd_bind_descriptor_sets(
                         draw_command_buffer,
                         vk::PipelineBindPoint::GRAPHICS,
                         self.pipeline_layout.pipeline_layout,
                         0,
-                        current_descriptor_data
-                            .descriptor_set_logic
-                            .get_descriptor_sets(),
-                        &[],
+                        &current_descriptor_data.descriptor_set_logic.descriptor_sets,
+                        &[scene_data_offset],
                     );
 
                     vk_device.cmd_draw_indexed(
@@ -378,6 +422,8 @@ impl Demo {
 
         virtual_device.wait();
         unsafe {
+            self.scene_data.scene_buffer.destroy(virtual_device);
+
             for descriptor_data in self.per_frame_descriptor_set_data.iter_mut() {
                 descriptor_data.camera_buffer.destroy(virtual_device);
                 descriptor_data.descriptor_set_logic.destroy(virtual_device);

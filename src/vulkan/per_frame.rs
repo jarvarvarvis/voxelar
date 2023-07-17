@@ -42,6 +42,10 @@ impl<T> PerFrame<T> {
         self.values.len()
     }
 
+    pub fn current_frame_index(&self) -> usize {
+        self.current_frame_index
+    }
+
     pub fn select(&mut self, current_frame_index: usize) {
         self.current_frame_index = current_frame_index;
     }

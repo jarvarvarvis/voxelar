@@ -36,7 +36,7 @@ fn main() -> Result<()> {
     };
     vulkan_context.create_default_data_structures(window.get_size(), creation_info)?;
 
-    let phys_device = vulkan_context.physical_device.as_ref().unwrap();
+    let phys_device = vulkan_context.physical_device()?;
     println!("Found physical device: {:?}", phys_device.name());
 
     let mut demo = Demo::new(&ctx, &vulkan_context)?;
