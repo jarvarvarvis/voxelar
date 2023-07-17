@@ -76,7 +76,11 @@ impl<T> DynamicDescriptorBuffer<T> {
     ) -> crate::Result<()> {
         let ptr = self.map_memory(virtual_device)?;
         let offset = self.get_dynamic_offset(index);
-        *(ptr.byte_offset(offset as isize)) = value;
+
+        // Need to cast to *mut u8 to allow byte-level offsets
+        let ptr = ptr.cast::<u8>().offset(offset as isize).cast();
+        *ptr = value;
+
         self.unmap_memory(virtual_device);
         Ok(())
     }
