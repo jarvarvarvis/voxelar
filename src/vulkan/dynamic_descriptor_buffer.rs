@@ -1,6 +1,7 @@
 use std::marker::PhantomData;
 
 use ash::vk::BufferUsageFlags;
+use ash::vk::MappedMemoryRange;
 use ash::vk::MemoryPropertyFlags;
 use ash::vk::SharingMode;
 
@@ -54,7 +55,7 @@ impl<T> DynamicDescriptorBuffer<T> {
             count,
             BufferUsageFlags::UNIFORM_BUFFER,
             SharingMode::EXCLUSIVE,
-            MemoryPropertyFlags::HOST_VISIBLE | MemoryPropertyFlags::HOST_COHERENT,
+            MemoryPropertyFlags::HOST_VISIBLE,
         )
     }
 
@@ -66,6 +67,24 @@ impl<T> DynamicDescriptorBuffer<T> {
 
     pub unsafe fn unmap_memory(&self, virtual_device: &SetUpVirtualDevice) {
         self.buffer.unmap_memory(virtual_device);
+    }
+
+    pub unsafe fn flush_memory(
+        &self,
+        virtual_device: &SetUpVirtualDevice,
+        index: usize,
+    ) -> crate::Result<()> {
+        let offset = self.get_dynamic_offset(index);
+        let memory_range = MappedMemoryRange::builder()
+            .memory(self.buffer.buffer_memory)
+            .size(self.aligned_size_of_type)
+            .offset(offset as u64)
+            .build();
+
+        virtual_device
+            .device
+            .flush_mapped_memory_ranges(&[memory_range])?;
+        Ok(())
     }
 
     pub unsafe fn store_at(
@@ -81,6 +100,7 @@ impl<T> DynamicDescriptorBuffer<T> {
         let ptr = ptr.cast::<u8>().offset(offset as isize).cast();
         *ptr = value;
 
+        self.flush_memory(virtual_device, index)?;
         self.unmap_memory(virtual_device);
         Ok(())
     }

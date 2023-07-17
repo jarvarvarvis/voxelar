@@ -10,6 +10,7 @@ use super::dynamic_descriptor_buffer::DynamicDescriptorBuffer;
 use super::typed_buffer::TypedAllocatedBuffer;
 use super::virtual_device::SetUpVirtualDevice;
 
+#[derive(Debug)]
 pub struct WriteDescriptorSetParams {
     buffer_info: DescriptorBufferInfo,
     destination_binding: u32,
@@ -77,7 +78,7 @@ impl DescriptorSetUpdateBuilder {
         destination_binding: u32,
         descriptor_type: DescriptorType,
     ) -> crate::Result<Self> {
-        let range = std::mem::size_of::<T>() as u64;
+        let range = buffer.aligned_size_of_type;
         self.add_buffer_write(
             &buffer.buffer,
             destination_binding,
@@ -90,7 +91,7 @@ impl DescriptorSetUpdateBuilder {
     pub fn update(self, virtual_device: &SetUpVirtualDevice) -> crate::Result<()> {
         unsafe {
             let mut writes = Vec::with_capacity(self.write_params.len());
-            for params in self.write_params.into_iter() {
+            for params in self.write_params.iter() {
                 let destination_set = self
                     .destination_set
                     .context("No destination descriptor set specified".to_string())?;
@@ -98,7 +99,7 @@ impl DescriptorSetUpdateBuilder {
                     .dst_binding(params.destination_binding)
                     .dst_set(destination_set)
                     .descriptor_type(params.descriptor_type)
-                    .buffer_info(&[params.buffer_info])
+                    .buffer_info(std::slice::from_ref(&params.buffer_info))
                     .build();
                 writes.push(write);
             }

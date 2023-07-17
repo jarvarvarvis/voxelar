@@ -10,7 +10,6 @@ use super::virtual_device::SetUpVirtualDevice;
 #[derive(Default)]
 pub struct DescriptorSetLogicBuilder<'builder> {
     pool_sizes: Vec<DescriptorPoolSize>,
-    max_sets: u32,
     set_layouts: Option<&'builder [SetUpDescriptorSetLayout]>,
 }
 
@@ -22,13 +21,9 @@ impl<'builder> DescriptorSetLogicBuilder<'builder> {
     pub fn add_pool_size(mut self, descriptor_type: DescriptorType, descriptor_count: u32) -> Self {
         let pool_size = DescriptorPoolSize::builder()
             .ty(descriptor_type)
-            .descriptor_count(descriptor_count);
-        self.pool_sizes.push(*pool_size);
-        self
-    }
-
-    pub fn max_sets(mut self, max_sets: u32) -> Self {
-        self.max_sets = max_sets;
+            .descriptor_count(descriptor_count)
+            .build();
+        self.pool_sizes.push(pool_size);
         self
     }
 
@@ -45,10 +40,10 @@ impl<'builder> DescriptorSetLogicBuilder<'builder> {
             let set_layouts = self
                 .set_layouts
                 .context("Descriptor set layouts must be set".to_string())?;
-            
+
             let descriptor_pool_create_info = DescriptorPoolCreateInfo::builder()
                 .flags(DescriptorPoolCreateFlags::empty())
-                .max_sets(self.max_sets)
+                .max_sets(set_layouts.len() as u32)
                 .pool_sizes(&self.pool_sizes);
 
             // SAFETY: Transmuting the set_layouts slice is safe because

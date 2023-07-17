@@ -11,5 +11,5 @@ layout (set = 0, binding = 1) uniform scene_buffer
 } SceneBuffer;
 
 void main() {
-    uFragColor = vec4(vertex_color, 1.0);
+    uFragColor = vec4(SceneBuffer.ambient_color.xyz * vertex_color, 1.0);
 }
