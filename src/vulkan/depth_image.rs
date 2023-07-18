@@ -1,9 +1,7 @@
-use ash::extensions::khr::Surface;
 use ash::vk::CommandBuffer;
 use ash::vk::Extent2D;
 use ash::vk::Format;
 use ash::vk::SharingMode;
-use ash::vk::SurfaceKHR;
 use ash::vk::{AccessFlags, DependencyFlags, PipelineStageFlags, SampleCountFlags};
 use ash::vk::{DeviceMemory, MemoryAllocateInfo, MemoryPropertyFlags};
 use ash::vk::{
@@ -15,6 +13,7 @@ use ash::vk::{
 use crate::result::Context;
 
 use super::physical_device::SetUpPhysicalDevice;
+use super::surface::SetUpSurfaceInfo;
 use super::virtual_device::SetUpVirtualDevice;
 
 pub struct SetUpDepthImage {
@@ -99,17 +98,9 @@ impl SetUpDepthImage {
     pub unsafe fn create_with_defaults(
         physical_device: &SetUpPhysicalDevice,
         virtual_device: &SetUpVirtualDevice,
-        surface_loader: &Surface,
-        surface: SurfaceKHR,
-        window_width: u32,
-        window_height: u32,
+        surface_info: &SetUpSurfaceInfo,
     ) -> crate::Result<Self> {
-        let surface_extent = physical_device.get_surface_extent(
-            surface_loader,
-            surface,
-            window_width,
-            window_width,
-        )?;
+        let surface_extent = surface_info.surface_extent()?;
 
         Self::create(
             physical_device,

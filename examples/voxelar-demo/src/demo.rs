@@ -51,7 +51,7 @@ pub struct PerFrameData {
 }
 
 pub struct Demo {
-    recreate_swapchain: bool,
+    pub recreate_swapchain: bool,
     viewport: vk::Viewport,
     scissor: vk::Rect2D,
 
@@ -142,7 +142,7 @@ impl Demo {
             .set_layouts(&descriptor_set_layouts)
             .build(virtual_device)?;
 
-        let surface_resolution = vulkan_context.swapchain()?.surface_extent;
+        let surface_resolution = vulkan_context.get_surface_extent()?;
         let surface_width = surface_resolution.width;
         let surface_height = surface_resolution.height;
 
@@ -250,32 +250,18 @@ impl Demo {
     fn update_viewports_and_scissors<V: VerificationProvider>(
         &mut self,
         vulkan_context: &VulkanContext<V>,
-        new_width: i32,
-        new_height: i32,
     ) -> crate::Result<()> {
+        let surface_extent = vulkan_context.get_surface_extent()?;
         self.viewport = vk::Viewport {
             x: 0.0,
             y: 0.0,
-            width: new_width as f32,
-            height: new_height as f32,
+            width: surface_extent.width as f32,
+            height: surface_extent.height as f32,
             min_depth: 0.0,
             max_depth: 1.0,
         };
-        let surface_extent =
-            vulkan_context.get_surface_extent(new_width as u32, new_height as u32)?;
         self.scissor = surface_extent.into();
 
-        Ok(())
-    }
-
-    pub fn update_size<V: VerificationProvider>(
-        &mut self,
-        vulkan_context: &mut VulkanContext<V>,
-        new_width: i32,
-        new_height: i32,
-    ) -> crate::Result<()> {
-        self.recreate_swapchain = true;
-        self.update_viewports_and_scissors(vulkan_context, new_width, new_height)?;
         Ok(())
     }
 
@@ -320,6 +306,7 @@ impl Demo {
                 let new_size = window.get_size();
                 vulkan_context
                     .recreate_swapchain_and_related_data_structures_with_size(new_size)?;
+                self.update_viewports_and_scissors(vulkan_context)?;
                 self.recreate_swapchain = false;
 
                 return Ok(());

@@ -1,31 +1,27 @@
-use ash::extensions::khr::{Surface, Swapchain};
-use ash::vk::Extent2D;
+use ash::extensions::khr::Swapchain;
+use ash::vk::CompositeAlphaFlagsKHR;
 use ash::vk::ImageUsageFlags;
 use ash::vk::PresentModeKHR;
 use ash::vk::SharingMode;
-use ash::vk::{CompositeAlphaFlagsKHR, SurfaceFormatKHR};
-use ash::vk::{SurfaceKHR, SurfaceTransformFlagsKHR};
+use ash::vk::SurfaceTransformFlagsKHR;
 use ash::vk::{SwapchainCreateInfoKHR, SwapchainKHR};
 use ash::Instance;
 
 use super::creation_info::PresentModeInitMode;
 use super::physical_device::SetUpPhysicalDevice;
+use super::surface::SetUpSurfaceInfo;
 use super::virtual_device::SetUpVirtualDevice;
 
 pub struct SetUpSwapchain {
     pub swapchain_loader: Swapchain,
     pub swapchain: SwapchainKHR,
-
-    pub surface_extent: Extent2D,
 }
 
 impl SetUpSwapchain {
     pub unsafe fn create(
         instance: &Instance,
-        surface: SurfaceKHR,
+        surface_info: &SetUpSurfaceInfo,
         desired_image_count: u32,
-        surface_extent: Extent2D,
-        surface_format: SurfaceFormatKHR,
         image_usage: ImageUsageFlags,
         image_sharing_mode: SharingMode,
         pre_transform: SurfaceTransformFlagsKHR,
@@ -39,8 +35,11 @@ impl SetUpSwapchain {
     ) -> crate::Result<Self> {
         let swapchain_loader = Swapchain::new(&instance, &virtual_device.device);
 
+        let surface_format = surface_info.surface_format(0)?;
+        let surface_extent = surface_info.surface_extent()?;
+
         let mut swapchain_create_info = SwapchainCreateInfoKHR::builder()
-            .surface(surface)
+            .surface(surface_info.surface)
             .min_image_count(desired_image_count)
             .image_color_space(surface_format.color_space)
             .image_format(surface_format.format)
@@ -62,23 +61,18 @@ impl SetUpSwapchain {
         Ok(Self {
             swapchain_loader,
             swapchain,
-            surface_extent,
         })
     }
 
     pub unsafe fn create_with_defaults(
         instance: &Instance,
-        surface_loader: &Surface,
-        surface: SurfaceKHR,
+        surface_info: &SetUpSurfaceInfo,
         physical_device: &SetUpPhysicalDevice,
         virtual_device: &SetUpVirtualDevice,
-        window_width: u32,
-        window_height: u32,
         present_mode_init_mode: PresentModeInitMode,
         old_swapchain: Option<&SetUpSwapchain>,
     ) -> crate::Result<Self> {
-        let surface_capabilities =
-            &physical_device.get_surface_capabilities(surface_loader, surface)?;
+        let surface_capabilities = surface_info.surface_capabilities()?;
 
         let mut desired_image_count = surface_capabilities.min_image_count + 1;
         if surface_capabilities.max_image_count > 0
@@ -87,14 +81,8 @@ impl SetUpSwapchain {
             desired_image_count = surface_capabilities.max_image_count;
         }
 
-        let surface_extent = physical_device.get_surface_extent(
-            surface_loader,
-            surface,
-            window_width,
-            window_height,
-        )?;
-
-        let surface_format = physical_device.get_surface_format(surface_loader, surface)?;
+        let surface_extent = surface_info.surface_extent()?;
+        let surface_format = surface_info.surface_format(0)?;
 
         let pre_transform = if surface_capabilities
             .supported_transforms
@@ -105,17 +93,13 @@ impl SetUpSwapchain {
             surface_capabilities.current_transform
         };
 
-        let present_modes = surface_loader
-            .get_physical_device_surface_present_modes(physical_device.device, surface)
-            .unwrap();
+        let present_modes = surface_info.surface_present_modes()?;
         let present_mode = present_mode_init_mode.find_present_mode(present_modes)?;
 
         Self::create(
             instance,
-            surface,
+            surface_info,
             desired_image_count,
-            surface_extent,
-            surface_format,
             ImageUsageFlags::COLOR_ATTACHMENT,
             SharingMode::EXCLUSIVE,
             pre_transform,

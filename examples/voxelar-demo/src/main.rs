@@ -47,7 +47,7 @@ fn main() -> Result<()> {
 
         ctx.poll_events();
         for event in events.flush() {
-            handle_window_event(&mut vulkan_context, &mut demo, &mut window, event)?;
+            handle_window_event(&mut demo, &mut window, event)?;
         }
     }
 
@@ -56,16 +56,15 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn handle_window_event<V: VerificationProvider>(
-    vulkan_context: &mut VulkanContext<V>,
+fn handle_window_event(
     triangle_demo: &mut Demo,
     window: &mut VoxelarWindow,
     event: glfw::WindowEvent,
 ) -> crate::Result<()> {
     match event {
         glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => window.set_should_close(true),
-        glfw::WindowEvent::FramebufferSize(width, height) => {
-            triangle_demo.update_size(vulkan_context, width, height)?
+        glfw::WindowEvent::FramebufferSize(_, _) => {
+            triangle_demo.recreate_swapchain = true;
         }
         _ => {}
     }

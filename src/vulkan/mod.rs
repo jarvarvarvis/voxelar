@@ -3,7 +3,6 @@ use std::ffi::{c_char, CStr, CString};
 use paste::paste;
 
 use ash::extensions::ext::DebugUtils;
-use ash::extensions::khr::Surface;
 use ash::vk;
 use ash::vk::ApplicationInfo;
 use ash::vk::ClearValue;
@@ -11,7 +10,6 @@ use ash::vk::Extent2D;
 use ash::vk::PipelineStageFlags;
 use ash::vk::ShaderStageFlags;
 use ash::vk::SubpassContents;
-use ash::vk::SurfaceKHR;
 use ash::vk::{InstanceCreateFlags, InstanceCreateInfo};
 use ash::{Entry, Instance};
 
@@ -40,6 +38,7 @@ pub mod pipeline_layout_builder;
 pub mod present_images;
 pub mod render_pass;
 pub mod shader;
+pub mod surface;
 pub mod swapchain;
 pub mod sync;
 pub mod typed_buffer;
@@ -65,6 +64,7 @@ use self::physical_device::SetUpPhysicalDevice;
 use self::present_images::SetUpPresentImages;
 use self::render_pass::SetUpRenderPass;
 use self::shader::CompiledShaderModule;
+use self::surface::SetUpSurfaceInfo;
 use self::swapchain::SetUpSwapchain;
 use self::typed_buffer::TypedAllocatedBuffer;
 use self::virtual_device::SetUpVirtualDevice;
@@ -72,11 +72,9 @@ use self::virtual_device::SetUpVirtualDevice;
 pub struct VulkanContext<Verification: VerificationProvider> {
     pub entry: Entry,
     pub instance: Instance,
+    pub surface_info: SetUpSurfaceInfo,
 
     pub verification: Verification,
-
-    pub surface_loader: Surface,
-    pub surface: SurfaceKHR,
 
     pub last_creation_info: Option<DataStructureCreationInfo>,
     pub physical_device: Option<SetUpPhysicalDevice>,
@@ -171,8 +169,7 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         unsafe {
             self.physical_device = Some(SetUpPhysicalDevice::find_usable_device(
                 &self.instance,
-                &self.surface_loader,
-                self.surface,
+                &self.surface_info,
             )?);
         }
         Ok(())
@@ -189,20 +186,16 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         Ok(())
     }
 
-    fn create_new_swapchain(
+    pub fn create_new_swapchain(
         &mut self,
-        window_size: (i32, i32),
         present_mode_init_mode: PresentModeInitMode,
     ) -> crate::Result<SetUpSwapchain> {
         unsafe {
             let new_swapchain = SetUpSwapchain::create_with_defaults(
                 &self.instance,
-                &self.surface_loader,
-                self.surface,
+                &self.surface_info,
                 self.physical_device()?,
                 self.virtual_device()?,
-                window_size.0 as u32,
-                window_size.1 as u32,
                 present_mode_init_mode,
                 self.swapchain.as_ref(),
             )?;
@@ -213,23 +206,9 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
 
     pub fn create_swapchain(
         &mut self,
-        window_size: (i32, i32),
         present_mode_init_mode: PresentModeInitMode,
     ) -> crate::Result<()> {
-        unsafe {
-            self.swapchain = Some(SetUpSwapchain::create_with_defaults(
-                &self.instance,
-                &self.surface_loader,
-                self.surface,
-                self.physical_device()?,
-                self.virtual_device()?,
-                window_size.0 as u32,
-                window_size.1 as u32,
-                present_mode_init_mode,
-                None,
-            )?);
-        }
-
+        self.swapchain = Some(self.create_new_swapchain(present_mode_init_mode)?);
         Ok(())
     }
 
@@ -239,8 +218,7 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
                 self.physical_device()?,
                 self.virtual_device()?,
                 self.swapchain()?,
-                &self.surface_loader,
-                self.surface,
+                &self.surface_info,
             )?);
         }
 
@@ -256,15 +234,12 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         }
     }
 
-    pub fn create_depth_image(&mut self, window_size: (i32, i32)) -> crate::Result<()> {
+    pub fn create_depth_image(&mut self) -> crate::Result<()> {
         unsafe {
             self.depth_image = Some(SetUpDepthImage::create_with_defaults(
                 self.physical_device()?,
                 self.virtual_device()?,
-                &self.surface_loader,
-                self.surface,
-                window_size.0 as u32,
-                window_size.1 as u32,
+                &self.surface_info,
             )?);
 
             let depth_image = self.depth_image()?;
@@ -282,7 +257,7 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
             self.framebuffers = Some(SetUpFramebuffers::create(
                 self.virtual_device()?,
                 self.depth_image()?,
-                self.swapchain()?,
+                &self.surface_info,
                 self.present_images()?,
                 self.render_pass()?,
             )?);
@@ -296,8 +271,7 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
             self.render_pass = Some(SetUpRenderPass::create_with_defaults(
                 self.virtual_device()?,
                 self.physical_device()?,
-                &self.surface_loader,
-                self.surface,
+                &self.surface_info,
             )?);
         }
 
@@ -321,11 +295,14 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         creation_info: DataStructureCreationInfo,
     ) -> crate::Result<()> {
         self.find_usable_physical_device()?;
+        if let Some(physical_device) = &self.physical_device {
+            self.surface_info.update(physical_device, window_size)?;
+        }
         self.create_virtual_device()?;
-        self.create_swapchain(window_size, creation_info.swapchain_present_mode)?;
+        self.create_swapchain(creation_info.swapchain_present_mode)?;
         self.create_present_images()?;
         self.create_command_logic_for_setup()?;
-        self.create_depth_image(window_size)?;
+        self.create_depth_image()?;
         self.create_render_pass()?;
         self.create_framebuffers()?;
         self.create_per_frame_data(creation_info.frame_overlap)?;
@@ -342,8 +319,11 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
             "No last creation info was set, so data structures can't be recreated".to_string(),
         )?;
 
-        let new_swapchain =
-            self.create_new_swapchain(window_size, creation_info.swapchain_present_mode)?;
+        if let Some(physical_device) = &self.physical_device {
+            self.surface_info.update(physical_device, window_size)?;
+        }
+
+        let new_swapchain = self.create_new_swapchain(creation_info.swapchain_present_mode)?;
 
         if let Some(virtual_device) = self.virtual_device.as_mut() {
             virtual_device.wait();
@@ -380,7 +360,7 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         self.swapchain = Some(new_swapchain);
         self.create_present_images()?;
         self.create_command_logic_for_setup()?;
-        self.create_depth_image(window_size)?;
+        self.create_depth_image()?;
         self.create_render_pass()?;
         self.create_framebuffers()?;
         self.create_per_frame_data(creation_info.frame_overlap)?;
@@ -390,17 +370,8 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
 }
 
 impl<Verification: VerificationProvider> VulkanContext<Verification> {
-    pub fn get_surface_extent(
-        &self,
-        fallback_width: u32,
-        fallback_height: u32,
-    ) -> crate::Result<Extent2D> {
-        self.physical_device()?.get_surface_extent(
-            &self.surface_loader,
-            self.surface,
-            fallback_width,
-            fallback_height,
-        )
+    pub fn get_surface_extent(&self) -> crate::Result<Extent2D> {
+        self.surface_info.surface_extent()
     }
 
     pub fn submit_immediate_setup_commands<F>(&self, command_buffer_op: F) -> crate::Result<()>
@@ -431,7 +402,7 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
     {
         let virtual_device = self.virtual_device()?;
 
-        let surface_resolution = self.swapchain()?.surface_extent;
+        let surface_resolution = self.surface_info.surface_extent()?;
         let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
             .render_pass(self.render_pass()?.render_pass)
             .framebuffer(self.framebuffers()?.framebuffers[present_index as usize])
@@ -626,22 +597,14 @@ impl<Verification: VerificationProvider> RenderContext for VulkanContext<Verific
 
             let verification = Verification::load(&entry, &instance)?;
 
-            let surface = ash_window::create_surface(
-                &entry,
-                &instance,
-                window.raw_display_handle(),
-                window.raw_window_handle(),
-                None,
-            )?;
-
-            let surface_loader = Surface::new(&entry, &instance);
+            let surface_info = SetUpSurfaceInfo::create(&window, &entry, &instance)?;
 
             Ok(Self {
                 entry,
                 instance,
+                surface_info,
+
                 verification,
-                surface_loader,
-                surface,
 
                 last_creation_info: None,
                 physical_device: None,
@@ -700,7 +663,7 @@ impl<Verification: VerificationProvider> Drop for VulkanContext<Verification> {
         }
 
         unsafe {
-            self.surface_loader.destroy_surface(self.surface, None);
+            self.surface_info.destroy();
             self.verification.destroy();
             self.instance.destroy_instance(None);
         }

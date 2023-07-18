@@ -1,11 +1,10 @@
-use ash::extensions::khr::Surface;
-use ash::vk::SurfaceKHR;
 use ash::vk::{ComponentMapping, ComponentSwizzle};
 use ash::vk::{
     Image, ImageAspectFlags, ImageSubresourceRange, ImageView, ImageViewCreateInfo, ImageViewType,
 };
 
 use super::physical_device::SetUpPhysicalDevice;
+use super::surface::SetUpSurfaceInfo;
 use super::swapchain::SetUpSwapchain;
 use super::virtual_device::SetUpVirtualDevice;
 
@@ -19,8 +18,7 @@ impl SetUpPresentImages {
         physical_device: &SetUpPhysicalDevice,
         virtual_device: &SetUpVirtualDevice,
         swapchain: &SetUpSwapchain,
-        surface_loader: &Surface,
-        surface: SurfaceKHR,
+        surface_info: &SetUpSurfaceInfo,
         components: ComponentMapping,
         subresource_range: ImageSubresourceRange,
     ) -> crate::Result<Self> {
@@ -29,7 +27,7 @@ impl SetUpPresentImages {
             .swapchain_loader
             .get_swapchain_images(swapchain.swapchain)?;
 
-        let surface_format = physical_device.get_surface_format(surface_loader, surface)?;
+        let surface_format = surface_info.surface_format(0)?;
 
         let mut present_image_views: Vec<ImageView> = Vec::with_capacity(present_images.len());
         for image in present_images.iter() {
@@ -53,8 +51,7 @@ impl SetUpPresentImages {
         physical_device: &SetUpPhysicalDevice,
         virtual_device: &SetUpVirtualDevice,
         swapchain: &SetUpSwapchain,
-        surface_loader: &Surface,
-        surface: SurfaceKHR,
+        surface_info: &SetUpSurfaceInfo,
     ) -> crate::Result<Self> {
         let component_mapping = ComponentMapping {
             r: ComponentSwizzle::R,
@@ -73,8 +70,7 @@ impl SetUpPresentImages {
             physical_device,
             virtual_device,
             swapchain,
-            surface_loader,
-            surface,
+            surface_info,
             component_mapping,
             subresource_range,
         )
