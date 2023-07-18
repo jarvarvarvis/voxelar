@@ -13,6 +13,10 @@ impl Allocator for NaiveAllocator {
         Self
     }
 
+    fn setup(&self, _: &SetUpVirtualDevice, _: &SetUpPhysicalDevice) -> crate::Result<()> {
+        todo!()
+    }
+
     fn allocate(
         &self,
         virtual_device: &SetUpVirtualDevice,
@@ -21,13 +25,13 @@ impl Allocator for NaiveAllocator {
         memory_properties: MemoryPropertyFlags,
     ) -> crate::Result<Allocation> {
         unsafe {
-            let buffer_memory_index = physical_device
+            let memory_type_index = physical_device
                 .find_memory_type_index(&memory_requirements, memory_properties)
                 .context("Unable to find suitable memory type for the buffer".to_string())?;
 
             let allocate_info = MemoryAllocateInfo {
                 allocation_size: memory_requirements.size,
-                memory_type_index: buffer_memory_index,
+                memory_type_index,
                 ..Default::default()
             };
 
@@ -35,7 +39,19 @@ impl Allocator for NaiveAllocator {
                 .device
                 .allocate_memory(&allocate_info, None)?;
 
-            Ok(Allocation { memory, offset: 0 })
+            let allocation = Allocation { memory, offset: 0 };
+
+            #[cfg(feature = "allocator-debug-logs")]
+            {
+                println!("===== DedicatedAllocator - Allocation =====");
+                println!("Memory requirements: {memory_requirements:?}");
+                println!("Memory properties: {memory_properties:?}");
+                println!("Memory type index: {memory_type_index}");
+                println!("Made allocation: {allocation:?}");
+                println!("===========================================\n");
+            }
+
+            Ok(allocation)
         }
     }
 

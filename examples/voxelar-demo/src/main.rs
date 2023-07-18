@@ -9,7 +9,8 @@ use voxelar::glfw::*;
 use voxelar::receivable_events::*;
 use voxelar::vulkan::creation_info::*;
 use voxelar::vulkan::debug::*;
-use voxelar::vulkan::naive_allocator::NaiveAllocator;
+use voxelar::vulkan::dedicated_pool_allocator::DedicatedPoolAllocator;
+//use voxelar::vulkan::naive_allocator::NaiveAllocator;
 use voxelar::vulkan::VulkanContext;
 use voxelar::window::*;
 use voxelar::*;
@@ -27,7 +28,7 @@ fn main() -> Result<()> {
     window.set_receivable_events(ReceivableEvents::all());
 
     let mut vulkan_context = ctx
-        .load_render_context_for_window::<(NaiveAllocator, KHRVerificationAndDebugMessenger), VulkanContext>(
+        .load_render_context_for_window::<(DedicatedPoolAllocator, KHRVerificationAndDebugMessenger), VulkanContext>(
             &mut window,
         )?;
 

@@ -22,6 +22,7 @@ pub mod command;
 pub mod command_buffer;
 pub mod creation_info;
 pub mod debug;
+pub mod dedicated_pool_allocator;
 pub mod depth_image;
 pub mod descriptor_set_layout;
 pub mod descriptor_set_layout_builder;
@@ -301,6 +302,8 @@ impl VulkanContext {
             self.surface_info.update(physical_device, window_size)?;
         }
         self.create_virtual_device()?;
+        self.allocator
+            .setup(self.virtual_device()?, self.physical_device()?)?;
         self.create_swapchain(creation_info.swapchain_present_mode)?;
         self.create_present_images()?;
         self.create_command_logic_for_setup()?;

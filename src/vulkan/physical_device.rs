@@ -2,7 +2,7 @@ use std::ffi::CStr;
 
 use ash::extensions::khr::Surface;
 use ash::vk::SurfaceKHR;
-use ash::vk::{MemoryPropertyFlags, MemoryRequirements};
+use ash::vk::{MemoryPropertyFlags, MemoryRequirements, MemoryType};
 use ash::vk::{
     PhysicalDevice, PhysicalDeviceFeatures, PhysicalDeviceMemoryProperties,
     PhysicalDeviceProperties,
@@ -85,17 +85,21 @@ impl SetUpPhysicalDevice {
 
     pub fn find_memory_type_index(
         &self,
-        memory_req: &MemoryRequirements,
-        flags: MemoryPropertyFlags,
+        memory_requirements: &MemoryRequirements,
+        memory_flags: MemoryPropertyFlags,
     ) -> Option<u32> {
-        let memory_prop = &self.device_memory_properties;
-        memory_prop.memory_types[..memory_prop.memory_type_count as _]
+        let memory_properties = &self.device_memory_properties;
+        memory_properties.memory_types[..memory_properties.memory_type_count as _]
             .iter()
             .enumerate()
             .find(|(index, memory_type)| {
-                (1 << index) & memory_req.memory_type_bits != 0
-                    && memory_type.property_flags & flags == flags
+                (1 << index) & memory_requirements.memory_type_bits != 0
+                    && memory_type_supports_flags(**memory_type, memory_flags)
             })
-            .map(|(index, _memory_type)| index as _)
+            .map(|(index, _)| index as _)
     }
+}
+
+fn memory_type_supports_flags(memory_type: MemoryType, flags: MemoryPropertyFlags) -> bool {
+    memory_type.property_flags & flags == flags
 }
