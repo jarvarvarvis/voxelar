@@ -3,7 +3,6 @@ use ash::vk::{
     Image, ImageAspectFlags, ImageSubresourceRange, ImageView, ImageViewCreateInfo, ImageViewType,
 };
 
-use super::physical_device::SetUpPhysicalDevice;
 use super::surface::SetUpSurfaceInfo;
 use super::swapchain::SetUpSwapchain;
 use super::virtual_device::SetUpVirtualDevice;
@@ -15,7 +14,6 @@ pub struct SetUpPresentImages {
 
 impl SetUpPresentImages {
     pub unsafe fn create(
-        physical_device: &SetUpPhysicalDevice,
         virtual_device: &SetUpVirtualDevice,
         swapchain: &SetUpSwapchain,
         surface_info: &SetUpSurfaceInfo,
@@ -48,7 +46,6 @@ impl SetUpPresentImages {
     }
 
     pub unsafe fn create_with_defaults(
-        physical_device: &SetUpPhysicalDevice,
         virtual_device: &SetUpVirtualDevice,
         swapchain: &SetUpSwapchain,
         surface_info: &SetUpSurfaceInfo,
@@ -67,7 +64,6 @@ impl SetUpPresentImages {
             layer_count: 1,
         };
         Self::create(
-            physical_device,
             virtual_device,
             swapchain,
             surface_info,

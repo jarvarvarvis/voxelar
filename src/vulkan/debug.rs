@@ -2,7 +2,8 @@ use std::borrow::Cow;
 use std::ffi::CStr;
 
 use ash::extensions::ext::DebugUtils;
-use ash::vk::{self, DebugUtilsMessengerEXT};
+use ash::vk;
+use ash::vk::DebugUtilsMessengerEXT;
 use ash::vk::{
     DebugUtilsMessageSeverityFlagsEXT, DebugUtilsMessageTypeFlagsEXT,
     DebugUtilsMessengerCallbackDataEXT,
@@ -10,10 +11,14 @@ use ash::vk::{
 use ash::{Entry, Instance};
 
 pub trait VerificationProvider {
-    fn get_layers<'a>() -> Vec<&'a CStr>;
+    fn get_layers<'a>() -> Vec<&'a CStr>
+    where
+        Self: Sized;
+
     fn load(entry: &Entry, instance: &Instance) -> crate::Result<Self>
     where
         Self: Sized;
+
     fn destroy(&mut self);
 }
 

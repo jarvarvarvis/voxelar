@@ -10,7 +10,6 @@ use voxelar::nalgebra::Translation3;
 use voxelar::nalgebra::Vector3;
 use voxelar::nalgebra::Vector4;
 use voxelar::shaderc::ShaderKind;
-use voxelar::vulkan::debug::VerificationProvider;
 use voxelar::vulkan::descriptor_set_layout::SetUpDescriptorSetLayout;
 use voxelar::vulkan::descriptor_set_layout_builder::DescriptorSetLayoutBuilder;
 use voxelar::vulkan::descriptor_set_logic::SetUpDescriptorSetLogic;
@@ -72,9 +71,9 @@ pub struct Demo {
 }
 
 impl Demo {
-    pub unsafe fn create<V: VerificationProvider>(
+    pub unsafe fn create(
         voxelar_context: &Voxelar,
-        vulkan_context: &VulkanContext<V>,
+        vulkan_context: &VulkanContext,
     ) -> crate::Result<Self> {
         let render_pass = vulkan_context.render_pass()?;
         let virtual_device = vulkan_context.virtual_device()?;
@@ -240,16 +239,16 @@ impl Demo {
         })
     }
 
-    pub fn new<V: VerificationProvider>(
+    pub fn new(
         voxelar_context: &Voxelar,
-        vulkan_context: &VulkanContext<V>,
+        vulkan_context: &VulkanContext,
     ) -> crate::Result<Self> {
         unsafe { Self::create(voxelar_context, vulkan_context) }
     }
 
-    fn update_viewports_and_scissors<V: VerificationProvider>(
+    fn update_viewports_and_scissors(
         &mut self,
-        vulkan_context: &VulkanContext<V>,
+        vulkan_context: &VulkanContext,
     ) -> crate::Result<()> {
         let surface_extent = vulkan_context.get_surface_extent()?;
         self.viewport = vk::Viewport {
@@ -283,10 +282,10 @@ impl Demo {
         projection * view * model
     }
 
-    pub fn render<V: VerificationProvider>(
+    pub fn render(
         &mut self,
         window: &mut VoxelarWindow,
-        vulkan_context: &mut VulkanContext<V>,
+        vulkan_context: &mut VulkanContext,
     ) -> crate::Result<()> {
         let graphics_pipeline = self.pipelines[0];
 
@@ -426,9 +425,9 @@ impl Demo {
         self.frame_time_manager.update(context);
     }
 
-    pub fn destroy<V: VerificationProvider>(
+    pub fn destroy(
         &mut self,
-        vulkan_context: &VulkanContext<V>,
+        vulkan_context: &VulkanContext,
     ) -> crate::Result<()> {
         let virtual_device = vulkan_context.virtual_device()?;
 

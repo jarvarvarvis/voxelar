@@ -8,7 +8,6 @@ use ash::vk::{SwapchainCreateInfoKHR, SwapchainKHR};
 use ash::Instance;
 
 use super::creation_info::PresentModeInitMode;
-use super::physical_device::SetUpPhysicalDevice;
 use super::surface::SetUpSurfaceInfo;
 use super::virtual_device::SetUpVirtualDevice;
 
@@ -29,7 +28,6 @@ impl SetUpSwapchain {
         present_mode: PresentModeKHR,
         clipped: bool,
         image_array_layers: u32,
-        physical_device: &SetUpPhysicalDevice,
         virtual_device: &SetUpVirtualDevice,
         old_swapchain: Option<&SetUpSwapchain>,
     ) -> crate::Result<Self> {
@@ -67,7 +65,6 @@ impl SetUpSwapchain {
     pub unsafe fn create_with_defaults(
         instance: &Instance,
         surface_info: &SetUpSurfaceInfo,
-        physical_device: &SetUpPhysicalDevice,
         virtual_device: &SetUpVirtualDevice,
         present_mode_init_mode: PresentModeInitMode,
         old_swapchain: Option<&SetUpSwapchain>,
@@ -80,9 +77,6 @@ impl SetUpSwapchain {
         {
             desired_image_count = surface_capabilities.max_image_count;
         }
-
-        let surface_extent = surface_info.surface_extent()?;
-        let surface_format = surface_info.surface_format(0)?;
 
         let pre_transform = if surface_capabilities
             .supported_transforms
@@ -107,7 +101,6 @@ impl SetUpSwapchain {
             present_mode,
             true,
             1,
-            physical_device,
             virtual_device,
             old_swapchain,
         )

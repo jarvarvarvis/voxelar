@@ -69,12 +69,12 @@ use self::swapchain::SetUpSwapchain;
 use self::typed_buffer::TypedAllocatedBuffer;
 use self::virtual_device::SetUpVirtualDevice;
 
-pub struct VulkanContext<Verification: VerificationProvider> {
+pub struct VulkanContext {
     pub entry: Entry,
     pub instance: Instance,
     pub surface_info: SetUpSurfaceInfo,
 
-    pub verification: Verification,
+    pub verification: Box<dyn VerificationProvider>,
 
     pub last_creation_info: Option<DataStructureCreationInfo>,
     pub physical_device: Option<SetUpPhysicalDevice>,
@@ -103,7 +103,7 @@ macro_rules! generate_safe_getter {
     };
 }
 
-impl<Verification: VerificationProvider> VulkanContext<Verification> {
+impl VulkanContext {
     fn create_app_info(window: &VoxelarWindow) -> ApplicationInfo {
         let app_name = CString::new(window.get_title()).unwrap();
 
@@ -194,7 +194,6 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
             let new_swapchain = SetUpSwapchain::create_with_defaults(
                 &self.instance,
                 &self.surface_info,
-                self.physical_device()?,
                 self.virtual_device()?,
                 present_mode_init_mode,
                 self.swapchain.as_ref(),
@@ -215,7 +214,6 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
     pub fn create_present_images(&mut self) -> crate::Result<()> {
         unsafe {
             self.present_images = Some(SetUpPresentImages::create_with_defaults(
-                self.physical_device()?,
                 self.virtual_device()?,
                 self.swapchain()?,
                 &self.surface_info,
@@ -270,7 +268,6 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         unsafe {
             self.render_pass = Some(SetUpRenderPass::create_with_defaults(
                 self.virtual_device()?,
-                self.physical_device()?,
                 &self.surface_info,
             )?);
         }
@@ -369,7 +366,7 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
     }
 }
 
-impl<Verification: VerificationProvider> VulkanContext<Verification> {
+impl VulkanContext {
     pub fn get_surface_extent(&self) -> crate::Result<Extent2D> {
         self.surface_info.surface_extent()
     }
@@ -541,7 +538,7 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
     }
 }
 
-impl<Verification: VerificationProvider> RenderContext for VulkanContext<Verification> {
+impl<Verification: VerificationProvider + 'static> RenderContext<Verification> for VulkanContext {
     fn load(_: &mut Voxelar, window: &mut VoxelarWindow) -> crate::Result<Self>
     where
         Self: Sized,
@@ -595,7 +592,7 @@ impl<Verification: VerificationProvider> RenderContext for VulkanContext<Verific
             let entry = Entry::load()?;
             let instance: Instance = entry.create_instance(&create_info, None)?;
 
-            let verification = Verification::load(&entry, &instance)?;
+            let verification = Box::new(Verification::load(&entry, &instance)?);
 
             let surface_info = SetUpSurfaceInfo::create(&window, &entry, &instance)?;
 
@@ -626,7 +623,7 @@ impl<Verification: VerificationProvider> RenderContext for VulkanContext<Verific
     }
 }
 
-impl<Verification: VerificationProvider> Drop for VulkanContext<Verification> {
+impl Drop for VulkanContext {
     fn drop(&mut self) {
         if let Some(virtual_device) = self.virtual_device.as_mut() {
             virtual_device.wait();

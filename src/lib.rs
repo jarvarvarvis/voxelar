@@ -258,7 +258,7 @@ impl Voxelar {
     ///         ctx.create_window(800, 600, "Demo", glfw::WindowMode::Windowed)?;
     ///
     ///     let vulkan_context = ctx
-    ///         .load_render_context_for_window::<VulkanContext<KHRVerificationAndDebugMessenger>>(
+    ///         .load_render_context_for_window::<NoVerification, VulkanContext>(
     ///             &mut window
     ///         );
     ///     assert!(vulkan_context.is_ok());
@@ -266,7 +266,7 @@ impl Voxelar {
     ///     Ok(())
     /// }
     /// ```
-    pub fn load_render_context_for_window<C: RenderContext>(
+    pub fn load_render_context_for_window<LoadData, C: RenderContext<LoadData>>(
         &mut self,
         window: &mut VoxelarWindow,
     ) -> crate::Result<C> {

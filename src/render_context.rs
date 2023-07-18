@@ -11,7 +11,9 @@ use crate::Voxelar;
 ///
 /// Generally, an API implementation should provide a struct that implements this trait.
 /// (See how `VulkanContext` does it, for example).
-pub trait RenderContext {
+///
+/// The `LoadData` generic is used to provide additional data to the context for loading.
+pub trait RenderContext<LoadData> {
     /// This function loads this API using the `Voxelar` context and the `VoxelarWindow`.
     ///
     /// If loading the API failed, the result of this function will be an `Err`.

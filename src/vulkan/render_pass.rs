@@ -7,7 +7,6 @@ use ash::vk::{PipelineBindPoint, PipelineStageFlags};
 use ash::vk::{RenderPass, RenderPassCreateInfo};
 use ash::vk::{SampleCountFlags, SubpassDependency, SubpassDescription};
 
-use super::physical_device::SetUpPhysicalDevice;
 use super::surface::SetUpSurfaceInfo;
 use super::virtual_device::SetUpVirtualDevice;
 
@@ -56,7 +55,6 @@ impl SetUpRenderPass {
 
     pub unsafe fn create_with_defaults(
         virtual_device: &SetUpVirtualDevice,
-        physical_device: &SetUpPhysicalDevice,
         surface_info: &SetUpSurfaceInfo,
     ) -> crate::Result<Self> {
         let surface_format = surface_info.surface_format(0)?;

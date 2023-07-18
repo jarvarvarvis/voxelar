@@ -26,7 +26,7 @@ fn main() -> Result<()> {
     window.set_receivable_events(ReceivableEvents::all());
 
     let mut vulkan_context = ctx
-        .load_render_context_for_window::<VulkanContext<KHRVerificationAndDebugMessenger>>(
+        .load_render_context_for_window::<KHRVerificationAndDebugMessenger, VulkanContext>(
             &mut window,
         )?;
 
