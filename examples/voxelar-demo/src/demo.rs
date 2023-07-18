@@ -51,14 +51,16 @@ pub struct PerFrameData {
 }
 
 pub struct Demo {
+    recreate_swapchain: bool,
+    viewport: vk::Viewport,
+    scissor: vk::Rect2D,
+
     descriptor_set_layouts: Vec<SetUpDescriptorSetLayout>,
     per_frame_data: PerFrame<PerFrameData>,
     descriptor_buffers: DemoDescriptorBuffers,
 
     pipeline_layout: SetUpPipelineLayout,
     pipelines: Vec<vk::Pipeline>,
-    viewport: vk::Viewport,
-    scissor: vk::Rect2D,
     vertex_buffer: TypedAllocatedBuffer<Vertex>,
     index_buffer: TypedAllocatedBuffer<u32>,
     index_count: usize,
@@ -217,14 +219,16 @@ impl Demo {
             .build(&virtual_device, &render_pass, &pipeline_layout)?;
 
         Ok(Self {
+            recreate_swapchain: false,
+            viewport,
+            scissor,
+
             descriptor_set_layouts,
             per_frame_data,
             descriptor_buffers,
 
             pipeline_layout,
             pipelines: vec![graphics_pipeline],
-            viewport,
-            scissor,
             vertex_buffer,
             index_buffer,
             index_count: index_buffer_data.len(),
@@ -257,9 +261,8 @@ impl Demo {
             min_depth: 0.0,
             max_depth: 1.0,
         };
-        let surface_extent = vulkan_context
-            .physical_device()?
-            .get_surface_extent(new_width as u32, new_height as u32);
+        let surface_extent =
+            vulkan_context.get_surface_extent(new_width as u32, new_height as u32)?;
         self.scissor = surface_extent.into();
 
         Ok(())
@@ -271,6 +274,7 @@ impl Demo {
         new_width: i32,
         new_height: i32,
     ) -> crate::Result<()> {
+        self.recreate_swapchain = true;
         self.update_viewports_and_scissors(vulkan_context, new_width, new_height)?;
         Ok(())
     }
@@ -312,7 +316,23 @@ impl Demo {
             vulkan_context.select_frame(current_frame_index);
             self.per_frame_data.select(current_frame_index);
 
-            let (present_index, _) = vulkan_context.acquire_next_image()?;
+            if self.recreate_swapchain {
+                let new_size = window.get_size();
+                vulkan_context
+                    .recreate_swapchain_and_related_data_structures_with_size(new_size)?;
+                self.recreate_swapchain = false;
+
+                return Ok(());
+            }
+
+            let (present_index, swapchain_suboptimal) = vulkan_context.acquire_next_image()?;
+
+            // If the swapchain is suboptimal for this image, only recreate it on the next frame.
+            // At this point, the present complete semaphore is still in a signaled state and we have to
+            // submit to the present queue to unsignal it.
+            if swapchain_suboptimal {
+                self.recreate_swapchain = true;
+            }
 
             let clear_values = [
                 vk::ClearValue {
@@ -367,8 +387,7 @@ impl Demo {
 
                     let frame_360_cycle = (total_frames % 360) as f32;
                     let light_cycle = (frame_360_cycle.to_radians().sin() + 1.0) / 2.0;
-                    let ambient_color =
-                        Vector4::new(light_cycle, light_cycle, light_cycle, 0.0);
+                    let ambient_color = Vector4::new(light_cycle, light_cycle, light_cycle, 0.0);
                     let scene_buffer = DemoSceneBuffer { ambient_color };
                     self.descriptor_buffers.scene_buffer.store_at(
                         device,
@@ -407,7 +426,10 @@ impl Demo {
                 },
             )?;
 
-            vulkan_context.present_image(present_index)?;
+            let swapchain_suboptimal = vulkan_context.present_image(present_index)?;
+            if swapchain_suboptimal {
+                self.recreate_swapchain = true;
+            }
         }
 
         Ok(())

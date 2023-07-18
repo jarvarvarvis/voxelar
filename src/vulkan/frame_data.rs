@@ -1,5 +1,7 @@
+use ash::vk::Fence;
 use ash::vk::PipelineStageFlags;
 use ash::vk::Queue;
+use ash::vk::SubmitInfo;
 
 use super::command::SetUpCommandLogic;
 use super::command_buffer::SetUpCommandBufferWithFence;

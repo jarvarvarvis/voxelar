@@ -1,7 +1,9 @@
+use ash::extensions::khr::Surface;
 use ash::vk;
 use ash::vk::AccessFlags;
 use ash::vk::Format;
 use ash::vk::ImageLayout;
+use ash::vk::SurfaceKHR;
 use ash::vk::{AttachmentDescription, AttachmentLoadOp, AttachmentReference, AttachmentStoreOp};
 use ash::vk::{PipelineBindPoint, PipelineStageFlags};
 use ash::vk::{RenderPass, RenderPassCreateInfo};
@@ -56,10 +58,13 @@ impl SetUpRenderPass {
     pub unsafe fn create_with_defaults(
         virtual_device: &SetUpVirtualDevice,
         physical_device: &SetUpPhysicalDevice,
+        surface_loader: &Surface,
+        surface: SurfaceKHR,
     ) -> crate::Result<Self> {
+        let surface_format = physical_device.get_surface_format(surface_loader, surface)?;
         let renderpass_attachments = [
             AttachmentDescription {
-                format: physical_device.surface_format.format,
+                format: surface_format.format,
                 samples: SampleCountFlags::TYPE_1,
                 load_op: AttachmentLoadOp::CLEAR,
                 store_op: AttachmentStoreOp::STORE,

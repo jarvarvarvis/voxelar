@@ -1,7 +1,9 @@
+use ash::extensions::khr::Surface;
 use ash::vk::CommandBuffer;
 use ash::vk::Extent2D;
 use ash::vk::Format;
 use ash::vk::SharingMode;
+use ash::vk::SurfaceKHR;
 use ash::vk::{AccessFlags, DependencyFlags, PipelineStageFlags, SampleCountFlags};
 use ash::vk::{DeviceMemory, MemoryAllocateInfo, MemoryPropertyFlags};
 use ash::vk::{
@@ -53,11 +55,9 @@ impl SetUpDepthImage {
         let depth_image_memory_req = virtual_device
             .device
             .get_image_memory_requirements(depth_image);
-        let depth_image_memory_index = physical_device.find_memory_type_index(
-            &depth_image_memory_req,
-            MemoryPropertyFlags::DEVICE_LOCAL,
-        )
-        .context("Unable to find suitable memory index for depth image!".to_string())?;
+        let depth_image_memory_index = physical_device
+            .find_memory_type_index(&depth_image_memory_req, MemoryPropertyFlags::DEVICE_LOCAL)
+            .context("Unable to find suitable memory index for depth image!".to_string())?;
 
         let depth_image_allocate_info = MemoryAllocateInfo::builder()
             .allocation_size(depth_image_memory_req.size)
@@ -99,17 +99,17 @@ impl SetUpDepthImage {
     pub unsafe fn create_with_defaults(
         physical_device: &SetUpPhysicalDevice,
         virtual_device: &SetUpVirtualDevice,
+        surface_loader: &Surface,
+        surface: SurfaceKHR,
         window_width: u32,
         window_height: u32,
     ) -> crate::Result<Self> {
-        let surface_capabilities = physical_device.surface_capabilities;
-        let surface_extent = match surface_capabilities.current_extent.width {
-            std::u32::MAX => Extent2D {
-                width: window_width,
-                height: window_height,
-            },
-            _ => surface_capabilities.current_extent,
-        };
+        let surface_extent = physical_device.get_surface_extent(
+            surface_loader,
+            surface,
+            window_width,
+            window_width,
+        )?;
 
         Self::create(
             physical_device,
@@ -155,7 +155,7 @@ impl SetUpDepthImage {
             );
         }
     }
-    
+
     pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice) {
         unsafe {
             virtual_device

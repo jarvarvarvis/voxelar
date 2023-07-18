@@ -2,6 +2,7 @@ use ash::vk::PresentModeKHR;
 
 use crate::result::Context;
 
+#[derive(Clone, Copy)]
 pub enum PresentModeInitMode {
     Find(PresentModeKHR),
     FindOrFallback {
@@ -31,6 +32,7 @@ impl PresentModeInitMode {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct DataStructureCreationInfo {
     pub swapchain_present_mode: PresentModeInitMode,
     pub frame_overlap: usize,

@@ -20,9 +20,6 @@ pub struct SetUpPhysicalDevice {
     pub device_features: PhysicalDeviceFeatures,
 
     pub queue_family_index: u32,
-
-    pub surface_format: SurfaceFormatKHR,
-    pub surface_capabilities: SurfaceCapabilitiesKHR,
 }
 
 impl SetUpPhysicalDevice {
@@ -71,10 +68,6 @@ impl SetUpPhysicalDevice {
 
         let device_memory_properties = instance.get_physical_device_memory_properties(device);
         let device_properties = instance.get_physical_device_properties(device);
-        let surface_format =
-            surface_loader.get_physical_device_surface_formats(device, surface)?[0];
-        let surface_capabilities =
-            surface_loader.get_physical_device_surface_capabilities(device, surface)?;
         let device_features = instance.get_physical_device_features(device);
 
         Ok(Self {
@@ -83,8 +76,6 @@ impl SetUpPhysicalDevice {
             device_properties,
             device_features,
             queue_family_index: queue_family_index as u32,
-            surface_format,
-            surface_capabilities,
         })
     }
 
@@ -92,14 +83,48 @@ impl SetUpPhysicalDevice {
         unsafe { CStr::from_ptr(self.device_properties.device_name.as_ptr()) }
     }
 
-    pub fn get_surface_extent(&self, fallback_width: u32, fallback_height: u32) -> Extent2D {
-        match self.surface_capabilities.current_extent.width {
-            std::u32::MAX => Extent2D {
+    pub fn get_surface_capabilities(
+        &self,
+        surface_loader: &Surface,
+        surface: SurfaceKHR,
+    ) -> crate::Result<SurfaceCapabilitiesKHR> {
+        unsafe {
+            let surface_capabilities =
+                surface_loader.get_physical_device_surface_capabilities(self.device, surface)?;
+            Ok(surface_capabilities)
+        }
+    }
+
+    pub fn get_surface_format(
+        &self,
+        surface_loader: &Surface,
+        surface: SurfaceKHR,
+    ) -> crate::Result<SurfaceFormatKHR> {
+        unsafe {
+            let surface_format =
+                surface_loader.get_physical_device_surface_formats(self.device, surface)?[0];
+            Ok(surface_format)
+        }
+    }
+
+    pub fn get_surface_extent(
+        &self,
+        surface_loader: &Surface,
+        surface: SurfaceKHR,
+        fallback_width: u32,
+        fallback_height: u32,
+    ) -> crate::Result<Extent2D> {
+        let surface_capabilities = self.get_surface_capabilities(surface_loader, surface)?;
+        Ok(match surface_capabilities.current_extent {
+            Extent2D {
+                width: std::u32::MAX,
+                height: std::u32::MAX,
+            } => Extent2D {
                 width: fallback_width,
                 height: fallback_height,
             },
-            _ => self.surface_capabilities.current_extent,
-        }
+            _ => surface_capabilities.current_extent,
+        })
     }
 
     pub fn find_memory_type_index(

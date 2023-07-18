@@ -7,6 +7,7 @@ use ash::extensions::khr::Surface;
 use ash::vk;
 use ash::vk::ApplicationInfo;
 use ash::vk::ClearValue;
+use ash::vk::Extent2D;
 use ash::vk::PipelineStageFlags;
 use ash::vk::ShaderStageFlags;
 use ash::vk::SubpassContents;
@@ -77,6 +78,7 @@ pub struct VulkanContext<Verification: VerificationProvider> {
     pub surface_loader: Surface,
     pub surface: SurfaceKHR,
 
+    pub last_creation_info: Option<DataStructureCreationInfo>,
     pub physical_device: Option<SetUpPhysicalDevice>,
     pub virtual_device: Option<SetUpVirtualDevice>,
     pub swapchain: Option<SetUpSwapchain>,
@@ -187,6 +189,28 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         Ok(())
     }
 
+    fn create_new_swapchain(
+        &mut self,
+        window_size: (i32, i32),
+        present_mode_init_mode: PresentModeInitMode,
+    ) -> crate::Result<SetUpSwapchain> {
+        unsafe {
+            let new_swapchain = SetUpSwapchain::create_with_defaults(
+                &self.instance,
+                &self.surface_loader,
+                self.surface,
+                self.physical_device()?,
+                self.virtual_device()?,
+                window_size.0 as u32,
+                window_size.1 as u32,
+                present_mode_init_mode,
+                self.swapchain.as_ref(),
+            )?;
+
+            Ok(new_swapchain)
+        }
+    }
+
     pub fn create_swapchain(
         &mut self,
         window_size: (i32, i32),
@@ -202,6 +226,7 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
                 window_size.0 as u32,
                 window_size.1 as u32,
                 present_mode_init_mode,
+                None,
             )?);
         }
 
@@ -214,6 +239,8 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
                 self.physical_device()?,
                 self.virtual_device()?,
                 self.swapchain()?,
+                &self.surface_loader,
+                self.surface,
             )?);
         }
 
@@ -234,6 +261,8 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
             self.depth_image = Some(SetUpDepthImage::create_with_defaults(
                 self.physical_device()?,
                 self.virtual_device()?,
+                &self.surface_loader,
+                self.surface,
                 window_size.0 as u32,
                 window_size.1 as u32,
             )?);
@@ -267,6 +296,8 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
             self.render_pass = Some(SetUpRenderPass::create_with_defaults(
                 self.virtual_device()?,
                 self.physical_device()?,
+                &self.surface_loader,
+                self.surface,
             )?);
         }
 
@@ -298,11 +329,80 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         self.create_render_pass()?;
         self.create_framebuffers()?;
         self.create_per_frame_data(creation_info.frame_overlap)?;
+        self.last_creation_info = Some(creation_info);
+
+        Ok(())
+    }
+
+    pub fn recreate_swapchain_and_related_data_structures_with_size(
+        &mut self,
+        window_size: (i32, i32),
+    ) -> crate::Result<()> {
+        let creation_info = self.last_creation_info.context(
+            "No last creation info was set, so data structures can't be recreated".to_string(),
+        )?;
+
+        let new_swapchain =
+            self.create_new_swapchain(window_size, creation_info.swapchain_present_mode)?;
+
+        if let Some(virtual_device) = self.virtual_device.as_mut() {
+            virtual_device.wait();
+
+            if let Some(render_pass) = self.render_pass.as_mut() {
+                render_pass.destroy(&virtual_device);
+            }
+
+            if let Some(framebuffers) = self.framebuffers.as_mut() {
+                framebuffers.destroy(&virtual_device);
+            }
+
+            if let Some(depth_image) = self.depth_image.as_mut() {
+                depth_image.destroy(&virtual_device);
+            }
+
+            if let Some(command_logic_for_setup) = self.command_logic_for_setup.as_mut() {
+                command_logic_for_setup.destroy(&virtual_device);
+            }
+
+            if let Some(present_images) = self.present_images.as_mut() {
+                present_images.destroy(&virtual_device);
+            }
+
+            for frame in self.frames.iter_mut() {
+                frame.destroy(&virtual_device);
+            }
+
+            if let Some(swapchain) = self.swapchain.as_mut() {
+                swapchain.destroy();
+            }
+        }
+
+        self.swapchain = Some(new_swapchain);
+        self.create_present_images()?;
+        self.create_command_logic_for_setup()?;
+        self.create_depth_image(window_size)?;
+        self.create_render_pass()?;
+        self.create_framebuffers()?;
+        self.create_per_frame_data(creation_info.frame_overlap)?;
+
         Ok(())
     }
 }
 
 impl<Verification: VerificationProvider> VulkanContext<Verification> {
+    pub fn get_surface_extent(
+        &self,
+        fallback_width: u32,
+        fallback_height: u32,
+    ) -> crate::Result<Extent2D> {
+        self.physical_device()?.get_surface_extent(
+            &self.surface_loader,
+            self.surface,
+            fallback_width,
+            fallback_height,
+        )
+    }
+
     pub fn submit_immediate_setup_commands<F>(&self, command_buffer_op: F) -> crate::Result<()>
     where
         F: FnOnce(&SetUpVirtualDevice, &SetUpCommandBufferWithFence) -> crate::Result<()>,
@@ -375,17 +475,23 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
     pub fn acquire_next_image(&self) -> crate::Result<(u32, bool)> {
         unsafe {
             let frame = self.frames.current();
-            let present_index_and_success = self.swapchain()?.swapchain_loader.acquire_next_image(
+            let result = self.swapchain()?.swapchain_loader.acquire_next_image(
                 self.swapchain()?.swapchain,
                 std::u64::MAX,
                 frame.sync_primitives.present_complete_semaphore,
                 vk::Fence::null(),
-            )?;
-            Ok(present_index_and_success)
+            );
+
+            match result {
+                Err(ash::vk::Result::ERROR_OUT_OF_DATE_KHR | ash::vk::Result::SUBOPTIMAL_KHR) => {
+                    Ok((0, true))
+                }
+                other => Ok(other?),
+            }
         }
     }
 
-    pub fn present_image(&self, present_index: u32) -> crate::Result<()> {
+    pub fn present_image(&self, present_index: u32) -> crate::Result<bool> {
         let frame = self.frames.current();
         let wait_semaphores = [frame.sync_primitives.rendering_complete_semaphore];
         let swapchains = [self.swapchain()?.swapchain];
@@ -396,10 +502,16 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
             .image_indices(&image_indices);
 
         unsafe {
-            self.swapchain()?
+            let result = self
+                .swapchain()?
                 .swapchain_loader
-                .queue_present(self.virtual_device()?.present_queue, &present_info)?;
-            Ok(())
+                .queue_present(self.virtual_device()?.present_queue, &present_info);
+            match result {
+                Err(ash::vk::Result::ERROR_OUT_OF_DATE_KHR | ash::vk::Result::SUBOPTIMAL_KHR) => {
+                    Ok(true)
+                }
+                other => Ok(other?),
+            }
         }
     }
 
@@ -528,6 +640,7 @@ impl<Verification: VerificationProvider> RenderContext for VulkanContext<Verific
                 surface_loader,
                 surface,
 
+                last_creation_info: None,
                 physical_device: None,
                 virtual_device: None,
                 swapchain: None,
@@ -549,40 +662,41 @@ impl<Verification: VerificationProvider> RenderContext for VulkanContext<Verific
 
 impl<Verification: VerificationProvider> Drop for VulkanContext<Verification> {
     fn drop(&mut self) {
-        unsafe {
-            if let Some(virtual_device) = self.virtual_device.as_mut() {
-                virtual_device.wait();
+        if let Some(virtual_device) = self.virtual_device.as_mut() {
+            virtual_device.wait();
 
-                if let Some(render_pass) = self.render_pass.as_mut() {
-                    render_pass.destroy(&virtual_device);
-                }
-
-                if let Some(framebuffers) = self.framebuffers.as_mut() {
-                    framebuffers.destroy(&virtual_device);
-                }
-
-                if let Some(depth_image) = self.depth_image.as_mut() {
-                    depth_image.destroy(&virtual_device);
-                }
-
-                if let Some(command_logic_for_setup) = self.command_logic_for_setup.as_mut() {
-                    command_logic_for_setup.destroy(&virtual_device);
-                }
-
-                if let Some(present_images) = self.present_images.as_mut() {
-                    present_images.destroy(&virtual_device);
-                }
-
-                for frame in self.frames.iter_mut() {
-                    frame.destroy(&virtual_device);
-                }
-
-                if let Some(swapchain) = self.swapchain.as_mut() {
-                    swapchain.destroy();
-                }
-
-                virtual_device.destroy();
+            if let Some(render_pass) = self.render_pass.as_mut() {
+                render_pass.destroy(&virtual_device);
             }
+
+            if let Some(framebuffers) = self.framebuffers.as_mut() {
+                framebuffers.destroy(&virtual_device);
+            }
+
+            if let Some(depth_image) = self.depth_image.as_mut() {
+                depth_image.destroy(&virtual_device);
+            }
+
+            if let Some(command_logic_for_setup) = self.command_logic_for_setup.as_mut() {
+                command_logic_for_setup.destroy(&virtual_device);
+            }
+
+            if let Some(present_images) = self.present_images.as_mut() {
+                present_images.destroy(&virtual_device);
+            }
+
+            for frame in self.frames.iter_mut() {
+                frame.destroy(&virtual_device);
+            }
+
+            if let Some(swapchain) = self.swapchain.as_mut() {
+                swapchain.destroy();
+            }
+
+            virtual_device.destroy();
+        }
+
+        unsafe {
             self.surface_loader.destroy_surface(self.surface, None);
             self.verification.destroy();
             self.instance.destroy_instance(None);
