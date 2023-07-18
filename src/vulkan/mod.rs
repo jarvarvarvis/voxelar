@@ -528,9 +528,12 @@ impl<Verification: VerificationProvider> VulkanContext<Verification> {
         }
     }
 
-    pub fn create_index_buffer(&self, data: &[u32]) -> crate::Result<TypedAllocatedBuffer<u32>> {
+    pub fn create_index_buffer<T: Copy>(
+        &self,
+        data: &[T],
+    ) -> crate::Result<TypedAllocatedBuffer<T>> {
         unsafe {
-            TypedAllocatedBuffer::<u32>::create_index_buffer(
+            TypedAllocatedBuffer::<T>::create_index_buffer(
                 self.virtual_device()?,
                 self.physical_device()?,
                 data,
