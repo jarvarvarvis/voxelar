@@ -6,6 +6,7 @@ use ash::vk::MemoryPropertyFlags;
 use ash::vk::SharingMode;
 use ash::vk::{Buffer, BufferUsageFlags};
 
+use super::allocator::Allocator;
 use super::buffer::AllocatedBuffer;
 use super::physical_device::SetUpPhysicalDevice;
 use super::virtual_device::SetUpVirtualDevice;
@@ -19,6 +20,7 @@ impl<T> TypedAllocatedBuffer<T> {
     pub unsafe fn allocate(
         virtual_device: &SetUpVirtualDevice,
         physical_device: &SetUpPhysicalDevice,
+        allocator: &dyn Allocator,
         usage: BufferUsageFlags,
         sharing_mode: SharingMode,
         memory_property_flags: MemoryPropertyFlags,
@@ -28,6 +30,7 @@ impl<T> TypedAllocatedBuffer<T> {
             buffer: AllocatedBuffer::allocate(
                 virtual_device,
                 physical_device,
+                allocator,
                 size,
                 usage,
                 sharing_mode,
@@ -40,10 +43,12 @@ impl<T> TypedAllocatedBuffer<T> {
     pub unsafe fn allocate_uniform_buffer(
         virtual_device: &SetUpVirtualDevice,
         physical_device: &SetUpPhysicalDevice,
+        allocator: &dyn Allocator,
     ) -> crate::Result<Self> {
         Self::allocate(
             virtual_device,
             physical_device,
+            allocator,
             BufferUsageFlags::UNIFORM_BUFFER,
             SharingMode::EXCLUSIVE,
             MemoryPropertyFlags::HOST_VISIBLE | MemoryPropertyFlags::HOST_COHERENT,
@@ -53,6 +58,7 @@ impl<T> TypedAllocatedBuffer<T> {
     pub unsafe fn create_from_data_slice(
         virtual_device: &SetUpVirtualDevice,
         physical_device: &SetUpPhysicalDevice,
+        allocator: &dyn Allocator,
         data: &[T],
         usage: BufferUsageFlags,
         sharing_mode: SharingMode,
@@ -66,6 +72,7 @@ impl<T> TypedAllocatedBuffer<T> {
         let buffer = AllocatedBuffer::allocate(
             virtual_device,
             physical_device,
+            allocator,
             size,
             usage,
             sharing_mode,
@@ -90,6 +97,7 @@ impl<T> TypedAllocatedBuffer<T> {
     pub unsafe fn create_vertex_buffer(
         virtual_device: &SetUpVirtualDevice,
         physical_device: &SetUpPhysicalDevice,
+        allocator: &dyn Allocator,
         data: &[T],
     ) -> crate::Result<Self>
     where
@@ -98,6 +106,7 @@ impl<T> TypedAllocatedBuffer<T> {
         Self::create_from_data_slice(
             virtual_device,
             physical_device,
+            allocator,
             data,
             BufferUsageFlags::VERTEX_BUFFER,
             SharingMode::EXCLUSIVE,
@@ -108,6 +117,7 @@ impl<T> TypedAllocatedBuffer<T> {
     pub unsafe fn create_index_buffer(
         virtual_device: &SetUpVirtualDevice,
         physical_device: &SetUpPhysicalDevice,
+        allocator: &dyn Allocator,
         data: &[T],
     ) -> crate::Result<Self>
     where
@@ -116,6 +126,7 @@ impl<T> TypedAllocatedBuffer<T> {
         Self::create_from_data_slice(
             virtual_device,
             physical_device,
+            allocator,
             data,
             BufferUsageFlags::INDEX_BUFFER,
             SharingMode::EXCLUSIVE,
@@ -144,7 +155,7 @@ impl<T> TypedAllocatedBuffer<T> {
         self.buffer.buffer
     }
 
-    pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice) {
-        self.buffer.destroy(virtual_device);
+    pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice, allocator: &dyn Allocator) {
+        self.buffer.destroy(virtual_device, allocator);
     }
 }

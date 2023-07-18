@@ -5,6 +5,7 @@ use ash::vk::MappedMemoryRange;
 use ash::vk::MemoryPropertyFlags;
 use ash::vk::SharingMode;
 
+use super::allocator::Allocator;
 use super::buffer::AllocatedBuffer;
 use super::physical_device::SetUpPhysicalDevice;
 use super::virtual_device::SetUpVirtualDevice;
@@ -19,6 +20,7 @@ impl<T> DynamicDescriptorBuffer<T> {
     pub unsafe fn allocate(
         virtual_device: &SetUpVirtualDevice,
         physical_device: &SetUpPhysicalDevice,
+        allocator: &dyn Allocator,
         count: usize,
         usage: BufferUsageFlags,
         sharing_mode: SharingMode,
@@ -34,6 +36,7 @@ impl<T> DynamicDescriptorBuffer<T> {
             buffer: AllocatedBuffer::allocate(
                 virtual_device,
                 physical_device,
+                allocator,
                 count as u64 * aligned_size_of_type,
                 usage,
                 sharing_mode,
@@ -48,10 +51,12 @@ impl<T> DynamicDescriptorBuffer<T> {
         virtual_device: &SetUpVirtualDevice,
         physical_device: &SetUpPhysicalDevice,
         count: usize,
+        allocator: &dyn Allocator,
     ) -> crate::Result<Self> {
         Self::allocate(
             virtual_device,
             physical_device,
+            allocator,
             count,
             BufferUsageFlags::UNIFORM_BUFFER,
             SharingMode::EXCLUSIVE,
@@ -76,9 +81,9 @@ impl<T> DynamicDescriptorBuffer<T> {
     ) -> crate::Result<()> {
         let offset = self.get_dynamic_offset(index);
         let memory_range = MappedMemoryRange::builder()
-            .memory(self.buffer.buffer_memory)
+            .memory(self.buffer.buffer_allocation.memory)
             .size(self.aligned_size_of_type)
-            .offset(offset as u64)
+            .offset(self.buffer.buffer_allocation.offset + offset as u64)
             .build();
 
         virtual_device
@@ -109,7 +114,7 @@ impl<T> DynamicDescriptorBuffer<T> {
         self.aligned_size_of_type as u32 * index as u32
     }
 
-    pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice) {
-        self.buffer.destroy(virtual_device);
+    pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice, allocator: &dyn Allocator) {
+        self.buffer.destroy(virtual_device, allocator);
     }
 }

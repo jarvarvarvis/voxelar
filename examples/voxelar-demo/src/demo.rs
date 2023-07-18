@@ -77,7 +77,6 @@ impl Demo {
     ) -> crate::Result<Self> {
         let render_pass = vulkan_context.render_pass()?;
         let virtual_device = vulkan_context.virtual_device()?;
-        let physical_device = vulkan_context.physical_device()?;
 
         let global_set_layout = DescriptorSetLayoutBuilder::new()
             .add_binding(
@@ -96,16 +95,10 @@ impl Demo {
         let descriptor_set_layouts = vec![global_set_layout];
 
         let descriptor_buffers = DemoDescriptorBuffers {
-            camera_buffer: DynamicDescriptorBuffer::<DemoCameraBuffer>::allocate_uniform_buffer(
-                virtual_device,
-                physical_device,
-                vulkan_context.frame_overlap(),
-            )?,
-            scene_buffer: DynamicDescriptorBuffer::<DemoSceneBuffer>::allocate_uniform_buffer(
-                virtual_device,
-                physical_device,
-                vulkan_context.frame_overlap(),
-            )?,
+            camera_buffer: vulkan_context
+                .allocate_dynamic_descriptor_uniform_buffer(vulkan_context.frame_overlap())?,
+            scene_buffer: vulkan_context
+                .allocate_dynamic_descriptor_uniform_buffer(vulkan_context.frame_overlap())?,
         };
 
         let per_frame_data = PerFrame::try_init(
@@ -239,10 +232,7 @@ impl Demo {
         })
     }
 
-    pub fn new(
-        voxelar_context: &Voxelar,
-        vulkan_context: &VulkanContext,
-    ) -> crate::Result<Self> {
+    pub fn new(voxelar_context: &Voxelar, vulkan_context: &VulkanContext) -> crate::Result<Self> {
         unsafe { Self::create(voxelar_context, vulkan_context) }
     }
 
@@ -425,18 +415,16 @@ impl Demo {
         self.frame_time_manager.update(context);
     }
 
-    pub fn destroy(
-        &mut self,
-        vulkan_context: &VulkanContext,
-    ) -> crate::Result<()> {
+    pub fn destroy(&mut self, vulkan_context: &VulkanContext) -> crate::Result<()> {
         let virtual_device = vulkan_context.virtual_device()?;
+        let allocator = vulkan_context.allocator.as_ref();
 
         virtual_device.wait();
         unsafe {
             self.descriptor_buffers
                 .camera_buffer
-                .destroy(virtual_device);
-            self.descriptor_buffers.scene_buffer.destroy(virtual_device);
+                .destroy(virtual_device, allocator);
+            self.descriptor_buffers.scene_buffer.destroy(virtual_device, allocator);
 
             for descriptor_data in self.per_frame_data.iter_mut() {
                 descriptor_data.descriptor_set_logic.destroy(virtual_device);
@@ -455,8 +443,8 @@ impl Demo {
             self.vertex_shader_module.destroy(virtual_device);
             self.fragment_shader_module.destroy(virtual_device);
 
-            self.index_buffer.destroy(virtual_device);
-            self.vertex_buffer.destroy(virtual_device);
+            self.index_buffer.destroy(virtual_device, allocator);
+            self.vertex_buffer.destroy(virtual_device, allocator);
         }
 
         Ok(())

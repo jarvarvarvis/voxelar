@@ -16,6 +16,7 @@ use ash::{Entry, Instance};
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 use ash::vk::{KhrGetPhysicalDeviceProperties2Fn, KhrPortabilityEnumerationFn};
 
+pub mod allocator;
 pub mod buffer;
 pub mod command;
 pub mod command_buffer;
@@ -31,6 +32,7 @@ pub mod dynamic_descriptor_buffer;
 pub mod frame_data;
 pub mod framebuffers;
 pub mod graphics_pipeline_builder;
+pub mod naive_allocator;
 pub mod per_frame;
 pub mod physical_device;
 pub mod pipeline_layout;
@@ -52,12 +54,14 @@ use crate::Voxelar;
 
 use crate::vulkan::per_frame::PerFrame;
 
+use self::allocator::Allocator;
 use self::command::SetUpCommandLogic;
 use self::command_buffer::SetUpCommandBufferWithFence;
 use self::creation_info::DataStructureCreationInfo;
 use self::creation_info::PresentModeInitMode;
 use self::debug::VerificationProvider;
 use self::depth_image::SetUpDepthImage;
+use self::dynamic_descriptor_buffer::DynamicDescriptorBuffer;
 use self::frame_data::FrameData;
 use self::framebuffers::SetUpFramebuffers;
 use self::physical_device::SetUpPhysicalDevice;
@@ -75,6 +79,7 @@ pub struct VulkanContext {
     pub surface_info: SetUpSurfaceInfo,
 
     pub verification: Box<dyn VerificationProvider>,
+    pub allocator: Box<dyn Allocator>,
 
     pub last_creation_info: Option<DataStructureCreationInfo>,
     pub physical_device: Option<SetUpPhysicalDevice>,
@@ -491,6 +496,7 @@ impl VulkanContext {
             TypedAllocatedBuffer::<T>::create_vertex_buffer(
                 self.virtual_device()?,
                 self.physical_device()?,
+                self.allocator.as_ref(),
                 data,
             )
         }
@@ -504,7 +510,22 @@ impl VulkanContext {
             TypedAllocatedBuffer::<T>::create_index_buffer(
                 self.virtual_device()?,
                 self.physical_device()?,
+                self.allocator.as_ref(),
                 data,
+            )
+        }
+    }
+
+    pub fn allocate_dynamic_descriptor_uniform_buffer<T>(
+        &self,
+        count: usize,
+    ) -> crate::Result<DynamicDescriptorBuffer<T>> {
+        unsafe {
+            DynamicDescriptorBuffer::<T>::allocate_uniform_buffer(
+                self.virtual_device()?,
+                self.physical_device()?,
+                count,
+                self.allocator.as_ref(),
             )
         }
     }
@@ -538,7 +559,9 @@ impl VulkanContext {
     }
 }
 
-impl<Verification: VerificationProvider + 'static> RenderContext<Verification> for VulkanContext {
+impl<Alloc: Allocator + 'static, Verification: VerificationProvider + 'static>
+    RenderContext<(Alloc, Verification)> for VulkanContext
+{
     fn load(_: &mut Voxelar, window: &mut VoxelarWindow) -> crate::Result<Self>
     where
         Self: Sized,
@@ -592,6 +615,7 @@ impl<Verification: VerificationProvider + 'static> RenderContext<Verification> f
             let entry = Entry::load()?;
             let instance: Instance = entry.create_instance(&create_info, None)?;
 
+            let allocator = Box::new(Alloc::new());
             let verification = Box::new(Verification::load(&entry, &instance)?);
 
             let surface_info = SetUpSurfaceInfo::create(&window, &entry, &instance)?;
@@ -602,6 +626,7 @@ impl<Verification: VerificationProvider + 'static> RenderContext<Verification> f
                 surface_info,
 
                 verification,
+                allocator,
 
                 last_creation_info: None,
                 physical_device: None,
@@ -655,6 +680,8 @@ impl Drop for VulkanContext {
             if let Some(swapchain) = self.swapchain.as_mut() {
                 swapchain.destroy();
             }
+
+            self.allocator.destroy(virtual_device);
 
             virtual_device.destroy();
         }
