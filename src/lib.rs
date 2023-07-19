@@ -1,14 +1,15 @@
 //! The voxelar engine backend.
 //!
-//! This is the main module that provides all functionality required to create windows, interact 
+//! This is the main module that provides all functionality required to create windows, interact
 //! with the Vulkan graphics API for drawing etc. as well as voxel functionality (at least in the future).
 //!
 //! Module overview:
 //! - engine: Provides various game engine utilities (e.g. frame time/FPS measurement etc.)
+//! - vulkan: Provides all Vulkan functionality
+//! - as_any_trait: Provides the `AsAnyTrait` for conversions to `std::any::Any`
 //! - receivable\_events: Contains the `ReceivableEvents` struct
 //! - render\_context: Contains the `RenderContext` trait
 //! - result: Provides voxelar's error type, a `Result` with that type and more
-//! - vulkan: Provides all Vulkan functionality
 //! - window: Provides the window creation API
 //! - window_events: Provides the window event API
 //!
