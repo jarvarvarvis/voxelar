@@ -427,12 +427,12 @@ impl VulkanContext {
     where
         F: FnOnce(&SetUpVirtualDevice, &SetUpCommandBufferWithFence) -> crate::Result<()>,
     {
-        let setup_command_buffer = self.command_logic_for_setup()?.get_command_buffer(0);
+        let setup_command_buffer = self.command_pool_for_setup()?.get_command_buffer(0);
         let virtual_device = self.virtual_device()?;
         let present_queue = virtual_device.present_queue;
-        setup_command_buffer.wait_for_fence(virtual_device)?;
+        setup_command_buffer.wait_for_fence_then_reset(virtual_device)?;
         setup_command_buffer.reset(virtual_device)?;
-        setup_command_buffer.record_commands(virtual_device, command_buffer_op)?;
+        setup_command_buffer.record_commands_for_one_time_submit(virtual_device, command_buffer_op)?;
         setup_command_buffer.submit(self.virtual_device()?, present_queue, &[], &[], &[])
     }
 
@@ -712,8 +712,8 @@ impl Drop for VulkanContext {
                 depth_image.destroy(&virtual_device, self.allocator.as_ref());
             }
 
-            if let Some(command_logic_for_setup) = self.command_pool_for_setup.as_mut() {
-                command_logic_for_setup.destroy(&virtual_device);
+            if let Some(command_pool_for_setup) = self.command_pool_for_setup.as_mut() {
+                command_pool_for_setup.destroy(&virtual_device);
             }
 
             if let Some(present_images) = self.present_images.as_mut() {
