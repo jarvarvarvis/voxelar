@@ -146,7 +146,9 @@ impl PoolsForMemoryType {
         let memory_pools = self.get_memory_pools_mut();
 
         // Round the allocation amount up to the next power of two
-        let allocation_size = memory_requirements.size.next_power_of_two();
+        // If it is smaller than `PRE_ALLOCATION_BASE_AMOUNT`, use `PRE_ALLOCATION_BASE_AMOUNT`
+        // instead to avoid small allocations.
+        let allocation_size = memory_requirements.size.next_power_of_two().max(PRE_ALLOCATION_BASE_AMOUNT);
 
         let new_pool = MemoryPoolWithSubAllocations::pre_allocate(
             virtual_device,
@@ -299,8 +301,7 @@ impl Allocator for DedicatedPoolAllocator {
             println!("Memory requirements: {memory_requirements:?}");
             println!("Memory properties: {memory_properties:?}");
             println!("Memory type index: {memory_type_index}");
-            println!("Found pools for type: {pools_for_memory_type:#?}");
-            println!("Found pool for allocation: {pool:#?}");
+            println!("Found pool for allocation with memory handle: {:?}", pool.memory);
             println!("Pool reallocated: {pool_reallocated}");
             println!("Made allocation: {allocation:?}");
             println!("===================================================================\n");
@@ -318,7 +319,7 @@ impl Allocator for DedicatedPoolAllocator {
         if let Some(pool) = self.find_pool_of_allocation(allocation) {
             #[cfg(feature = "allocator-debug-logs")]
             {
-                println!("Found pool that holds allocation: {pool:#?}");
+                println!("Found pool that holds allocation for memory handle: {:?}", pool.memory);
             }
             let _ = pool.deallocate(allocation);
             #[cfg(feature = "allocator-debug-logs")]
