@@ -107,12 +107,12 @@ impl MemoryPoolWithSubAllocations {
 }
 
 #[derive(Debug)]
-struct PoolsForMemoryType {
+struct PoolBundleForType {
     memory_type_index: u32,
     memory_pools: UnsafeCell<Vec<MemoryPoolWithSubAllocations>>,
 }
 
-impl PoolsForMemoryType {
+impl PoolBundleForType {
     fn get_memory_pools_mut(&self) -> &mut Vec<MemoryPoolWithSubAllocations> {
         unsafe {
             let allocations = self.memory_pools.get();
@@ -148,7 +148,10 @@ impl PoolsForMemoryType {
         // Round the allocation amount up to the next power of two
         // If it is smaller than `PRE_ALLOCATION_BASE_AMOUNT`, use `PRE_ALLOCATION_BASE_AMOUNT`
         // instead to avoid small allocations.
-        let allocation_size = memory_requirements.size.next_power_of_two().max(PRE_ALLOCATION_BASE_AMOUNT);
+        let allocation_size = memory_requirements
+            .size
+            .next_power_of_two()
+            .max(PRE_ALLOCATION_BASE_AMOUNT);
 
         let new_pool = MemoryPoolWithSubAllocations::pre_allocate(
             virtual_device,
@@ -173,20 +176,20 @@ pub struct DedicatedPoolAllocator {
     // this caused issues in destroy functions when I needed to pass a reference to a virtual
     // device and also a mutable reference to the allocator to the function (Which is not
     // allowed!).
-    all_pools: UnsafeCell<Vec<PoolsForMemoryType>>,
+    pool_bundles: UnsafeCell<Vec<PoolBundleForType>>,
 }
 
 impl DedicatedPoolAllocator {
-    fn get_all_pools(&self) -> &Vec<PoolsForMemoryType> {
+    fn get_pool_bundles(&self) -> &Vec<PoolBundleForType> {
         unsafe {
-            let allocations = self.all_pools.get();
+            let allocations = self.pool_bundles.get();
             &*allocations
         }
     }
 
-    fn get_all_pools_mut(&self) -> &mut Vec<PoolsForMemoryType> {
+    fn get_pool_bundles_mut(&self) -> &mut Vec<PoolBundleForType> {
         unsafe {
-            let allocations = self.all_pools.get();
+            let allocations = self.pool_bundles.get();
             &mut *allocations
         }
     }
@@ -194,11 +197,11 @@ impl DedicatedPoolAllocator {
     fn find_pools_for_memory_type_index(
         &self,
         memory_type_index: u32,
-    ) -> crate::Result<&mut PoolsForMemoryType> {
-        let pools = self.get_all_pools_mut();
-        pools
+    ) -> crate::Result<&mut PoolBundleForType> {
+        let pool_bundles = self.get_pool_bundles_mut();
+        pool_bundles
             .iter_mut()
-            .find(|pools| pools.memory_type_index == memory_type_index)
+            .find(|pool_bundle| pool_bundle.memory_type_index == memory_type_index)
             .context(format!(
                 "No pool for memory index {memory_type_index} was created yet"
             ))
@@ -208,8 +211,8 @@ impl DedicatedPoolAllocator {
         &self,
         allocation: Allocation,
     ) -> Option<&mut MemoryPoolWithSubAllocations> {
-        for pools in self.get_all_pools().iter() {
-            if let Some(pool) = pools.find_pool_of_allocation(allocation) {
+        for pool_bundle in self.get_pool_bundles().iter() {
+            if let Some(pool) = pool_bundle.find_pool_of_allocation(allocation) {
                 return Some(pool);
             }
         }
@@ -223,10 +226,10 @@ impl DedicatedPoolAllocator {
         virtual_device: &SetUpVirtualDevice,
         physical_device: &SetUpPhysicalDevice,
     ) -> crate::Result<()> {
-        for pools in self.get_all_pools_mut() {
-            pools.destroy(virtual_device);
+        for pool_bundle in self.get_pool_bundles_mut() {
+            pool_bundle.destroy(virtual_device);
         }
-        self.get_all_pools_mut().clear();
+        self.get_pool_bundles_mut().clear();
         self.setup(virtual_device, physical_device)?;
         Ok(())
     }
@@ -238,7 +241,7 @@ impl Allocator for DedicatedPoolAllocator {
         Self: Sized,
     {
         Self {
-            all_pools: UnsafeCell::new(vec![]),
+            pool_bundles: UnsafeCell::new(vec![]),
         }
     }
 
@@ -247,10 +250,10 @@ impl Allocator for DedicatedPoolAllocator {
         virtual_device: &SetUpVirtualDevice,
         physical_device: &SetUpPhysicalDevice,
     ) -> crate::Result<()> {
-        let pools = self.get_all_pools_mut();
+        let pools = self.get_pool_bundles_mut();
         let memory_properties = physical_device.device_memory_properties;
         for memory_type_index in 0..memory_properties.memory_type_count {
-            pools.push(PoolsForMemoryType {
+            pools.push(PoolBundleForType {
                 memory_type_index,
                 memory_pools: UnsafeCell::new(vec![MemoryPoolWithSubAllocations::pre_allocate(
                     virtual_device,
@@ -276,12 +279,13 @@ impl Allocator for DedicatedPoolAllocator {
                 memory_properties, memory_requirements
             ))?;
 
-        let pools_for_memory_type = self.find_pools_for_memory_type_index(memory_type_index)?;
+        let pool_bundle_for_memory_type =
+            self.find_pools_for_memory_type_index(memory_type_index)?;
 
         #[cfg(feature = "allocator-debug-logs")]
         let mut pool_reallocated = false;
 
-        let pool = match pools_for_memory_type.find_pool_for_allocation(memory_requirements) {
+        let pool = match pool_bundle_for_memory_type.find_pool_for_allocation(memory_requirements) {
             Some(pool) => pool,
             None => {
                 #[cfg(feature = "allocator-debug-logs")]
@@ -289,7 +293,7 @@ impl Allocator for DedicatedPoolAllocator {
                     pool_reallocated = true;
                 }
 
-                pools_for_memory_type
+                pool_bundle_for_memory_type
                     .create_pool_for_allocation(virtual_device, memory_requirements)?
             }
         };
@@ -302,7 +306,10 @@ impl Allocator for DedicatedPoolAllocator {
             println!("Memory requirements: {memory_requirements:?}");
             println!("Memory properties: {memory_properties:?}");
             println!("Memory type index: {memory_type_index}");
-            println!("Found pool for allocation with memory handle: {:?}", pool.memory);
+            println!(
+                "Found pool for allocation with memory handle: {:?}",
+                pool.memory
+            );
             println!("Pool reallocated: {pool_reallocated}");
             println!("Made allocation: {allocation:?}");
             println!("=======================================================================");
@@ -320,7 +327,10 @@ impl Allocator for DedicatedPoolAllocator {
         if let Some(pool) = self.find_pool_of_allocation(allocation) {
             #[cfg(feature = "allocator-debug-logs")]
             {
-                println!("Found pool that holds allocation for memory handle: {:?}", pool.memory);
+                println!(
+                    "Found pool that holds allocation for memory handle: {:?}",
+                    pool.memory
+                );
             }
             let _ = pool.deallocate(allocation);
             #[cfg(feature = "allocator-debug-logs")]
@@ -336,8 +346,23 @@ impl Allocator for DedicatedPoolAllocator {
     }
 
     fn destroy(&mut self, virtual_device: &SetUpVirtualDevice) {
-        for pools in self.get_all_pools_mut() {
-            pools.destroy(virtual_device);
+        #[cfg(feature = "allocator-debug-logs")]
+        {
+            println!("================ DedicatedPoolAllocator - Destruction ================");
+        }
+        for pool_bundle in self.get_pool_bundles_mut() {
+            #[cfg(feature = "allocator-debug-logs")]
+            {
+                println!(
+                    "Destroying pool bundle ({} memory pools): {pool_bundle:?}",
+                    pool_bundle.get_memory_pools_mut().len()
+                );
+            }
+            pool_bundle.destroy(virtual_device);
+        }
+        #[cfg(feature = "allocator-debug-logs")]
+        {
+            println!("=======================================================================\n");
         }
     }
 }
@@ -374,11 +399,13 @@ mod tests {
             .unwrap();
 
         unsafe {
-            pool_allocator.reset_pools(virtual_device, physical_device).unwrap();
+            pool_allocator
+                .reset_pools(virtual_device, physical_device)
+                .unwrap();
         }
         assert_eq!(
             memory_type_count as usize,
-            pool_allocator.get_all_pools().len()
+            pool_allocator.get_pool_bundles().len()
         );
     }
 }
