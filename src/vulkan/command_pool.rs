@@ -4,12 +4,12 @@ use ash::vk::{CommandPool, CommandPoolCreateFlags, CommandPoolCreateInfo};
 use super::command_buffer::SetUpCommandBufferWithFence;
 use super::virtual_device::SetUpVirtualDevice;
 
-pub struct SetUpCommandLogic {
+pub struct SetUpCommandPool {
     pub pool: CommandPool,
     pub command_buffers: Vec<SetUpCommandBufferWithFence>,
 }
 
-impl SetUpCommandLogic {
+impl SetUpCommandPool {
     pub unsafe fn create(
         virtual_device: &SetUpVirtualDevice,
         command_buffer_count: u32,

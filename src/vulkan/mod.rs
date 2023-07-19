@@ -1,3 +1,42 @@
+//! The voxelar vulkan backend.
+//!
+//! This is the module that provides Vulkan-related abstractions and functionality.
+//!
+//! Module overview:
+//! - allocator: Provides generic functionality for GPU memory allocator implementations
+//! - buffer: Provides an abstraction for GPU memory-allocated buffers
+//! - command\_pool: Provides an abstraction for command buffer allocation
+//! - command\_buffer: Provides an abstraction for command buffers and access synchronization
+//! - creation\_info: Provides a `DataStructureCreationInfo` struct for high-level information related to the `VulkanContext` data structure initialization
+//! - debug: Provides an abstraction for the verification layer setup (if requested)
+//! - dedicated\_pool\_allocator: Provides a more complex pool-based GPU memory allocator
+//! - depth\_image: Provides an abstraction for depth image creation
+//! - descriptor\_set\_layout: Provides a wrapper around `DescriptorSetLayout`s
+//! - descriptor\_set\_layout\_builder: Provides an abstraction for building `(SetUp)DescriptorSetLayout`s
+//! - descriptor\_set\_logic: Provides an abstraction for `DescriptorSet` allocation
+//! - descriptor\_set\_logic\_builder: Provides an abstraction for building `SetUpDescriptorSetLogic`s
+//! - descriptor\_set\_update\_builder: Provides an abstraction for updating descriptor sets and specifying attached descriptors
+//! - dynamic\_descriptor\_buffer: Provides an abstraction for buffers that can be used with dynamic descriptor sets
+//! - frame\_data: Provides an abstraction for per-frame synchronization and command logic in double/triple/...-buffering scenarios
+//! - framebuffers: Provides an abstraction for framebuffer creation for each present image of a swapchain
+//! - graphics\_pipeline\_builder: Provides an abstraction for building Vulkan `Pipeline`s
+//! - memory\_range: A data structure used by the `DedicatedPoolAllocator` to track free memory ranges
+//! - naive\_allocator: Provides a very simple direct GPU memory allocator
+//! - per\_frame: Provides an abstraction for tracking data of each frame in double/triple/...-buffering scenarios, used with `FrameData` in this module
+//! - physical\_device: Provides an abstraction for finding a suitable `PhysicalDevice` for rendering, also queries important device information
+//! - pipeline\_layout: Provide a wrapper around `PipelineLayout`s
+//! - pipeline\_layout\_builder: Provides an abstraction for building `(SetUp)PipelineLayout`s
+//! - present\_images: Provides an abstraction for getting the images of a swapchain
+//! - render\_pass: Provides an abstraction for the creation of a default render pass
+//! - shader: Provides an abstraction for shader compilation and shader module creation
+//! - surface: Provides an abstraction for the window surface and all related information
+//! - swapchain: Provides an abstraction for the creation of a default swapchain
+//! - sync: Provides a wrapper around synchronization structures (related to rendering)
+//! - test\_context: Provides a full `VulkanContext` with a `VoxelarWindow` and `Voxelar` instance for test scenarios
+//! - typed\_buffer: Provides an abstraction for buffers that hold data of a specific type
+//! - util: Provides random utility functions used by the vulkan module
+//! - virtual\_device: Provides a wrapper around virtual Vulkan devices
+
 use std::ffi::{c_char, CStr, CString};
 
 use paste::paste;
@@ -18,8 +57,8 @@ use ash::vk::{KhrGetPhysicalDeviceProperties2Fn, KhrPortabilityEnumerationFn};
 
 pub mod allocator;
 pub mod buffer;
-pub mod command;
 pub mod command_buffer;
+pub mod command_pool;
 pub mod creation_info;
 pub mod debug;
 pub mod dedicated_pool_allocator;
@@ -60,8 +99,8 @@ use crate::Voxelar;
 use crate::vulkan::per_frame::PerFrame;
 
 use self::allocator::Allocator;
-use self::command::SetUpCommandLogic;
 use self::command_buffer::SetUpCommandBufferWithFence;
+use self::command_pool::SetUpCommandPool;
 use self::creation_info::DataStructureCreationInfo;
 use self::creation_info::PresentModeInitMode;
 use self::debug::VerificationProvider;
@@ -91,7 +130,7 @@ pub struct VulkanContext {
     pub virtual_device: Option<SetUpVirtualDevice>,
     pub swapchain: Option<SetUpSwapchain>,
     pub present_images: Option<SetUpPresentImages>,
-    pub command_logic_for_setup: Option<SetUpCommandLogic>,
+    pub command_pool_for_setup: Option<SetUpCommandPool>,
     pub depth_image: Option<SetUpDepthImage>,
     pub render_pass: Option<SetUpRenderPass>,
     pub framebuffers: Option<SetUpFramebuffers>,
@@ -152,9 +191,9 @@ impl VulkanContext {
     );
 
     generate_safe_getter!(
-        command_logic_for_setup,
-        SetUpCommandLogic,
-        "No command logic for setup commands was set up yet! Use VulkanContext::create_command_logic_for_setup to do so"
+        command_pool_for_setup,
+        SetUpCommandPool,
+        "No command logic for setup commands was set up yet! Use VulkanContext::create_command_pool_for_setup to do so"
     );
 
     generate_safe_getter!(
@@ -233,9 +272,9 @@ impl VulkanContext {
         Ok(())
     }
 
-    pub fn create_command_logic_for_setup(&mut self) -> crate::Result<()> {
+    pub fn create_command_pool_for_setup(&mut self) -> crate::Result<()> {
         unsafe {
-            self.command_logic_for_setup = Some(SetUpCommandLogic::create_with_one_primary_buffer(
+            self.command_pool_for_setup = Some(SetUpCommandPool::create_with_one_primary_buffer(
                 self.virtual_device()?,
             )?);
             Ok(())
@@ -311,7 +350,7 @@ impl VulkanContext {
             .setup(self.virtual_device()?, self.physical_device()?)?;
         self.create_swapchain(creation_info.swapchain_present_mode)?;
         self.create_present_images()?;
-        self.create_command_logic_for_setup()?;
+        self.create_command_pool_for_setup()?;
         self.create_depth_image()?;
         self.create_render_pass()?;
         self.create_framebuffers()?;
@@ -350,8 +389,8 @@ impl VulkanContext {
                 depth_image.destroy(&virtual_device, self.allocator.as_ref());
             }
 
-            if let Some(command_logic_for_setup) = self.command_logic_for_setup.as_mut() {
-                command_logic_for_setup.destroy(&virtual_device);
+            if let Some(command_pool_for_setup) = self.command_pool_for_setup.as_mut() {
+                command_pool_for_setup.destroy(&virtual_device);
             }
 
             if let Some(present_images) = self.present_images.as_mut() {
@@ -369,7 +408,7 @@ impl VulkanContext {
 
         self.swapchain = Some(new_swapchain);
         self.create_present_images()?;
-        self.create_command_logic_for_setup()?;
+        self.create_command_pool_for_setup()?;
         self.create_depth_image()?;
         self.create_render_pass()?;
         self.create_framebuffers()?;
@@ -641,7 +680,7 @@ impl<Alloc: Allocator + 'static, Verification: VerificationProvider + 'static>
                 virtual_device: None,
                 swapchain: None,
                 present_images: None,
-                command_logic_for_setup: None,
+                command_pool_for_setup: None,
                 depth_image: None,
                 render_pass: None,
                 framebuffers: None,
@@ -673,7 +712,7 @@ impl Drop for VulkanContext {
                 depth_image.destroy(&virtual_device, self.allocator.as_ref());
             }
 
-            if let Some(command_logic_for_setup) = self.command_logic_for_setup.as_mut() {
+            if let Some(command_logic_for_setup) = self.command_pool_for_setup.as_mut() {
                 command_logic_for_setup.destroy(&virtual_device);
             }
 

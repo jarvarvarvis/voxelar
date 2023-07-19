@@ -1,24 +1,24 @@
 use ash::vk::PipelineStageFlags;
 use ash::vk::Queue;
 
-use super::command::SetUpCommandLogic;
+use super::command_pool::SetUpCommandPool;
 use super::command_buffer::SetUpCommandBufferWithFence;
 use super::sync::RenderingSyncPrimitives;
 use super::virtual_device::SetUpVirtualDevice;
 
 pub struct FrameData {
     pub sync_primitives: RenderingSyncPrimitives,
-    pub command_logic: SetUpCommandLogic,
+    pub command_pool: SetUpCommandPool,
 }
 
 impl FrameData {
     pub unsafe fn create_with_defaults(virtual_device: &SetUpVirtualDevice) -> crate::Result<Self> {
         let sync_primitives = RenderingSyncPrimitives::create(virtual_device)?;
-        let command_logic = SetUpCommandLogic::create_with_one_primary_buffer(virtual_device)?;
+        let command_pool = SetUpCommandPool::create_with_one_primary_buffer(virtual_device)?;
 
         Ok(Self {
             sync_primitives,
-            command_logic,
+            command_pool,
         })
     }
 
@@ -26,12 +26,12 @@ impl FrameData {
         &self,
         virtual_device: &SetUpVirtualDevice,
     ) -> crate::Result<()> {
-        let draw_command_buffer = self.command_logic.get_command_buffer(0);
+        let draw_command_buffer = self.command_pool.get_command_buffer(0);
         draw_command_buffer.wait_for_fence(virtual_device)
     }
 
     pub fn reset_draw_buffer(&self, virtual_device: &SetUpVirtualDevice) -> crate::Result<()> {
-        let draw_command_buffer = self.command_logic.get_command_buffer(0);
+        let draw_command_buffer = self.command_pool.get_command_buffer(0);
         draw_command_buffer.reset(virtual_device)
     }
 
@@ -42,7 +42,7 @@ impl FrameData {
         virtual_device: &SetUpVirtualDevice,
         f: F,
     ) -> crate::Result<()> {
-        let draw_command_buffer = self.command_logic.get_command_buffer(0);
+        let draw_command_buffer = self.command_pool.get_command_buffer(0);
         draw_command_buffer.record_commands(virtual_device, f)
     }
 
@@ -52,7 +52,7 @@ impl FrameData {
         present_queue: Queue,
         wait_mask: &[PipelineStageFlags],
     ) -> crate::Result<()> {
-        let draw_command_buffer = self.command_logic.get_command_buffer(0);
+        let draw_command_buffer = self.command_pool.get_command_buffer(0);
         draw_command_buffer.submit(
             virtual_device,
             present_queue,
@@ -64,6 +64,6 @@ impl FrameData {
 
     pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice) {
         self.sync_primitives.destroy(virtual_device);
-        self.command_logic.destroy(virtual_device);
+        self.command_pool.destroy(virtual_device);
     }
 }
