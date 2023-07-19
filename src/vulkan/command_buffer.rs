@@ -34,13 +34,20 @@ impl SetUpCommandBufferWithFence {
         })
     }
 
-    /// This function waits for this `SetUpCommandBufferWithFence`s reuse fence and resets it
-    /// afterwards.
-    pub fn wait_for_fence_then_reset(&self, virtual_device: &SetUpVirtualDevice) -> crate::Result<()> {
+    /// This function waits for this `SetUpCommandBufferWithFence`'s reuse fence
+    pub fn wait_for_fence(&self, virtual_device: &SetUpVirtualDevice) -> crate::Result<()> {
         unsafe {
             virtual_device
                 .device
                 .wait_for_fences(&[self.reuse_fence], true, std::u64::MAX)?;
+            virtual_device.device.reset_fences(&[self.reuse_fence])?;
+            Ok(())
+        }
+    }
+
+    /// This function resets this `SetUpCommandBufferWithFence`'s reuse fence
+    pub fn reset_fence(&self, virtual_device: &SetUpVirtualDevice) -> crate::Result<()> {
+        unsafe {
             virtual_device.device.reset_fences(&[self.reuse_fence])?;
             Ok(())
         }

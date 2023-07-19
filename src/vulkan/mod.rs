@@ -423,6 +423,10 @@ impl VulkanContext {
         self.surface_info.surface_extent()
     }
 
+    pub fn frame_overlap(&self) -> usize {
+        self.frames.len()
+    }
+
     pub fn submit_immediate_setup_commands<F>(&self, command_buffer_op: F) -> crate::Result<()>
     where
         F: FnOnce(&SetUpVirtualDevice, &SetUpCommandBufferWithFence) -> crate::Result<()>,
@@ -430,14 +434,40 @@ impl VulkanContext {
         let setup_command_buffer = self.command_pool_for_setup()?.get_command_buffer(0);
         let virtual_device = self.virtual_device()?;
         let present_queue = virtual_device.present_queue;
-        setup_command_buffer.wait_for_fence_then_reset(virtual_device)?;
+        setup_command_buffer.wait_for_fence(virtual_device)?;
         setup_command_buffer.reset(virtual_device)?;
-        setup_command_buffer.record_commands_for_one_time_submit(virtual_device, command_buffer_op)?;
+        setup_command_buffer
+            .record_commands_for_one_time_submit(virtual_device, command_buffer_op)?;
         setup_command_buffer.submit(self.virtual_device()?, present_queue, &[], &[], &[])
     }
 
     pub fn select_frame(&mut self, current_frame_index: usize) {
         self.frames.select(current_frame_index);
+    }
+
+    pub fn wait_for_current_frame_draw_buffer_fence(&self) -> crate::Result<()> {
+        let current_frame = self.frames.current();
+        current_frame.wait_for_draw_buffer_fence(self.virtual_device()?)?;
+        Ok(())
+    }
+
+    pub fn acquire_next_image(&self) -> crate::Result<(u32, bool)> {
+        unsafe {
+            let frame = self.frames.current();
+            let result = self.swapchain()?.swapchain_loader.acquire_next_image(
+                self.swapchain()?.swapchain,
+                std::u64::MAX,
+                frame.sync_primitives.present_complete_semaphore,
+                vk::Fence::null(),
+            );
+
+            match result {
+                Err(ash::vk::Result::ERROR_OUT_OF_DATE_KHR | ash::vk::Result::SUBOPTIMAL_KHR) => {
+                    Ok((0, true))
+                }
+                other => Ok(other?),
+            }
+        }
     }
 
     pub fn submit_immediate_render_pass_commands<F>(
@@ -461,7 +491,7 @@ impl VulkanContext {
         let current_frame = self.frames.current();
         let present_queue = virtual_device.present_queue;
 
-        current_frame.wait_for_draw_buffer_fence(virtual_device)?;
+        current_frame.reset_draw_buffer_fence(virtual_device)?;
         current_frame.reset_draw_buffer(virtual_device)?;
         current_frame.record_draw_buffer_commands(
             virtual_device,
@@ -486,29 +516,6 @@ impl VulkanContext {
         )?;
 
         Ok(())
-    }
-
-    pub fn frame_overlap(&self) -> usize {
-        self.frames.len()
-    }
-
-    pub fn acquire_next_image(&self) -> crate::Result<(u32, bool)> {
-        unsafe {
-            let frame = self.frames.current();
-            let result = self.swapchain()?.swapchain_loader.acquire_next_image(
-                self.swapchain()?.swapchain,
-                std::u64::MAX,
-                frame.sync_primitives.present_complete_semaphore,
-                vk::Fence::null(),
-            );
-
-            match result {
-                Err(ash::vk::Result::ERROR_OUT_OF_DATE_KHR | ash::vk::Result::SUBOPTIMAL_KHR) => {
-                    Ok((0, true))
-                }
-                other => Ok(other?),
-            }
-        }
     }
 
     pub fn present_image(&self, present_index: u32) -> crate::Result<bool> {

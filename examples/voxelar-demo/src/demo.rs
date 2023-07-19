@@ -301,6 +301,7 @@ impl Demo {
                 return Ok(());
             }
 
+            vulkan_context.wait_for_current_frame_draw_buffer_fence()?;
             let (present_index, swapchain_suboptimal) = vulkan_context.acquire_next_image()?;
 
             // If the swapchain is suboptimal for this image, only recreate it on the next frame.

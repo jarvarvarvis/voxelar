@@ -27,7 +27,15 @@ impl FrameData {
         virtual_device: &SetUpVirtualDevice,
     ) -> crate::Result<()> {
         let draw_command_buffer = self.command_pool.get_command_buffer(0);
-        draw_command_buffer.wait_for_fence_then_reset(virtual_device)
+        draw_command_buffer.wait_for_fence(virtual_device)
+    }
+
+    pub fn reset_draw_buffer_fence(
+        &self,
+        virtual_device: &SetUpVirtualDevice,
+    ) -> crate::Result<()> {
+        let draw_command_buffer = self.command_pool.get_command_buffer(0);
+        draw_command_buffer.reset_fence(virtual_device)
     }
 
     pub fn reset_draw_buffer(&self, virtual_device: &SetUpVirtualDevice) -> crate::Result<()> {
