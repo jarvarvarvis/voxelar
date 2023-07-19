@@ -25,6 +25,7 @@ pub extern crate shaderc;
 
 use glfw::*;
 
+pub mod as_any_trait;
 pub mod engine;
 pub mod receivable_events;
 pub mod render_context;

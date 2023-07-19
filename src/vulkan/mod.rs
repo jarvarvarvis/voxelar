@@ -49,6 +49,9 @@ pub mod typed_buffer;
 pub mod util;
 pub mod virtual_device;
 
+#[cfg(test)]
+pub mod test_context;
+
 use crate::render_context::RenderContext;
 use crate::result::Context;
 use crate::window::VoxelarWindow;

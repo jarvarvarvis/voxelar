@@ -1,5 +1,7 @@
 use ash::vk::{DeviceMemory, MemoryPropertyFlags, MemoryRequirements};
 
+use crate::as_any_trait::AsAny;
+
 use super::physical_device::SetUpPhysicalDevice;
 use super::virtual_device::SetUpVirtualDevice;
 
@@ -10,7 +12,7 @@ pub struct Allocation {
     pub size: u64,
 }
 
-pub trait Allocator {
+pub trait Allocator: AsAny {
     fn new() -> Self
     where
         Self: Sized;

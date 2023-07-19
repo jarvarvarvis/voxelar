@@ -61,14 +61,14 @@ impl MemoryPoolWithSubAllocations {
             .context(format!(
                 "Memory pool can't fit requested memory: {memory_requirements:?}"
             ))?;
-        
+
         self.free_memory_ranges
             .unfree_range(range.start(), range.start() + memory_requirements.size - 1)?;
-        
+
         self.sub_allocations.push(SubAllocation {
             offset: range.start(),
         });
-        
+
         Ok(Allocation {
             memory: self.memory,
             offset: range.start(),
@@ -214,6 +214,19 @@ impl DedicatedPoolAllocator {
 
         None
     }
+
+    unsafe fn reset_pools(
+        &self,
+        virtual_device: &SetUpVirtualDevice,
+        physical_device: &SetUpPhysicalDevice,
+    ) -> crate::Result<()> {
+        for pools in self.get_all_pools_mut() {
+            pools.destroy(virtual_device);
+        }
+        self.get_all_pools_mut().clear();
+        self.setup(virtual_device, physical_device)?;
+        Ok(())
+    }
 }
 
 impl Allocator for DedicatedPoolAllocator {
@@ -324,5 +337,46 @@ impl Allocator for DedicatedPoolAllocator {
         for pools in self.get_all_pools_mut() {
             pools.destroy(virtual_device);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::vulkan::debug::NoVerification;
+    use crate::vulkan::test_context::*;
+    use rstest::*;
+
+    #[fixture]
+    #[once]
+    fn test_context_fixture() -> TestContext {
+        TestContext::create::<DedicatedPoolAllocator, NoVerification>()
+            .expect("Unable to create test context")
+    }
+
+    #[rstest]
+    fn pool_of_just_created_test_context_has_correct_amount_of_pools(
+        test_context_fixture: &TestContext,
+    ) {
+        let vulkan_context = test_context_fixture.vulkan_context();
+        let virtual_device = vulkan_context
+            .virtual_device()
+            .expect("No virtual device created");
+        let physical_device = vulkan_context
+            .physical_device()
+            .expect("No physical device created");
+
+        let memory_type_count = physical_device.device_memory_properties.memory_type_count;
+        let pool_allocator = test_context_fixture
+            .try_get_allocator::<DedicatedPoolAllocator>()
+            .unwrap();
+
+        unsafe {
+            pool_allocator.reset_pools(virtual_device, physical_device).unwrap();
+        }
+        assert_eq!(
+            memory_type_count as usize,
+            pool_allocator.get_all_pools().len()
+        );
     }
 }
