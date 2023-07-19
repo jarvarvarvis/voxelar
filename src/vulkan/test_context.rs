@@ -16,6 +16,7 @@ use super::allocator::Allocator;
 use super::debug::VerificationProvider;
 use super::VulkanContext;
 
+#[allow(dead_code)]
 pub struct TestContext {
     ctx: Voxelar,
     window: VoxelarWindow,

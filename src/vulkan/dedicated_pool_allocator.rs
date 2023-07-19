@@ -217,6 +217,7 @@ impl DedicatedPoolAllocator {
         None
     }
 
+    #[cfg(test)]
     unsafe fn reset_pools(
         &self,
         virtual_device: &SetUpVirtualDevice,
