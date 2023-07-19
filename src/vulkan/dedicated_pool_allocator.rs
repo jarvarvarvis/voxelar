@@ -5,6 +5,7 @@ use ash::vk::{DeviceMemory, MemoryAllocateInfo, MemoryPropertyFlags, MemoryRequi
 use crate::result::Context;
 
 use super::allocator::{Allocation, Allocator};
+use super::memory_range::*;
 use super::physical_device::SetUpPhysicalDevice;
 use super::virtual_device::SetUpVirtualDevice;
 
@@ -18,8 +19,7 @@ struct SubAllocation {
 #[derive(Debug)]
 struct MemoryPoolWithSubAllocations {
     memory: DeviceMemory,
-    memory_size: u64,
-    allocation_amount_so_far: u64,
+    free_memory_ranges: FreeMemoryRanges,
     sub_allocations: Vec<SubAllocation>,
 }
 
@@ -42,39 +42,42 @@ impl MemoryPoolWithSubAllocations {
 
             Ok(Self {
                 memory,
-                memory_size: allocate_info.allocation_size,
-                allocation_amount_so_far: 0,
+                free_memory_ranges: FreeMemoryRanges::fully_free(0, allocate_info.allocation_size)?,
                 sub_allocations: vec![],
             })
         }
     }
 
     fn can_fit_allocation(&self, memory_requirements: MemoryRequirements) -> bool {
-        self.allocation_amount_so_far + memory_requirements.size <= self.memory_size
+        self.free_memory_ranges
+            .find_range_that_can_fit_width(memory_requirements.size)
+            .is_some()
     }
 
-    fn allocate(&mut self, memory_requirements: MemoryRequirements) -> Allocation {
-        let allocation_offset = self.allocation_amount_so_far;
-        let sub_allocation = SubAllocation {
-            offset: allocation_offset,
-        };
-
-        self.allocation_amount_so_far += memory_requirements.size;
-        self.sub_allocations.push(sub_allocation);
-
-        Allocation {
+    fn allocate(&mut self, memory_requirements: MemoryRequirements) -> crate::Result<Allocation> {
+        let range = self
+            .free_memory_ranges
+            .find_range_that_can_fit_width(memory_requirements.size)
+            .context(format!(
+                "Memory pool can't fit requested memory: {memory_requirements:?}"
+            ))?;
+        
+        self.free_memory_ranges
+            .unfree_range(range.start(), range.start() + memory_requirements.size - 1)?;
+        
+        self.sub_allocations.push(SubAllocation {
+            offset: range.start(),
+        });
+        
+        Ok(Allocation {
             memory: self.memory,
-            offset: allocation_offset,
-        }
+            offset: range.start(),
+            size: memory_requirements.size,
+        })
     }
 
     fn has_allocation(&self, allocation: Allocation) -> bool {
         allocation.memory == self.memory
-            && self
-                .sub_allocations
-                .iter()
-                .find(|sub_alloc| sub_alloc.offset == allocation.offset)
-                .is_some()
     }
 
     fn deallocate(&mut self, allocation: Allocation) -> crate::Result<()> {
@@ -85,8 +88,11 @@ impl MemoryPoolWithSubAllocations {
 
         for (i, sub_alloc) in self.sub_allocations.iter().enumerate() {
             if sub_alloc.offset == allocation.offset {
+                self.free_memory_ranges
+                    .free_range(sub_alloc.offset, sub_alloc.offset + allocation.size - 1)?;
                 self.sub_allocations.remove(i);
             }
+
             return Ok(());
         }
 
@@ -263,19 +269,20 @@ impl Allocator for DedicatedPoolAllocator {
             Some(pool) => pool,
             None => {
                 #[cfg(feature = "allocator-debug-logs")]
-                { 
+                {
                     pool_reallocated = true;
                 }
 
-                pools_for_memory_type.create_pool_for_allocation(virtual_device, memory_requirements)?
-            },
+                pools_for_memory_type
+                    .create_pool_for_allocation(virtual_device, memory_requirements)?
+            }
         };
 
-        let allocation = pool.allocate(memory_requirements);
+        let allocation = pool.allocate(memory_requirements)?;
 
         #[cfg(feature = "allocator-debug-logs")]
         {
-            println!("===== DedicatedAllocator - Allocation =====");
+            println!("================= DedicatedPoolAllocator - Allocation =================");
             println!("Memory requirements: {memory_requirements:?}");
             println!("Memory properties: {memory_properties:?}");
             println!("Memory type index: {memory_type_index}");
@@ -283,7 +290,7 @@ impl Allocator for DedicatedPoolAllocator {
             println!("Found pool for allocation: {pool:#?}");
             println!("Pool reallocated: {pool_reallocated}");
             println!("Made allocation: {allocation:?}");
-            println!("===========================================\n");
+            println!("===================================================================\n");
         }
 
         Ok(allocation)
@@ -292,7 +299,7 @@ impl Allocator for DedicatedPoolAllocator {
     fn deallocate(&self, _: &SetUpVirtualDevice, allocation: Allocation) {
         #[cfg(feature = "allocator-debug-logs")]
         {
-            println!("===== DedicatedAllocator - Deallocation =====");
+            println!("================ DedicatedPoolAllocator - Deallocation ================");
         }
 
         if let Some(pool) = self.find_pool_of_allocation(allocation) {
@@ -309,7 +316,7 @@ impl Allocator for DedicatedPoolAllocator {
 
         #[cfg(feature = "allocator-debug-logs")]
         {
-            println!("=============================================\n");
+            println!("===================================================================\n");
         }
     }
 

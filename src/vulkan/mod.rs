@@ -33,6 +33,7 @@ pub mod dynamic_descriptor_buffer;
 pub mod frame_data;
 pub mod framebuffers;
 pub mod graphics_pipeline_builder;
+pub mod memory_range;
 pub mod naive_allocator;
 pub mod per_frame;
 pub mod physical_device;
@@ -243,6 +244,7 @@ impl VulkanContext {
             self.depth_image = Some(SetUpDepthImage::create_with_defaults(
                 self.physical_device()?,
                 self.virtual_device()?,
+                self.allocator.as_ref(),
                 &self.surface_info,
             )?);
 
@@ -342,7 +344,7 @@ impl VulkanContext {
             }
 
             if let Some(depth_image) = self.depth_image.as_mut() {
-                depth_image.destroy(&virtual_device);
+                depth_image.destroy(&virtual_device, self.allocator.as_ref());
             }
 
             if let Some(command_logic_for_setup) = self.command_logic_for_setup.as_mut() {
@@ -665,7 +667,7 @@ impl Drop for VulkanContext {
             }
 
             if let Some(depth_image) = self.depth_image.as_mut() {
-                depth_image.destroy(&virtual_device);
+                depth_image.destroy(&virtual_device, self.allocator.as_ref());
             }
 
             if let Some(command_logic_for_setup) = self.command_logic_for_setup.as_mut() {

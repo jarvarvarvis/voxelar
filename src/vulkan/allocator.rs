@@ -7,6 +7,7 @@ use super::virtual_device::SetUpVirtualDevice;
 pub struct Allocation {
     pub memory: DeviceMemory,
     pub offset: u64,
+    pub size: u64,
 }
 
 pub trait Allocator {

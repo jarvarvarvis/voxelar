@@ -248,6 +248,7 @@ impl Voxelar {
     /// use voxelar::*;
     /// use voxelar::vulkan::*;
     /// use voxelar::vulkan::debug::*;
+    /// use voxelar::vulkan::naive_allocator::*;
     ///
     /// fn main() -> Result<()> {
     ///     let mut ctx = Voxelar::new()?;
@@ -258,7 +259,7 @@ impl Voxelar {
     ///         ctx.create_window(800, 600, "Demo", glfw::WindowMode::Windowed)?;
     ///
     ///     let vulkan_context = ctx
-    ///         .load_render_context_for_window::<NoVerification, VulkanContext>(
+    ///         .load_render_context_for_window::<(NaiveAllocator, NoVerification), VulkanContext>(
     ///             &mut window
     ///         );
     ///     assert!(vulkan_context.is_ok());

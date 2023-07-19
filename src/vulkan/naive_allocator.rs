@@ -39,7 +39,11 @@ impl Allocator for NaiveAllocator {
                 .device
                 .allocate_memory(&allocate_info, None)?;
 
-            let allocation = Allocation { memory, offset: 0 };
+            let allocation = Allocation {
+                memory,
+                offset: 0,
+                size: memory_requirements.size,
+            };
 
             #[cfg(feature = "allocator-debug-logs")]
             {

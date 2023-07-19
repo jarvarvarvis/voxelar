@@ -1,17 +1,17 @@
 use ash::vk::CommandBuffer;
 use ash::vk::Extent2D;
 use ash::vk::Format;
+use ash::vk::MemoryPropertyFlags;
 use ash::vk::SharingMode;
 use ash::vk::{AccessFlags, DependencyFlags, PipelineStageFlags, SampleCountFlags};
-use ash::vk::{DeviceMemory, MemoryAllocateInfo, MemoryPropertyFlags};
 use ash::vk::{
     Image, ImageAspectFlags, ImageCreateInfo, ImageLayout, ImageMemoryBarrier,
     ImageSubresourceRange, ImageTiling, ImageType, ImageUsageFlags, ImageView, ImageViewCreateInfo,
     ImageViewType,
 };
 
-use crate::result::Context;
-
+use super::allocator::Allocation;
+use super::allocator::Allocator;
 use super::physical_device::SetUpPhysicalDevice;
 use super::surface::SetUpSurfaceInfo;
 use super::virtual_device::SetUpVirtualDevice;
@@ -19,13 +19,14 @@ use super::virtual_device::SetUpVirtualDevice;
 pub struct SetUpDepthImage {
     pub depth_image: Image,
     pub depth_image_view: ImageView,
-    pub depth_image_memory: DeviceMemory,
+    pub depth_image_allocation: Allocation,
 }
 
 impl SetUpDepthImage {
     pub unsafe fn create(
         physical_device: &SetUpPhysicalDevice,
         virtual_device: &SetUpVirtualDevice,
+        allocator: &dyn Allocator,
         image_type: ImageType,
         format: Format,
         surface_extent: Extent2D,
@@ -54,21 +55,17 @@ impl SetUpDepthImage {
         let depth_image_memory_req = virtual_device
             .device
             .get_image_memory_requirements(depth_image);
-        let depth_image_memory_index = physical_device
-            .find_memory_type_index(&depth_image_memory_req, MemoryPropertyFlags::DEVICE_LOCAL)
-            .context("Unable to find suitable memory index for depth image!".to_string())?;
 
-        let depth_image_allocate_info = MemoryAllocateInfo::builder()
-            .allocation_size(depth_image_memory_req.size)
-            .memory_type_index(depth_image_memory_index);
-
-        let depth_image_memory = virtual_device
-            .device
-            .allocate_memory(&depth_image_allocate_info, None)?;
+        let depth_image_allocation = allocator.allocate(
+            virtual_device,
+            physical_device,
+            depth_image_memory_req,
+            MemoryPropertyFlags::DEVICE_LOCAL,
+        )?;
 
         virtual_device
             .device
-            .bind_image_memory(depth_image, depth_image_memory, 0)?;
+            .bind_image_memory(depth_image, depth_image_allocation.memory, 0)?;
 
         let depth_image_view_info = ImageViewCreateInfo::builder()
             .view_type(ImageViewType::TYPE_2D)
@@ -82,8 +79,8 @@ impl SetUpDepthImage {
 
         Ok(Self {
             depth_image,
-            depth_image_memory,
             depth_image_view,
+            depth_image_allocation,
         })
     }
 
@@ -98,6 +95,7 @@ impl SetUpDepthImage {
     pub unsafe fn create_with_defaults(
         physical_device: &SetUpPhysicalDevice,
         virtual_device: &SetUpVirtualDevice,
+        allocator: &dyn Allocator,
         surface_info: &SetUpSurfaceInfo,
     ) -> crate::Result<Self> {
         let surface_extent = surface_info.surface_extent()?;
@@ -105,6 +103,7 @@ impl SetUpDepthImage {
         Self::create(
             physical_device,
             virtual_device,
+            allocator,
             ImageType::TYPE_2D,
             Format::D16_UNORM,
             surface_extent,
@@ -147,15 +146,13 @@ impl SetUpDepthImage {
         }
     }
 
-    pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice) {
+    pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice, allocator: &dyn Allocator) {
         unsafe {
             virtual_device
                 .device
                 .destroy_image_view(self.depth_image_view, None);
             virtual_device.device.destroy_image(self.depth_image, None);
-            virtual_device
-                .device
-                .free_memory(self.depth_image_memory, None);
+            allocator.deallocate(virtual_device, self.depth_image_allocation);
         }
     }
 }
