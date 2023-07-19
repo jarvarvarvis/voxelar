@@ -1,3 +1,6 @@
+//! This is a module that contains the `AllocatedBuffer` structure, an abstraction for GPU
+//! memory-allocated buffers for various purposes
+
 use std::ffi::c_void;
 
 use ash::vk::SharingMode;
@@ -8,12 +11,18 @@ use super::allocator::{Allocation, Allocator};
 use super::physical_device::SetUpPhysicalDevice;
 use super::virtual_device::SetUpVirtualDevice;
 
+/// A GPU memory-allocated buffer
 pub struct AllocatedBuffer {
     pub buffer_allocation: Allocation,
     pub buffer: Buffer,
 }
 
 impl AllocatedBuffer {
+    /// This function allocates a new fixed-size buffer with the given arguments.
+    ///
+    /// The buffer is created using the `size`, `usage` and `sharing_mode` arguments, and the
+    /// buffer data is allocated according to the `MemoryPropertyFlags` and buffer's memory
+    /// requirements using the provided `Allocator`.
     pub unsafe fn allocate(
         virtual_device: &SetUpVirtualDevice,
         physical_device: &SetUpPhysicalDevice,
@@ -50,6 +59,7 @@ impl AllocatedBuffer {
         })
     }
 
+    /// This function returns the memory requirements of the internal buffer.
     pub fn get_buffer_memory_req(&self, virtual_device: &SetUpVirtualDevice) -> MemoryRequirements {
         unsafe {
             virtual_device
@@ -58,6 +68,10 @@ impl AllocatedBuffer {
         }
     }
 
+    /// This function maps the data of this buffer and returns a pointer to it.
+    ///
+    /// NOTE: This might fail if the buffer hasn't been allocated using the `HOST_VISIBLE` (Specifies
+    ///       that the "memory is mappable by host") `MemoryPropertyFlags`.
     pub fn map_memory(&self, virtual_device: &SetUpVirtualDevice) -> crate::Result<*mut c_void> {
         unsafe {
             let buffer_memory_req = virtual_device
@@ -73,6 +87,10 @@ impl AllocatedBuffer {
         }
     }
 
+    /// This function unmaps the data of this buffer if it has been previously mapped using
+    /// `AllocatedBuffer::map_memory`.
+    ///
+    /// If not, this is (probably) a no-op.
     pub fn unmap_memory(&self, virtual_device: &SetUpVirtualDevice) {
         unsafe {
             virtual_device
@@ -81,6 +99,7 @@ impl AllocatedBuffer {
         }
     }
 
+    /// This function destroys this buffer and deallocates its memory using the provided `Allocator`.
     pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice, allocator: &dyn Allocator) {
         unsafe {
             allocator.deallocate(virtual_device, self.buffer_allocation);

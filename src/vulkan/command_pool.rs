@@ -61,7 +61,7 @@ impl SetUpCommandPool {
             //       all command buffers created from that pool will be destroyed as
             //       well.
             for command_buffer in self.command_buffers.iter_mut() {
-                command_buffer.destroy_fence(&virtual_device);
+                command_buffer.destroy(&virtual_device);
             }
             virtual_device.device.destroy_command_pool(self.pool, None);
         }

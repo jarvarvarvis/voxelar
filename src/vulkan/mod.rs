@@ -5,8 +5,8 @@
 //! Module overview:
 //! - allocator: Provides generic functionality for GPU memory allocator implementations
 //! - buffer: Provides an abstraction for GPU memory-allocated buffers
-//! - command\_pool: Provides an abstraction for command buffer allocation
 //! - command\_buffer: Provides an abstraction for command buffers and access synchronization
+//! - command\_pool: Provides an abstraction for command buffer allocation
 //! - creation\_info: Provides a `DataStructureCreationInfo` struct for high-level information related to the `VulkanContext` data structure initialization
 //! - debug: Provides an abstraction for the verification layer setup (if requested)
 //! - dedicated\_pool\_allocator: Provides a more complex pool-based GPU memory allocator
