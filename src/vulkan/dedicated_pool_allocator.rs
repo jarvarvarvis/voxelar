@@ -304,7 +304,7 @@ impl Allocator for DedicatedPoolAllocator {
             println!("Found pool for allocation with memory handle: {:?}", pool.memory);
             println!("Pool reallocated: {pool_reallocated}");
             println!("Made allocation: {allocation:?}");
-            println!("===================================================================\n");
+            println!("=======================================================================");
         }
 
         Ok(allocation)
@@ -330,7 +330,7 @@ impl Allocator for DedicatedPoolAllocator {
 
         #[cfg(feature = "allocator-debug-logs")]
         {
-            println!("===================================================================\n");
+            println!("=======================================================================\n");
         }
     }
 
