@@ -6,7 +6,7 @@ use ash::vk::MemoryPropertyFlags;
 use ash::vk::SharingMode;
 use ash::vk::{Buffer, BufferUsageFlags};
 
-use super::allocator::Allocator;
+use super::experimental::allocator::Allocator;
 use super::buffer::AllocatedBuffer;
 use super::physical_device::SetUpPhysicalDevice;
 use super::virtual_device::SetUpVirtualDevice;

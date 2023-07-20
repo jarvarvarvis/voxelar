@@ -10,8 +10,8 @@ use ash::vk::{
     ImageViewType,
 };
 
-use super::allocator::Allocation;
-use super::allocator::Allocator;
+use super::experimental::allocator::Allocation;
+use super::experimental::allocator::Allocator;
 use super::physical_device::SetUpPhysicalDevice;
 use super::surface::SetUpSurfaceInfo;
 use super::virtual_device::SetUpVirtualDevice;

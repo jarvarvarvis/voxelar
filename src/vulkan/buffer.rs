@@ -7,7 +7,7 @@ use ash::vk::SharingMode;
 use ash::vk::{Buffer, BufferCreateInfo, BufferUsageFlags};
 use ash::vk::{MemoryMapFlags, MemoryPropertyFlags, MemoryRequirements};
 
-use super::allocator::{Allocation, Allocator};
+use super::experimental::allocator::{Allocation, Allocator};
 use super::physical_device::SetUpPhysicalDevice;
 use super::virtual_device::SetUpVirtualDevice;
 

@@ -58,13 +58,11 @@ use paste::paste;
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 use ash::vk::{KhrGetPhysicalDeviceProperties2Fn, KhrPortabilityEnumerationFn};
 
-pub mod allocator;
 pub mod buffer;
 pub mod command_buffer;
 pub mod command_pool;
 pub mod creation_info;
 pub mod debug;
-pub mod dedicated_pool_allocator;
 pub mod depth_image;
 pub mod descriptor_set_layout;
 pub mod descriptor_set_layout_builder;
@@ -72,11 +70,10 @@ pub mod descriptor_set_logic;
 pub mod descriptor_set_logic_builder;
 pub mod descriptor_set_update_builder;
 pub mod dynamic_descriptor_buffer;
+pub mod experimental;
 pub mod frame_data;
 pub mod framebuffers;
 pub mod graphics_pipeline_builder;
-pub mod memory_range;
-pub mod naive_allocator;
 pub mod per_frame;
 pub mod physical_device;
 pub mod pipeline_layout;
@@ -101,7 +98,6 @@ use crate::Voxelar;
 
 use crate::vulkan::per_frame::PerFrame;
 
-use self::allocator::Allocator;
 use self::command_buffer::SetUpCommandBufferWithFence;
 use self::command_pool::SetUpCommandPool;
 use self::creation_info::DataStructureCreationInfo;
@@ -109,6 +105,7 @@ use self::creation_info::PresentModeInitMode;
 use self::debug::VerificationProvider;
 use self::depth_image::SetUpDepthImage;
 use self::dynamic_descriptor_buffer::DynamicDescriptorBuffer;
+use self::experimental::allocator::Allocator;
 use self::frame_data::FrameData;
 use self::framebuffers::SetUpFramebuffers;
 use self::physical_device::SetUpPhysicalDevice;
