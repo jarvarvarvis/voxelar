@@ -1,6 +1,6 @@
 use ash::vk::FenceCreateFlags;
 use ash::vk::{CommandBufferAllocateInfo, CommandBufferLevel};
-use ash::vk::{CommandPool, CommandPoolCreateFlags, CommandPoolCreateInfo};
+use ash::vk::{CommandPool, CommandPoolCreateFlags, CommandPoolCreateInfo, CommandPoolResetFlags};
 
 use super::command_buffer::SetUpCommandBufferWithFence;
 use super::virtual_device::SetUpVirtualDevice;
@@ -51,6 +51,17 @@ impl SetUpCommandPool {
 
     pub fn get_command_buffer(&self, index: usize) -> &SetUpCommandBufferWithFence {
         &self.command_buffers[index]
+    }
+
+    pub fn reset(
+        &self,
+        virtual_device: &SetUpVirtualDevice,
+        flags: CommandPoolResetFlags,
+    ) -> crate::Result<()> {
+        unsafe {
+            virtual_device.device.reset_command_pool(self.pool, flags)?;
+            Ok(())
+        }
     }
 
     pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice) {

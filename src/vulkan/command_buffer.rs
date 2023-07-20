@@ -55,12 +55,15 @@ impl SetUpCommandBufferWithFence {
     }
 
     /// This function resets this `SetUpCommandBufferWithFence`, clearing all recorded commands.
-    pub fn reset(&self, virtual_device: &SetUpVirtualDevice) -> crate::Result<()> {
+    pub fn reset(
+        &self,
+        virtual_device: &SetUpVirtualDevice,
+        flags: CommandBufferResetFlags,
+    ) -> crate::Result<()> {
         unsafe {
-            virtual_device.device.reset_command_buffer(
-                self.command_buffer,
-                CommandBufferResetFlags::RELEASE_RESOURCES,
-            )?;
+            virtual_device
+                .device
+                .reset_command_buffer(self.command_buffer, flags)?;
             Ok(())
         }
     }

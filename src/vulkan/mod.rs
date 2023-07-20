@@ -44,6 +44,7 @@ use ash::vk;
 use ash::vk::ApplicationInfo;
 use ash::vk::ClearValue;
 use ash::vk::CommandBufferLevel;
+use ash::vk::CommandPoolResetFlags;
 use ash::vk::Extent2D;
 use ash::vk::FenceCreateFlags;
 use ash::vk::PipelineStageFlags;
@@ -436,13 +437,18 @@ impl VulkanContext {
     where
         F: FnOnce(&SetUpVirtualDevice, &SetUpCommandBufferWithFence) -> crate::Result<()>,
     {
-        let setup_command_buffer = self.command_pool_for_setup()?.get_command_buffer(0);
+        let command_pool = self.command_pool_for_setup()?;
+
+        let setup_command_buffer = command_pool.get_command_buffer(0);
         let virtual_device = self.virtual_device()?;
         let present_queue = virtual_device.present_queue;
-        setup_command_buffer.reset(virtual_device)?;
         setup_command_buffer
             .record_commands_for_one_time_submit(virtual_device, command_buffer_op)?;
-        setup_command_buffer.submit(self.virtual_device()?, present_queue, &[], &[], &[])
+        setup_command_buffer.submit(virtual_device, present_queue, &[], &[], &[])?;
+        setup_command_buffer.wait_for_fence(virtual_device)?;
+        setup_command_buffer.reset_fence(virtual_device)?;
+
+        command_pool.reset(virtual_device, CommandPoolResetFlags::empty())
     }
 
     pub fn select_frame(&mut self, current_frame_index: usize) {

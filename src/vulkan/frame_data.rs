@@ -1,4 +1,5 @@
 use ash::vk::CommandBufferLevel;
+use ash::vk::CommandBufferResetFlags;
 use ash::vk::FenceCreateFlags;
 use ash::vk::PipelineStageFlags;
 use ash::vk::Queue;
@@ -47,7 +48,7 @@ impl FrameData {
 
     pub fn reset_draw_buffer(&self, virtual_device: &SetUpVirtualDevice) -> crate::Result<()> {
         let draw_command_buffer = self.command_pool.get_command_buffer(0);
-        draw_command_buffer.reset(virtual_device)
+        draw_command_buffer.reset(virtual_device, CommandBufferResetFlags::RELEASE_RESOURCES)
     }
 
     pub fn record_draw_buffer_commands<
