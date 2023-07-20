@@ -3,13 +3,11 @@
 //! This is the module that provides Vulkan-related abstractions and functionality.
 //!
 //! Module overview:
-//! - allocator: Provides generic functionality for GPU memory allocator implementations
 //! - buffer: Provides an abstraction for GPU memory-allocated buffers
 //! - command\_buffer: Provides an abstraction for command buffers and access synchronization
 //! - command\_pool: Provides an abstraction for command buffer allocation
 //! - creation\_info: Provides a `DataStructureCreationInfo` struct for high-level information related to the `VulkanContext` data structure initialization
 //! - debug: Provides an abstraction for the verification layer setup (if requested)
-//! - dedicated\_pool\_allocator: Provides a more complex pool-based GPU memory allocator
 //! - depth\_image: Provides an abstraction for depth image creation
 //! - descriptor\_set\_layout: Provides a wrapper around `DescriptorSetLayout`s
 //! - descriptor\_set\_layout\_builder: Provides an abstraction for building `(SetUp)DescriptorSetLayout`s
@@ -17,11 +15,10 @@
 //! - descriptor\_set\_logic\_builder: Provides an abstraction for building `SetUpDescriptorSetLogic`s
 //! - descriptor\_set\_update\_builder: Provides an abstraction for updating descriptor sets and specifying attached descriptors
 //! - dynamic\_descriptor\_buffer: Provides an abstraction for buffers that can be used with dynamic descriptor sets
+//! - experimental: A module that includes some experimental stuff (currently my now deprecated allocator system)
 //! - frame\_data: Provides an abstraction for per-frame synchronization and command logic in double/triple/...-buffering scenarios
 //! - framebuffers: Provides an abstraction for framebuffer creation for each present image of a swapchain
 //! - graphics\_pipeline\_builder: Provides an abstraction for building Vulkan `Pipeline`s
-//! - memory\_range: A data structure used by the `DedicatedPoolAllocator` to track free memory ranges
-//! - naive\_allocator: Provides a very simple direct GPU memory allocator
 //! - per\_frame: Provides an abstraction for tracking data of each frame in double/triple/...-buffering scenarios, used with `FrameData` in this module
 //! - physical\_device: Provides an abstraction for finding a suitable `PhysicalDevice` for rendering, also queries important device information
 //! - pipeline\_layout: Provide a wrapper around `PipelineLayout`s
