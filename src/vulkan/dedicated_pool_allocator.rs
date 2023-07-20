@@ -74,12 +74,15 @@ impl MemoryPoolWithSubAllocations {
                 "Memory pool can't fit requested memory: {memory_requirements:?}"
             ))?;
 
-        self.free_memory_ranges
-            .unfree_range(range.start(), range.start() + memory_requirements.size - 1)?;
+        // Don't register size = 0 allocations
+        if memory_requirements.size > 0 {
+            self.free_memory_ranges
+                .unfree_range(range.start(), range.start() + memory_requirements.size - 1)?;
 
-        self.sub_allocations.push(SubAllocation {
-            offset: range.start(),
-        });
+            self.sub_allocations.push(SubAllocation {
+                offset: range.start(),
+            });
+        }
 
         Ok(Allocation {
             memory: self.memory,
@@ -98,14 +101,16 @@ impl MemoryPoolWithSubAllocations {
             "Allocation {allocation:?} is not allocated in this memory pool"
         );
 
-        for (i, sub_alloc) in self.sub_allocations.iter().enumerate() {
-            if sub_alloc.offset == allocation.offset {
-                self.free_memory_ranges
-                    .free_range(sub_alloc.offset, sub_alloc.offset + allocation.size - 1)?;
-                self.sub_allocations.remove(i);
-            }
+        if allocation.size > 0 {
+            for (i, sub_alloc) in self.sub_allocations.iter().enumerate() {
+                if sub_alloc.offset == allocation.offset {
+                    self.free_memory_ranges
+                        .free_range(sub_alloc.offset, sub_alloc.offset + allocation.size - 1)?;
+                    self.sub_allocations.remove(i);
 
-            return Ok(());
+                    return Ok(());
+                }
+            }
         }
 
         crate::bail!("Allocation {allocation:?} is not allocated in this memory pool")
@@ -305,23 +310,13 @@ impl Allocator for DedicatedPoolAllocator {
         let pool_bundle_for_memory_type =
             self.find_pools_for_memory_type_index(memory_type_index)?;
 
-        #[cfg(feature = "allocator-debug-logs")]
-        let mut pool_reallocated = false;
-
         let pool = match pool_bundle_for_memory_type.find_pool_for_allocation(memory_requirements) {
             Some(pool) => pool,
             None => {
-                #[cfg(feature = "allocator-debug-logs")]
-                {
-                    pool_reallocated = true;
-                }
-
                 pool_bundle_for_memory_type
                     .create_pool_for_allocation(virtual_device, memory_requirements)?
             }
         };
-
-        let allocation = pool.allocate(memory_requirements)?;
 
         #[cfg(feature = "allocator-debug-logs")]
         {
@@ -330,8 +325,15 @@ impl Allocator for DedicatedPoolAllocator {
             println!("Memory properties: {memory_properties:?}");
             println!("Memory type index: {memory_type_index}");
             println!("Found pool with memory handle: {:?}", pool.memory);
-            println!("Pool reallocated: {pool_reallocated}");
+            println!("Free memory ranges before: {}", pool.free_memory_ranges);
+        }
+
+        let allocation = pool.allocate(memory_requirements)?;
+
+        #[cfg(feature = "allocator-debug-logs")]
+        {
             println!("Made allocation: {allocation:?}");
+            println!("Free memory ranges after: {}", pool.free_memory_ranges);
             println!("=======================================================================\n");
         }
 
@@ -353,12 +355,14 @@ impl Allocator for DedicatedPoolAllocator {
             #[cfg(feature = "allocator-debug-logs")]
             {
                 println!("Found pool with memory handle: {:?}", pool.memory);
+                println!("Free memory ranges before: {}", pool.free_memory_ranges);
             }
 
             let _ = pool.deallocate(allocation);
             #[cfg(feature = "allocator-debug-logs")]
             {
                 println!("Made deallocation: {allocation:?}");
+                println!("Free memory ranges after: {}", pool.free_memory_ranges);
             }
         }
 

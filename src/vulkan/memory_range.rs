@@ -208,6 +208,22 @@ impl FreeMemoryRanges {
     }
 }
 
+impl std::fmt::Display for FreeMemoryRanges {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut ranges = self.ranges.clone();
+        ranges.sort_by(|a, b| a.start.cmp(&b.start));
+        for i in 0..ranges.len() {
+            let range = &ranges[i];
+            write!(f, "{}..{}", range.start, range.end)?;
+            if i != ranges.len() - 1 {
+                write!(f, " ... ")?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
