@@ -130,6 +130,13 @@ struct PoolBundleForType {
 }
 
 impl PoolBundleForType {
+    fn get_memory_pools(&self) -> &Vec<MemoryPoolWithSubAllocations> {
+        unsafe {
+            let allocations = self.memory_pools.get();
+            &*allocations
+        }
+    }
+
     fn get_memory_pools_mut(&self) -> &mut Vec<MemoryPoolWithSubAllocations> {
         unsafe {
             let allocations = self.memory_pools.get();
@@ -188,6 +195,42 @@ impl PoolBundleForType {
 
         memory_pools.push(new_pool);
         Ok(memory_pools.last_mut().unwrap())
+    }
+
+    fn destroy_unused_pools(&mut self, virtual_device: &SetUpVirtualDevice) {
+        #[cfg(feature = "allocator-debug-logs")]
+        {
+            println!("=============== DedicatedPoolAllocator - Dealloc Unused ===============");
+        }
+
+        let mut removed_pool_indices = Vec::new();
+        for (index, pool) in self.get_memory_pools().iter().enumerate() {
+            if pool.is_unused() {
+                removed_pool_indices.push(index);
+            }
+        }
+
+        let mut index_offset = 0;
+        let memory_pools = self.get_memory_pools_mut();
+        for removed_index in removed_pool_indices.into_iter() {
+            let pool = &mut memory_pools[removed_index - index_offset];
+            #[cfg(feature = "allocator-debug-logs")]
+            {
+                println!(
+                    "Destroying unused pool (size: {}) with memory handle: {:?}",
+                    pool.total_memory(),
+                    pool.memory,
+                );
+            }
+            pool.destroy(virtual_device);
+            memory_pools.remove(removed_index - index_offset);
+            index_offset += 1;
+        }
+
+        #[cfg(feature = "allocator-debug-logs")]
+        {
+            println!("=======================================================================\n");
+        }
     }
 
     fn destroy(&mut self, virtual_device: &SetUpVirtualDevice) {
@@ -312,10 +355,8 @@ impl Allocator for DedicatedPoolAllocator {
 
         let pool = match pool_bundle_for_memory_type.find_pool_for_allocation(memory_requirements) {
             Some(pool) => pool,
-            None => {
-                pool_bundle_for_memory_type
-                    .create_pool_for_allocation(virtual_device, memory_requirements)?
-            }
+            None => pool_bundle_for_memory_type
+                .create_pool_for_allocation(virtual_device, memory_requirements)?,
         };
 
         #[cfg(feature = "allocator-debug-logs")]
@@ -336,6 +377,8 @@ impl Allocator for DedicatedPoolAllocator {
             println!("Free memory ranges after: {}", pool.free_memory_ranges);
             println!("=======================================================================\n");
         }
+
+        pool_bundle_for_memory_type.destroy_unused_pools(virtual_device);
 
         Ok(allocation)
     }
@@ -382,9 +425,9 @@ impl Allocator for DedicatedPoolAllocator {
             {
                 println!(
                     "Destroying pool bundle with {} memory pool(s):",
-                    pool_bundle.get_memory_pools_mut().len()
+                    pool_bundle.get_memory_pools().len()
                 );
-                for pool in pool_bundle.get_memory_pools_mut() {
+                for pool in pool_bundle.get_memory_pools() {
                     println!(
                         "- Pool has memory handle: {:?} ({} / {} bytes still in use)",
                         pool.memory,
