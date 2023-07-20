@@ -388,10 +388,7 @@ impl Allocator for DedicatedPoolAllocator {
                         pool.total_memory()
                     );
                     if pool.used_memory() > 0 {
-                        println!(
-                            "  - Warning! Detected leak in memory handle: {:?}",
-                            pool.memory
-                        );
+                        println!("  - Warning! Detected leak in memory handle");
                     }
                 }
                 println!();
