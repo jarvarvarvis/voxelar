@@ -85,6 +85,17 @@ impl FreeMemoryRanges {
         self.len() - self.free_len()
     }
 
+    pub fn is_fully_occupied(&self) -> bool {
+        self.ranges.is_empty()
+    }
+
+    pub fn is_fully_free(&self) -> bool {
+        self.ranges.len() == 1 && {
+            let first = &self.ranges[0];
+            first.start == self.start && first.end == self.end
+        }
+    }
+
     pub fn unfree_range(&mut self, start: u64, end: u64) -> crate::Result<()> {
         crate::verify!(start <= end, "{start} must be less than or equal to {end}");
         crate::verify!(start >= self.start, "{start} must be inside the range");
@@ -112,7 +123,10 @@ impl FreeMemoryRanges {
 
                 // If only start is inside the range, split this range before it
                 if range.contains(start) {
-                    add_range_if_valid(FreeMemoryRange::new(range.start, clamp_unsigned_subtract(start, 1)));
+                    add_range_if_valid(FreeMemoryRange::new(
+                        range.start,
+                        clamp_unsigned_subtract(start, 1),
+                    ));
                     unmodified_range = false;
                 }
 
@@ -184,33 +198,53 @@ mod tests {
     use super::*;
 
     #[test]
+    fn fully_occupied_ranges_is_actually_fully_occupied() {
+        let range = FreeMemoryRanges::fully_occupied(5, 150).unwrap();
+        assert!(range.is_fully_occupied());
+    }
+
+    #[test]
+    fn fully_free_ranges_is_actually_fully_free() {
+        let range = FreeMemoryRanges::fully_free(0, 61).unwrap();
+        assert!(range.is_fully_free());
+    }
+
+    #[test]
+    fn ranges_with_fragmentation_is_neither_fully_free_nor_fully_occupied() {
+        let mut range = FreeMemoryRanges::fully_free(19, 601).unwrap();
+        range.unfree_range(27, 200).unwrap();
+        assert!(!range.is_fully_occupied());
+        assert!(!range.is_fully_free());
+    }
+
+    #[test]
     fn len_of_one_wide_ranges_is_correct() {
-        let memory_range = FreeMemoryRanges::fully_free(0, 0).unwrap();
-        assert_eq!(1, memory_range.len());
+        let range = FreeMemoryRanges::fully_free(0, 0).unwrap();
+        assert_eq!(1, range.len());
     }
 
     #[test]
     fn len_of_ranges_is_correct() {
-        let memory_range = FreeMemoryRanges::fully_free(31, 90).unwrap();
-        assert_eq!(60, memory_range.len());
+        let range = FreeMemoryRanges::fully_free(31, 90).unwrap();
+        assert_eq!(60, range.len());
     }
 
     #[test]
     fn free_len_of_one_wide_fully_free_ranges_is_correct() {
-        let memory_range = FreeMemoryRanges::fully_free(0, 0).unwrap();
-        assert_eq!(1, memory_range.free_len());
+        let range = FreeMemoryRanges::fully_free(0, 0).unwrap();
+        assert_eq!(1, range.free_len());
     }
 
     #[test]
     fn free_len_of_one_wide_occupied_ranges_is_correct() {
-        let memory_range = FreeMemoryRanges::fully_occupied(0, 0).unwrap();
-        assert_eq!(0, memory_range.free_len());
+        let range = FreeMemoryRanges::fully_occupied(0, 0).unwrap();
+        assert_eq!(0, range.free_len());
     }
 
     #[test]
     fn free_len_of_fully_free_ranges_is_correct() {
-        let memory_range = FreeMemoryRanges::fully_free(5, 66).unwrap();
-        assert_eq!(62, memory_range.free_len());
+        let range = FreeMemoryRanges::fully_free(5, 66).unwrap();
+        assert_eq!(62, range.free_len());
     }
 
     #[test]
