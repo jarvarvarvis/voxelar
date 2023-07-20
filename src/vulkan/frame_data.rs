@@ -1,8 +1,10 @@
+use ash::vk::CommandBufferLevel;
+use ash::vk::FenceCreateFlags;
 use ash::vk::PipelineStageFlags;
 use ash::vk::Queue;
 
-use super::command_pool::SetUpCommandPool;
 use super::command_buffer::SetUpCommandBufferWithFence;
+use super::command_pool::SetUpCommandPool;
 use super::sync::RenderingSyncPrimitives;
 use super::virtual_device::SetUpVirtualDevice;
 
@@ -14,7 +16,12 @@ pub struct FrameData {
 impl FrameData {
     pub unsafe fn create_with_defaults(virtual_device: &SetUpVirtualDevice) -> crate::Result<Self> {
         let sync_primitives = RenderingSyncPrimitives::create(virtual_device)?;
-        let command_pool = SetUpCommandPool::create_with_one_primary_buffer(virtual_device)?;
+        let command_pool = SetUpCommandPool::create(
+            virtual_device,
+            1,
+            CommandBufferLevel::PRIMARY,
+            FenceCreateFlags::SIGNALED,
+        )?;
 
         Ok(Self {
             sync_primitives,

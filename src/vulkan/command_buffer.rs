@@ -23,8 +23,9 @@ impl SetUpCommandBufferWithFence {
     pub unsafe fn create(
         virtual_device: &SetUpVirtualDevice,
         command_buffer: CommandBuffer,
+        fence_create_flags: FenceCreateFlags,
     ) -> crate::Result<Self> {
-        let reuse_fence_create_info = FenceCreateInfo::builder().flags(FenceCreateFlags::SIGNALED);
+        let reuse_fence_create_info = FenceCreateInfo::builder().flags(fence_create_flags);
         let reuse_fence = virtual_device
             .device
             .create_fence(&reuse_fence_create_info, None)?;
@@ -75,8 +76,7 @@ impl SetUpCommandBufferWithFence {
         usage: CommandBufferUsageFlags,
     ) -> crate::Result<()> {
         unsafe {
-            let command_buffer_begin_info =
-                CommandBufferBeginInfo::builder().flags(usage);
+            let command_buffer_begin_info = CommandBufferBeginInfo::builder().flags(usage);
 
             virtual_device
                 .device
@@ -90,15 +90,33 @@ impl SetUpCommandBufferWithFence {
         }
     }
 
-    /// This function records commands into the command buffer with the `ONE_TIME_SUBMIT` usage
-    /// flags. This means, that the commands in the buffer can only submitted once before the
-    /// buffer is cleared. If it's desirable to record commands and submit them later multiple
-    /// times, use `CommandBufferWithReuseFence::record_commands` with the
-    /// `CommandBufferUsageFlags::SIMULTANEOUS_USE` usage flag.
+    /// This function records commands into the command buffer with the `SIMULTANEOUS_USE` usage
+    /// flag. This means, that the commands in the buffer can be submitted multiple times and
+    /// from multiple threads. If it's desirable to record commands for immediate submitting, use
+    /// `CommandBufferWithReuseFence::record_commands_for_one_time_submit`
     ///
     /// The commands are recorded from a lambda expression that may fail using the `Result` type.
     /// If an error occurs, it is propagated upwards.
-    pub fn record_commands_for_one_time_submit<F: FnOnce(&SetUpVirtualDevice, &Self) -> crate::Result<()>>(
+    pub fn record_commands_for_simultaneous_use<
+        F: FnOnce(&SetUpVirtualDevice, &Self) -> crate::Result<()>,
+    >(
+        &self,
+        virtual_device: &SetUpVirtualDevice,
+        f: F,
+    ) -> crate::Result<()> {
+        self.record_commands(virtual_device, f, CommandBufferUsageFlags::SIMULTANEOUS_USE)
+    }
+
+    /// This function records commands into the command buffer with the `ONE_TIME_SUBMIT` usage
+    /// flag. This means, that the commands in the buffer can only submitted once before the
+    /// buffer is cleared. If it's desirable to record commands and submit them later multiple
+    /// times, use `CommandBufferWithReuseFence::record_commands_for_simultaneous_use`.
+    ///
+    /// The commands are recorded from a lambda expression that may fail using the `Result` type.
+    /// If an error occurs, it is propagated upwards.
+    pub fn record_commands_for_one_time_submit<
+        F: FnOnce(&SetUpVirtualDevice, &Self) -> crate::Result<()>,
+    >(
         &self,
         virtual_device: &SetUpVirtualDevice,
         f: F,

@@ -39,18 +39,20 @@
 
 use std::ffi::{c_char, CStr, CString};
 
-use paste::paste;
-
 use ash::extensions::ext::DebugUtils;
 use ash::vk;
 use ash::vk::ApplicationInfo;
 use ash::vk::ClearValue;
+use ash::vk::CommandBufferLevel;
 use ash::vk::Extent2D;
+use ash::vk::FenceCreateFlags;
 use ash::vk::PipelineStageFlags;
 use ash::vk::ShaderStageFlags;
 use ash::vk::SubpassContents;
 use ash::vk::{InstanceCreateFlags, InstanceCreateInfo};
 use ash::{Entry, Instance};
+
+use paste::paste;
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 use ash::vk::{KhrGetPhysicalDeviceProperties2Fn, KhrPortabilityEnumerationFn};
@@ -274,8 +276,11 @@ impl VulkanContext {
 
     pub fn create_command_pool_for_setup(&mut self) -> crate::Result<()> {
         unsafe {
-            self.command_pool_for_setup = Some(SetUpCommandPool::create_with_one_primary_buffer(
+            self.command_pool_for_setup = Some(SetUpCommandPool::create(
                 self.virtual_device()?,
+                1,
+                CommandBufferLevel::PRIMARY,
+                FenceCreateFlags::empty(),
             )?);
             Ok(())
         }
@@ -434,7 +439,6 @@ impl VulkanContext {
         let setup_command_buffer = self.command_pool_for_setup()?.get_command_buffer(0);
         let virtual_device = self.virtual_device()?;
         let present_queue = virtual_device.present_queue;
-        setup_command_buffer.wait_for_fence(virtual_device)?;
         setup_command_buffer.reset(virtual_device)?;
         setup_command_buffer
             .record_commands_for_one_time_submit(virtual_device, command_buffer_op)?;

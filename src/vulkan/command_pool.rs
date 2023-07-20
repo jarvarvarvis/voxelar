@@ -1,3 +1,4 @@
+use ash::vk::FenceCreateFlags;
 use ash::vk::{CommandBufferAllocateInfo, CommandBufferLevel};
 use ash::vk::{CommandPool, CommandPoolCreateFlags, CommandPoolCreateInfo};
 
@@ -14,6 +15,7 @@ impl SetUpCommandPool {
         virtual_device: &SetUpVirtualDevice,
         command_buffer_count: u32,
         level: CommandBufferLevel,
+        command_buffer_fence_create_flags: FenceCreateFlags,
     ) -> crate::Result<Self> {
         let pool_create_info = CommandPoolCreateInfo::builder()
             .flags(CommandPoolCreateFlags::RESET_COMMAND_BUFFER)
@@ -37,6 +39,7 @@ impl SetUpCommandPool {
             command_buffers.push(SetUpCommandBufferWithFence::create(
                 virtual_device,
                 command_buffer,
+                command_buffer_fence_create_flags,
             )?);
         }
 
@@ -44,10 +47,6 @@ impl SetUpCommandPool {
             pool,
             command_buffers,
         })
-    }
-
-    pub unsafe fn create_with_one_primary_buffer(virtual_device: &SetUpVirtualDevice) -> crate::Result<Self> {
-        Self::create(virtual_device, 1, CommandBufferLevel::PRIMARY)
     }
 
     pub fn get_command_buffer(&self, index: usize) -> &SetUpCommandBufferWithFence {
