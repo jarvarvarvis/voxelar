@@ -14,12 +14,10 @@ impl FreeMemoryRange {
     }
 
     pub fn contains_or_is_neighbor(&self, value: u64) -> bool {
-        let start = if self.start == 0 {
-            self.start
-        } else {
-            self.start - 1
-        };
-        value >= start && value <= self.end + 1
+        // Calculation to avoid integer underflow:
+        // value >= self.start - 1 | +1
+        // value + 1 >= self.start
+        value + 1 >= self.start && value <= self.end + 1
     }
 
     pub fn len(&self) -> u64 {
@@ -96,6 +94,51 @@ impl FreeMemoryRanges {
         }
     }
 
+    fn split_ranges(&self, start: u64, end: u64) -> Vec<FreeMemoryRange> {
+        let mut new_ranges = Vec::with_capacity(self.ranges.len());
+        let mut add_range_if_valid = |range: FreeMemoryRange| {
+            if range.start() <= range.end() {
+                new_ranges.push(range);
+            }
+        };
+        let clamp_unsigned_subtract = |a, b| {
+            if a < b {
+                (0, true)
+            } else {
+                (a - b, false)
+            }
+        };
+
+        for range in self.ranges.iter() {
+            let mut unmodified_range = true;
+
+            // If only start is inside the range, split this range before it
+            if range.contains(start) {
+                let (end, clamped) = clamp_unsigned_subtract(start, 1);
+
+                // Special case: if the end value would be -1 if start was 0, then don't add
+                // this range to the list.
+                if !(clamped && start == 0) {
+                    add_range_if_valid(FreeMemoryRange::new(range.start, end));
+                    unmodified_range = false;
+                }
+            }
+
+            // If only end is inside the range, split this range after it
+            if range.contains(end) {
+                add_range_if_valid(FreeMemoryRange::new(end + 1, range.end));
+                unmodified_range = false;
+            }
+
+            // Otherwise, just add this range to the list
+            if unmodified_range {
+                add_range_if_valid(*range);
+            }
+        }
+
+        new_ranges
+    }
+
     pub fn unfree_range(&mut self, start: u64, end: u64) -> crate::Result<()> {
         crate::verify!(start <= end, "{start} must be less than or equal to {end}");
         crate::verify!(start >= self.start, "{start} must be inside the range");
@@ -104,68 +147,40 @@ impl FreeMemoryRanges {
         if self.start == start && self.end == end {
             self.ranges = vec![];
         } else {
-            let mut new_ranges = Vec::with_capacity(self.ranges.len());
-            let mut add_range_if_valid = |range: FreeMemoryRange| {
-                if range.start() <= range.end() {
-                    new_ranges.push(range);
-                }
-            };
-            let clamp_unsigned_subtract = |a, b| {
-                if a < b {
-                    0
-                } else {
-                    a - b
-                }
-            };
-
-            for range in self.ranges.iter() {
-                let mut unmodified_range = true;
-
-                // If only start is inside the range, split this range before it
-                if range.contains(start) {
-                    add_range_if_valid(FreeMemoryRange::new(
-                        range.start,
-                        clamp_unsigned_subtract(start, 1),
-                    ));
-                    unmodified_range = false;
-                }
-
-                // If only end is inside the range, split this range after it
-                if range.contains(end) {
-                    add_range_if_valid(FreeMemoryRange::new(end + 1, range.end));
-                    unmodified_range = false;
-                }
-
-                // Otherwise, just add this range to the list
-                if unmodified_range {
-                    add_range_if_valid(*range);
-                }
-            }
-            self.ranges = new_ranges;
+            self.ranges = self.split_ranges(start, end);
         }
         Ok(())
     }
 
-    fn merge_ranges(&mut self) {
-        let mut new_ranges: Vec<FreeMemoryRange> = Vec::new();
-
-        // This algorithm is O(n²) if the memory ranges are extremely fragmented.
-        // This shouldn't happen that much though, because I'm using a linear allocator.
-        for range in self.ranges.iter() {
-            let mut new_ranges_updated = false;
-            for new_range in new_ranges.iter_mut() {
-                if let Some(merged) = new_range.maybe_merge_with(*range) {
-                    *new_range = merged;
-                    new_ranges_updated = true;
-                    break;
+    fn find_potential_merge(
+        ranges: &Vec<FreeMemoryRange>,
+    ) -> Option<(usize, usize, FreeMemoryRange)> {
+        for i in 0..ranges.len() {
+            for j in 0..ranges.len() {
+                if i != j {
+                    if let Some(merged) = ranges[i].maybe_merge_with(ranges[j]) {
+                        return Some((i.min(j), i.max(j), merged));
+                    }
                 }
             }
+        }
 
-            if !new_ranges_updated {
-                new_ranges.push(*range);
+        None
+    }
+
+    fn merge_ranges(&self) -> Vec<FreeMemoryRange> {
+        let mut mergeable_pool = self.ranges.clone();
+
+        loop {
+            if let Some((first, second, merged)) = Self::find_potential_merge(&mergeable_pool) {
+                mergeable_pool[first] = merged;
+                mergeable_pool.remove(second);
+            } else {
+                break;
             }
         }
-        self.ranges = new_ranges;
+
+        mergeable_pool
     }
 
     pub fn free_range(&mut self, start: u64, end: u64) -> crate::Result<()> {
@@ -177,7 +192,7 @@ impl FreeMemoryRanges {
             self.ranges = vec![FreeMemoryRange::new(start, end)];
         } else {
             self.ranges.push(FreeMemoryRange::new(start, end));
-            self.merge_ranges();
+            self.ranges = self.merge_ranges();
         }
 
         Ok(())
@@ -196,6 +211,36 @@ impl FreeMemoryRanges {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn range_contains_value() {
+        let range = FreeMemoryRange::new(5, 10);
+        assert!(range.contains_or_is_neighbor(6));
+    }
+
+    #[test]
+    fn range_doesnt_contain_value() {
+        let range = FreeMemoryRange::new(7, 50);
+        assert!(!range.contains_or_is_neighbor(1));
+    }
+
+    #[test]
+    fn range_contains_neighbor() {
+        let range = FreeMemoryRange::new(17, 80);
+        assert!(range.contains_or_is_neighbor(16));
+    }
+
+    #[test]
+    fn range_with_start_zero_contains_zero() {
+        let range = FreeMemoryRange::new(0, 100);
+        assert!(range.contains_or_is_neighbor(0));
+    }
+
+    #[test]
+    fn range_with_start_zero_doesnt_contain_value() {
+        let range = FreeMemoryRange::new(0, 43);
+        assert!(!range.contains_or_is_neighbor(60));
+    }
 
     #[test]
     fn fully_occupied_ranges_is_actually_fully_occupied() {
@@ -305,7 +350,7 @@ mod tests {
     #[test]
     fn merging_neighboring_ranges_results_in_correct_result() {
         let first = FreeMemoryRange::new(0, 25);
-        let second = FreeMemoryRange::new(14, 56);
+        let second = FreeMemoryRange::new(26, 56);
         let expected = FreeMemoryRange::new(0, 56);
         assert_eq!(Some(expected), first.maybe_merge_with(second));
         assert_eq!(Some(expected), second.maybe_merge_with(first));
@@ -333,6 +378,18 @@ mod tests {
         range.unfree_range(5, 64).unwrap();
         let expected = FreeMemoryRanges {
             start: 5,
+            end: 102,
+            ranges: vec![FreeMemoryRange::new(65, 102)],
+        };
+        assert_eq!(expected, range);
+    }
+
+    #[test]
+    fn unfreeing_range_from_start_equals_zero_results_in_correct_ranges() {
+        let mut range = FreeMemoryRanges::fully_free(0, 102).unwrap();
+        range.unfree_range(0, 64).unwrap();
+        let expected = FreeMemoryRanges {
+            start: 0,
             end: 102,
             ranges: vec![FreeMemoryRange::new(65, 102)],
         };
@@ -460,6 +517,25 @@ mod tests {
     }
 
     #[test]
+    fn merging_ranges_results_in_correct_values() {
+        let range = FreeMemoryRanges {
+            start: 0,
+            end: 1090,
+            ranges: vec![
+                FreeMemoryRange::new(100, 200),
+                FreeMemoryRange::new(201, 450),
+                FreeMemoryRange::new(900, 1000),
+                FreeMemoryRange::new(50, 99),
+            ],
+        };
+        let expected = vec![
+            FreeMemoryRange::new(50, 450),
+            FreeMemoryRange::new(900, 1000),
+        ];
+        assert_eq!(expected, range.merge_ranges());
+    }
+
+    #[test]
     fn freeing_entire_range_results_in_correct_ranges() {
         let mut range = FreeMemoryRanges::fully_occupied(6, 109).unwrap();
         range.free_range(6, 109).unwrap();
@@ -536,6 +612,52 @@ mod tests {
             start: 0,
             end: 1000,
             ranges: vec![FreeMemoryRange::new(0, 200)],
+        };
+        assert_eq!(expected, range);
+    }
+
+    #[test]
+    fn freeing_inbetween_range_merges_outer_ranges() {
+        let mut range = FreeMemoryRanges::fully_occupied(100, 500).unwrap();
+        range.free_range(101, 250).unwrap();
+        range.free_range(300, 500).unwrap();
+
+        let expected = FreeMemoryRanges {
+            start: 100,
+            end: 500,
+            ranges: vec![
+                FreeMemoryRange::new(101, 250),
+                FreeMemoryRange::new(300, 500),
+            ],
+        };
+
+        assert_eq!(expected, range);
+
+        range.free_range(251, 299).unwrap();
+
+        let expected = FreeMemoryRanges {
+            start: 100,
+            end: 500,
+            ranges: vec![FreeMemoryRange::new(101, 500)],
+        };
+
+        assert_eq!(expected, range);
+    }
+
+    #[test]
+    fn freeing_and_unfreeing_neighboring_ranges_results_in_correct_ranges() {
+        let mut range = FreeMemoryRanges::fully_free(0, 1000000).unwrap();
+        range.unfree_range(0, 50000).unwrap();
+        range.free_range(10000, 20000).unwrap();
+        range.unfree_range(50001, 100000).unwrap();
+
+        let expected = FreeMemoryRanges {
+            start: 0,
+            end: 1000000,
+            ranges: vec![
+                FreeMemoryRange::new(100001, 1000000),
+                FreeMemoryRange::new(10000, 20000),
+            ],
         };
         assert_eq!(expected, range);
     }
