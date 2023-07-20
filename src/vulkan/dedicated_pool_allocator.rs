@@ -48,6 +48,18 @@ impl MemoryPoolWithSubAllocations {
         }
     }
 
+    pub fn used_memory(&self) -> u64 {
+        self.free_memory_ranges.unfree_len()
+    }
+
+    pub fn total_memory(&self) -> u64 {
+        self.free_memory_ranges.len()
+    }
+
+    pub fn is_unused(&self) -> bool {
+        self.used_memory() == 0
+    }
+
     fn can_fit_allocation(&self, memory_requirements: MemoryRequirements) -> bool {
         self.free_memory_ranges
             .find_range_that_can_fit_width(memory_requirements.size)
@@ -132,10 +144,11 @@ impl PoolBundleForType {
     fn find_pool_of_allocation(
         &self,
         allocation: Allocation,
-    ) -> Option<&mut MemoryPoolWithSubAllocations> {
+    ) -> Option<(usize, &mut MemoryPoolWithSubAllocations)> {
         self.get_memory_pools_mut()
             .iter_mut()
-            .find(|pool| pool.has_allocation(allocation))
+            .enumerate()
+            .find(|(_, pool)| pool.has_allocation(allocation))
     }
 
     fn create_pool_for_allocation(
@@ -158,6 +171,16 @@ impl PoolBundleForType {
             self.memory_type_index,
             allocation_size,
         )?;
+
+        #[cfg(feature = "allocator-debug-logs")]
+        {
+            println!("================ DedicatedPoolAllocator - Reallocation ================");
+            println!("Memory requirements: {memory_requirements:?}");
+            println!("Rounded up allocation size: {allocation_size}");
+            println!("Pool's memory handle: {:?}", new_pool.memory);
+            println!("=======================================================================\n");
+        }
+
         memory_pools.push(new_pool);
         Ok(memory_pools.last_mut().unwrap())
     }
@@ -207,13 +230,13 @@ impl DedicatedPoolAllocator {
             ))
     }
 
-    fn find_pool_of_allocation(
+    fn find_pool_bundle_and_pool_index_of_allocation(
         &self,
         allocation: Allocation,
-    ) -> Option<&mut MemoryPoolWithSubAllocations> {
-        for pool_bundle in self.get_pool_bundles().iter() {
-            if let Some(pool) = pool_bundle.find_pool_of_allocation(allocation) {
-                return Some(pool);
+    ) -> Option<(&mut PoolBundleForType, usize)> {
+        for pool_bundle in self.get_pool_bundles_mut().iter_mut() {
+            if let Some((pool_index, _)) = pool_bundle.find_pool_of_allocation(allocation) {
+                return Some((pool_bundle, pool_index));
             }
         }
 
@@ -306,13 +329,10 @@ impl Allocator for DedicatedPoolAllocator {
             println!("Memory requirements: {memory_requirements:?}");
             println!("Memory properties: {memory_properties:?}");
             println!("Memory type index: {memory_type_index}");
-            println!(
-                "Found pool for allocation with memory handle: {:?}",
-                pool.memory
-            );
+            println!("Found pool with memory handle: {:?}", pool.memory);
             println!("Pool reallocated: {pool_reallocated}");
             println!("Made allocation: {allocation:?}");
-            println!("=======================================================================");
+            println!("=======================================================================\n");
         }
 
         Ok(allocation)
@@ -324,14 +344,17 @@ impl Allocator for DedicatedPoolAllocator {
             println!("================ DedicatedPoolAllocator - Deallocation ================");
         }
 
-        if let Some(pool) = self.find_pool_of_allocation(allocation) {
+        if let Some((pool_bundle, pool_index)) =
+            self.find_pool_bundle_and_pool_index_of_allocation(allocation)
+        {
+            let pools = pool_bundle.get_memory_pools_mut();
+            let pool = &mut pools[pool_index];
+
             #[cfg(feature = "allocator-debug-logs")]
             {
-                println!(
-                    "Found pool that holds allocation for memory handle: {:?}",
-                    pool.memory
-                );
+                println!("Found pool with memory handle: {:?}", pool.memory);
             }
+
             let _ = pool.deallocate(allocation);
             #[cfg(feature = "allocator-debug-logs")]
             {
@@ -354,9 +377,24 @@ impl Allocator for DedicatedPoolAllocator {
             #[cfg(feature = "allocator-debug-logs")]
             {
                 println!(
-                    "Destroying pool bundle ({} memory pools): {pool_bundle:?}",
+                    "Destroying pool bundle with {} memory pool(s):",
                     pool_bundle.get_memory_pools_mut().len()
                 );
+                for pool in pool_bundle.get_memory_pools_mut() {
+                    println!(
+                        "- Pool has memory handle: {:?} ({} / {} bytes still in use)",
+                        pool.memory,
+                        pool.used_memory(),
+                        pool.total_memory()
+                    );
+                    if pool.used_memory() > 0 {
+                        println!(
+                            "  - Warning! Detected leak in memory handle: {:?}",
+                            pool.memory
+                        );
+                    }
+                }
+                println!();
             }
             pool_bundle.destroy(virtual_device);
         }
