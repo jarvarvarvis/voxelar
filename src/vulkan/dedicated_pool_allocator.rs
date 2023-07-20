@@ -52,6 +52,7 @@ impl MemoryPoolWithSubAllocations {
         self.free_memory_ranges.unfree_len()
     }
 
+    #[allow(unused)]
     pub fn total_memory(&self) -> u64 {
         self.free_memory_ranges.len()
     }
@@ -251,6 +252,7 @@ pub struct DedicatedPoolAllocator {
 }
 
 impl DedicatedPoolAllocator {
+    #[allow(unused)]
     fn get_pool_bundles(&self) -> &Vec<PoolBundleForType> {
         unsafe {
             let allocations = self.pool_bundles.get();
