@@ -5,12 +5,12 @@ mod vertex;
 
 use voxelar::ash::vk::PresentModeKHR;
 
-use voxelar::glfw::*;
-use voxelar::receivable_events::*;
 use voxelar::vulkan::creation_info::*;
 use voxelar::vulkan::debug::*;
 use voxelar::vulkan::VulkanContext;
 use voxelar::window::*;
+use voxelar::winit::event::*;
+use voxelar::winit::event_loop::ControlFlow;
 use voxelar::*;
 
 use crate::demo::Demo;
@@ -18,12 +18,8 @@ use crate::demo::Demo;
 fn main() -> Result<()> {
     let mut ctx = Voxelar::new()?;
 
-    ctx.window_hint(WindowHint::Visible(true));
-    ctx.window_hint(WindowHint::ClientApi(ClientApiHint::NoApi));
-    let (mut window, mut events) =
-        ctx.create_window(800, 600, "Demo", glfw::WindowMode::Windowed)?;
-
-    window.set_receivable_events(ReceivableEvents::all());
+    let (mut window, event_loop) =
+        ctx.create_window(800, 600, "Demo", VoxelarWindowMode::Windowed)?;
 
     let mut vulkan_context = ctx
         .load_render_context_for_window::<KHRVerificationAndDebugMessenger, VulkanContext>(
@@ -42,32 +38,42 @@ fn main() -> Result<()> {
 
     let mut demo = Demo::new(&ctx, &vulkan_context)?;
 
-    while !window.should_close() {
-        demo.render(&mut window, &mut vulkan_context)?;
-        demo.update_frame_time_manager(&ctx);
-
-        ctx.poll_events();
-        for event in events.flush() {
-            handle_window_event(&mut demo, &mut window, event)?;
-        }
-    }
-
-    demo.destroy(&vulkan_context)?;
-
-    Ok(())
-}
-
-fn handle_window_event(
-    triangle_demo: &mut Demo,
-    window: &mut VoxelarWindow,
-    event: glfw::WindowEvent,
-) -> crate::Result<()> {
-    match event {
-        glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => window.set_should_close(true),
-        glfw::WindowEvent::FramebufferSize(_, _) => {
-            triangle_demo.recreate_swapchain = true;
-        }
-        _ => {}
-    }
-    Ok(())
+    event_loop.run(move |event, _, control_flow| {
+        *control_flow = ControlFlow::Poll;
+        match event {
+            Event::WindowEvent {
+                event: window_event,
+                window_id: _,
+            } => match window_event {
+                WindowEvent::Resized(_) => {
+                    demo.recreate_swapchain = true;
+                }
+                WindowEvent::ScaleFactorChanged { .. } => {
+                    demo.recreate_swapchain = true;
+                }
+                WindowEvent::KeyboardInput {
+                    input:
+                        KeyboardInput {
+                            state: ElementState::Pressed,
+                            virtual_keycode: Some(VirtualKeyCode::Escape),
+                            ..
+                        },
+                    ..
+                } => {
+                    *control_flow = ControlFlow::Exit;
+                }
+                _ => {}
+            },
+            Event::MainEventsCleared => window.request_redraw(),
+            Event::RedrawRequested(_) => {
+                demo.render(&mut window, &mut vulkan_context)?;
+                demo.update_frame_time_manager(&ctx);
+            },
+            Event::LoopDestroyed => {
+                demo.destroy(&vulkan_context)?;
+            }
+            _ => {}
+        };
+        Ok(())
+    });
 }

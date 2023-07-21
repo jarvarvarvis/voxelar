@@ -57,8 +57,9 @@ pub enum VoxelarError {
     /// sequence of bytes (`u8`) as a string.
     Utf8Error(Utf8Error),
 
-    /// This variant wraps a `glfw::InitError` that can occur when `glfw::init` is called.
-    GlfwInitError(glfw::InitError),
+    /// This variant wraps an `winit::error::OsError` that can occur when an operation that was
+    /// requested by winit couldn't be made by the host Operating System.
+    WinitOsError(winit::error::OsError),
 
     /// This variant wraps an `ash::vk::Result` that can occur as the result of functions provided
     /// by the `ash` crate.
@@ -87,7 +88,7 @@ impl std::fmt::Display for VoxelarError {
             VoxelarError::NulError(err) => write_err!(f, NulError, err),
             VoxelarError::IOError(err) => write_err!(f, IOError, err),
             VoxelarError::Utf8Error(err) => write_err!(f, Utf8Error, err),
-            VoxelarError::GlfwInitError(err) => write_err!(f, GlfwInitError, err),
+            VoxelarError::WinitOsError(err) => write_err!(f, WinitOsError, err),
             VoxelarError::VkError(err) => write_err!(f, VkError, err),
             VoxelarError::VkLoadingError(err) => write_err!(f, VkLoadingError, err),
             VoxelarError::AllocationError(err) => write_err!(f, AllocationError, err),
@@ -110,7 +111,7 @@ error_impl_from!(String, Self::Custom);
 error_impl_from!(std::io::Error, Self::IOError);
 error_impl_from!(NulError, Self::NulError);
 error_impl_from!(Utf8Error, Self::Utf8Error);
-error_impl_from!(glfw::InitError, Self::GlfwInitError);
+error_impl_from!(winit::error::OsError, Self::WinitOsError);
 error_impl_from!(ash::vk::Result, Self::VkError);
 error_impl_from!(ash::LoadingError, Self::VkLoadingError);
 error_impl_from!(gpu_allocator::AllocationError, Self::AllocationError);
