@@ -24,17 +24,18 @@ struct VertexInputSpecArgs {
 #[darling(attributes(input))]
 struct FieldInputArgs {
     ident: Option<syn::Ident>,
-    
+
     #[allow(unused)]
     ty: syn::Type,
 
+    location: syn::LitInt,
+    format: syn::Expr,
+
+    #[darling(skip)]
+    parent_binding_expr: Option<syn::LitInt>,
+
     #[darling(skip)]
     parent_ty_ident: Option<syn::Ident>,
-
-    location: syn::LitInt,
-    binding: syn::LitInt,
-
-    format: syn::Expr,
 }
 
 impl ToTokens for FieldInputArgs {
@@ -45,7 +46,10 @@ impl ToTokens for FieldInputArgs {
             .expect("Parent type identifier was not set");
         let member_ident = self.ident.as_ref().expect("Fields must have a name");
         let location = &self.location;
-        let binding = &self.binding;
+        let binding = self
+            .parent_binding_expr
+            .as_ref()
+            .expect("Parent binding expression was not set");
         let format = &self.format;
         let attribute_description_tokens = quote! {
             VertexInputAttributeDescription {
@@ -73,20 +77,21 @@ pub fn vertex_input_derive(input: proc_macro::TokenStream) -> proc_macro::TokenS
         }
     };
 
+    let input_binding = spec_args.binding;
     let field_input_args = spec_args
         .data
         .take_struct()
         .unwrap()
         .map(|mut f| {
             f.parent_ty_ident = Some(name.clone());
+            f.parent_binding_expr = Some(input_binding.clone());
             f
         })
         .fields;
-    let input_binding = spec_args.binding;
 
     let expanded = quote! {
         impl voxelar_vertex::VertexInput for #name {
-            fn input_state_info() -> (VertexInputStateInfoConstructionData, PipelineVertexInputStateCreateInfo) {
+            fn input_state_info() -> VertexInputStateInfoConstructionData {
                 let vertex_input_binding_descriptions = vec![VertexInputBindingDescription {
                     binding: #input_binding,
                     stride: std::mem::size_of::<#name>() as u32,
@@ -102,12 +107,8 @@ pub fn vertex_input_derive(input: proc_macro::TokenStream) -> proc_macro::TokenS
                     vertex_input_binding_descriptions,
                     vertex_input_attribute_descriptions
                 };
-                let vertex_input_state_info = PipelineVertexInputStateCreateInfo::builder()
-                    .vertex_attribute_descriptions(&construction_data.vertex_input_attribute_descriptions)
-                    .vertex_binding_descriptions(&construction_data.vertex_input_binding_descriptions)
-                    .build();
 
-                (construction_data, vertex_input_state_info)
+                construction_data
             }
         }
     };

@@ -26,9 +26,9 @@ use voxelar::vulkan::VulkanContext;
 use voxelar::window::VoxelarWindow;
 use voxelar::Voxelar;
 
-use voxelar_vertex::*;
+use voxelar_vertex::input_state_builder::VertexInputStateBuilder;
 
-use crate::vertex::Vertex;
+use crate::vertex::*;
 
 #[repr(C)]
 pub struct DemoCameraBuffer {
@@ -60,11 +60,13 @@ pub struct Demo {
 
     pipeline_layout: SetUpPipelineLayout,
     pipelines: Vec<vk::Pipeline>,
-    vertex_buffer: TypedAllocatedBuffer<Vertex>,
-    index_buffer: TypedAllocatedBuffer<u32>,
-    index_count: usize,
+
     vertex_shader_module: CompiledShaderModule,
     fragment_shader_module: CompiledShaderModule,
+    vertex_buffer: TypedAllocatedBuffer<VertexPosition>,
+    vertex_color_buffer: TypedAllocatedBuffer<VertexColor>,
+    index_buffer: TypedAllocatedBuffer<u32>,
+    index_count: usize,
 
     pub frame_time_manager: FrameTimeManager,
     camera_position: Point3<f32>,
@@ -139,32 +141,65 @@ impl Demo {
         let surface_height = surface_resolution.height;
 
         let vertices = vec![
-            Vertex {
+            VertexPosition {
                 pos: Vector3::new(-1.0, -1.0, 1.0),
             },
-            Vertex {
+            VertexPosition {
                 pos: Vector3::new(1.0, -1.0, 1.0),
             },
-            Vertex {
+            VertexPosition {
                 pos: Vector3::new(1.0, 1.0, 1.0),
             },
-            Vertex {
+            VertexPosition {
                 pos: Vector3::new(-1.0, 1.0, 1.0),
             },
-            Vertex {
+            VertexPosition {
                 pos: Vector3::new(-1.0, -1.0, -1.0),
             },
-            Vertex {
+            VertexPosition {
                 pos: Vector3::new(1.0, -1.0, -1.0),
             },
-            Vertex {
+            VertexPosition {
                 pos: Vector3::new(1.0, 1.0, -1.0),
             },
-            Vertex {
+            VertexPosition {
                 pos: Vector3::new(-1.0, 1.0, -1.0),
             },
         ];
         let vertex_buffer = vulkan_context.create_vertex_buffer(&vertices)?;
+
+        let vertex_colors = vec![
+            VertexColor {
+                color: Vector3::new(1.0, 1.0, 0.0),
+            },
+            VertexColor {
+                color: Vector3::new(0.0, 1.0, 0.0),
+            },
+            VertexColor {
+                color: Vector3::new(0.0, 0.0, 0.0),
+            },
+            VertexColor {
+                color: Vector3::new(1.0, 0.0, 0.0),
+            },
+            VertexColor {
+                color: Vector3::new(1.0, 1.0, 1.0),
+            },
+            VertexColor {
+                color: Vector3::new(0.0, 1.0, 1.0),
+            },
+            VertexColor {
+                color: Vector3::new(0.0, 0.0, 1.0),
+            },
+            VertexColor {
+                color: Vector3::new(1.0, 0.0, 1.0),
+            },
+        ];
+        let vertex_color_buffer = vulkan_context.create_vertex_buffer(&vertex_colors)?;
+
+        let vertex_input_state_builder = VertexInputStateBuilder::new()
+            .add_data_from_type::<VertexPosition>()
+            .add_data_from_type::<VertexColor>();
+        let vertex_input_state_info = *vertex_input_state_builder.build();
 
         let index_buffer_data = vec![
             0, 1, 2, 2, 3, 0, // Front
@@ -181,8 +216,6 @@ impl Demo {
 
         let compiled_frag = compile_shader!(ShaderKind::Fragment, "../shader/triangle.frag")?;
         let fragment_shader_module = vulkan_context.create_fragment_shader(compiled_frag)?;
-
-        let (_data, vertex_input_state_info) = Vertex::input_state_info();
 
         let viewport = vk::Viewport {
             x: 0.0,
@@ -221,11 +254,13 @@ impl Demo {
 
             pipeline_layout,
             pipelines: vec![graphics_pipeline],
-            vertex_buffer,
-            index_buffer,
-            index_count: index_buffer_data.len(),
+
             vertex_shader_module,
             fragment_shader_module,
+            vertex_buffer,
+            vertex_color_buffer,
+            index_buffer,
+            index_count: index_buffer_data.len(),
 
             frame_time_manager: FrameTimeManager::new(&voxelar_context),
             camera_position: Point3::new(0.0, 2.0, -4.0),
@@ -343,8 +378,11 @@ impl Demo {
                     vk_device.cmd_bind_vertex_buffers(
                         draw_command_buffer,
                         0,
-                        &[self.vertex_buffer.raw_buffer()],
-                        &[0],
+                        &[
+                            self.vertex_buffer.raw_buffer(),
+                            self.vertex_color_buffer.raw_buffer(),
+                        ],
+                        &[0, 0],
                     );
                     vk_device.cmd_bind_index_buffer(
                         draw_command_buffer,
@@ -447,6 +485,8 @@ impl Demo {
             self.fragment_shader_module.destroy(virtual_device);
 
             self.index_buffer.destroy(virtual_device, &mut allocator)?;
+            self.vertex_color_buffer
+                .destroy(virtual_device, &mut allocator)?;
             self.vertex_buffer.destroy(virtual_device, &mut allocator)?;
         }
 
