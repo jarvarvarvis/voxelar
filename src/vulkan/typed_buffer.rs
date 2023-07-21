@@ -1,3 +1,4 @@
+use std::ffi::c_void;
 use std::marker::PhantomData;
 use std::mem::align_of;
 use std::sync::MutexGuard;
@@ -13,6 +14,7 @@ use super::virtual_device::SetUpVirtualDevice;
 
 pub struct TypedAllocatedBuffer<T> {
     pub buffer: AllocatedBuffer,
+    pub element_amount: u64,
     phantom: PhantomData<T>,
 }
 
@@ -20,11 +22,12 @@ impl<T> TypedAllocatedBuffer<T> {
     pub unsafe fn allocate(
         virtual_device: &SetUpVirtualDevice,
         allocator: &mut MutexGuard<Allocator>,
+        element_amount: u64,
         usage: BufferUsageFlags,
         sharing_mode: SharingMode,
         memory_location: MemoryLocation,
     ) -> crate::Result<Self> {
-        let size = std::mem::size_of::<T>() as u64;
+        let size = std::mem::size_of::<T>() as u64 * element_amount;
         Ok(Self {
             buffer: AllocatedBuffer::allocate(
                 virtual_device,
@@ -35,6 +38,7 @@ impl<T> TypedAllocatedBuffer<T> {
                 memory_location,
             )?,
             phantom: PhantomData,
+            element_amount,
         })
     }
 
@@ -45,6 +49,7 @@ impl<T> TypedAllocatedBuffer<T> {
         Self::allocate(
             virtual_device,
             allocator,
+            1,
             BufferUsageFlags::UNIFORM_BUFFER,
             SharingMode::EXCLUSIVE,
             MemoryLocation::CpuToGpu,
@@ -62,28 +67,23 @@ impl<T> TypedAllocatedBuffer<T> {
     where
         T: Copy,
     {
-        let size = (std::mem::size_of::<T>() * data.len()) as u64;
-
-        let buffer = AllocatedBuffer::allocate(
+        let buffer = Self::allocate(
             virtual_device,
             allocator,
-            size,
+            data.len() as u64,
             usage,
             sharing_mode,
             memory_location,
         )?;
-        let buffer_memory_req = buffer.get_buffer_memory_req(virtual_device);
+        let buffer_memory_req = buffer.buffer.get_buffer_memory_req(virtual_device);
 
-        let buffer_ptr = buffer.get_mapped_ptr()?.as_ptr();
+        let buffer_ptr = buffer.mapped_ptr()? as *mut c_void;
 
         let mut buffer_align =
             Align::new(buffer_ptr, align_of::<T>() as u64, buffer_memory_req.size);
         buffer_align.copy_from_slice(data);
 
-        Ok(Self {
-            buffer,
-            phantom: PhantomData,
-        })
+        Ok(buffer)
     }
 
     pub unsafe fn create_vertex_buffer(
