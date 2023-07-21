@@ -318,7 +318,7 @@ impl VulkanContext {
 
             let depth_image = self.depth_image()?;
             self.submit_immediate_setup_commands(|device, setup_command_buffer| {
-                depth_image.submit_pipeline_barrier_command(device, setup_command_buffer);
+                depth_image.perform_layout_transition_pipeline_barrier(device, setup_command_buffer);
                 Ok(())
             })?;
         }

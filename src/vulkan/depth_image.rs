@@ -117,7 +117,7 @@ impl SetUpDepthImage {
         )
     }
 
-    pub fn submit_pipeline_barrier_command(
+    pub fn perform_layout_transition_pipeline_barrier(
         &self,
         virtual_device: &SetUpVirtualDevice,
         setup_command_buffer: &SetUpCommandBufferWithFence,
