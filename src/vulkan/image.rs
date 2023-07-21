@@ -4,14 +4,14 @@ use std::sync::MutexGuard;
 
 use ash::vk::AccessFlags;
 use ash::vk::DependencyFlags;
-use ash::vk::Extent2D;
+use ash::vk::Extent3D;
 use ash::vk::Format;
 use ash::vk::PipelineStageFlags;
 use ash::vk::SampleCountFlags;
 use ash::vk::SharingMode;
 use ash::vk::{
-    Image, ImageCreateInfo, ImageLayout, ImageMemoryBarrier,
-    ImageSubresourceRange, ImageTiling, ImageType, ImageUsageFlags,
+    Image, ImageCreateInfo, ImageLayout, ImageMemoryBarrier, ImageSubresourceRange, ImageTiling,
+    ImageType, ImageUsageFlags,
 };
 use gpu_allocator::vulkan::*;
 use gpu_allocator::*;
@@ -21,16 +21,18 @@ use super::virtual_device::SetUpVirtualDevice;
 
 pub struct AllocatedImage {
     pub image: Image,
+    pub image_extent: Extent3D,
+    pub channels: u32,
     pub allocation: Option<Allocation>,
 }
 
 impl AllocatedImage {
-    pub unsafe fn create(
+    pub unsafe fn allocate(
         virtual_device: &SetUpVirtualDevice,
         allocator: &mut MutexGuard<Allocator>,
         image_type: ImageType,
         format: Format,
-        image_extent: Extent2D,
+        image_extent: Extent3D,
         mip_levels: u32,
         array_layers: u32,
         samples: SampleCountFlags,
@@ -38,10 +40,17 @@ impl AllocatedImage {
         image_usage: ImageUsageFlags,
         sharing_mode: SharingMode,
     ) -> crate::Result<Self> {
+        let channels = image_extent.depth;
+        let image_extent = Extent3D {
+            width: image_extent.width,
+            height: image_extent.height,
+            depth: 1,
+        };
+
         let image_create_info = ImageCreateInfo::builder()
             .image_type(image_type)
             .format(format)
-            .extent(image_extent.into())
+            .extent(image_extent)
             .mip_levels(mip_levels)
             .array_layers(array_layers)
             .samples(samples)
@@ -68,12 +77,18 @@ impl AllocatedImage {
 
         Ok(Self {
             image,
+            image_extent,
+            channels,
             allocation: Some(allocation),
         })
     }
 
+    pub fn full_image_size(&self) -> u32 {
+        self.image_extent.width * self.image_extent.height * self.channels
+    }
+
     pub fn perform_layout_transition_pipeline_barrier(
-        &self,
+        &mut self,
         virtual_device: &SetUpVirtualDevice,
         setup_command_buffer: &SetUpCommandBufferWithFence,
         subresource_range: ImageSubresourceRange,

@@ -18,6 +18,8 @@
 //! - frame\_data: Provides an abstraction for per-frame synchronization and command logic in double/triple/...-buffering scenarios
 //! - framebuffers: Provides an abstraction for framebuffer creation for each present image of a swapchain
 //! - graphics\_pipeline\_builder: Provides an abstraction for building Vulkan `Pipeline`s
+//! - image: Provides an abstraction for GPU memory-allocated images
+//! - image_view: Provides an abstraction for Vulkan image views
 //! - per\_frame: Provides an abstraction for tracking data of each frame in double/triple/...-buffering scenarios; used with `FrameData` in this module
 //! - physical\_device: Provides an abstraction for finding a suitable `PhysicalDevice` for rendering, also queries important device information
 //! - pipeline\_layout: Provide a wrapper around `PipelineLayout`s
@@ -31,6 +33,7 @@
 //! - sync: Provides a wrapper around synchronization structures (related to rendering)
 //! - texture: Provides an abstraction for GPU-allocated textures
 //! - typed\_buffer: Provides an abstraction for buffers that hold data of a specific type
+//! - typed\_image: Provides an abstraction for images that hold data of a specific type
 //! - util: Provides random utility functions used by the vulkan module
 //! - virtual\_device: Provides a wrapper around virtual Vulkan devices
 pub extern crate gpu_allocator;
@@ -40,16 +43,17 @@ use std::ffi::{c_char, CStr, CString};
 use std::mem::ManuallyDrop;
 use std::sync::{Arc, Mutex, MutexGuard};
 
-use ash::vk;
 use ash::vk::ApplicationInfo;
 use ash::vk::ClearValue;
 use ash::vk::CommandBufferLevel;
 use ash::vk::CommandPoolResetFlags;
 use ash::vk::Extent2D;
+use ash::vk::Extent3D;
 use ash::vk::FenceCreateFlags;
 use ash::vk::PipelineStageFlags;
 use ash::vk::ShaderStageFlags;
 use ash::vk::SubpassContents;
+use ash::vk::{self, Format};
 use ash::vk::{InstanceCreateFlags, InstanceCreateInfo};
 use ash::{Entry, Instance};
 use gpu_allocator::vulkan::*;
@@ -90,6 +94,7 @@ pub mod swapchain;
 pub mod sync;
 pub mod texture;
 pub mod typed_buffer;
+pub mod typed_image;
 pub mod util;
 pub mod virtual_device;
 
@@ -116,6 +121,7 @@ use self::shader::CompiledShaderModule;
 use self::staging_buffer::SetUpStagingBuffer;
 use self::surface::SetUpSurfaceInfo;
 use self::swapchain::SetUpSwapchain;
+use self::texture::Texture;
 use self::typed_buffer::TypedAllocatedBuffer;
 use self::virtual_device::SetUpVirtualDevice;
 
@@ -313,7 +319,7 @@ impl VulkanContext {
 
     pub fn create_depth_image(&mut self) -> crate::Result<()> {
         unsafe {
-            let depth_image = {
+            let mut depth_image = {
                 let allocator = &mut self.lock_allocator()?;
                 SetUpDepthImage::create_with_defaults(
                     self.virtual_device()?,
@@ -323,7 +329,8 @@ impl VulkanContext {
             };
 
             self.submit_immediate_setup_commands(|device, setup_command_buffer| {
-                depth_image.perform_layout_transition_pipeline_barrier(device, setup_command_buffer);
+                depth_image
+                    .perform_layout_transition_pipeline_barrier(device, setup_command_buffer);
                 Ok(())
             })?;
 
@@ -587,7 +594,8 @@ impl VulkanContext {
         let virtual_device = self.virtual_device()?;
         let element_amount = buffer.element_amount;
         unsafe {
-            let mut staging_buffer = SetUpStagingBuffer::allocate(virtual_device, allocator, element_amount)?;
+            let mut staging_buffer =
+                SetUpStagingBuffer::allocate(virtual_device, allocator, element_amount)?;
             staging_buffer.copy_from_slice(virtual_device, data)?;
             self.submit_immediate_setup_commands(|device, setup_command_buffer| {
                 buffer.copy_from_staging_buffer(device, &staging_buffer, setup_command_buffer)
@@ -669,6 +677,46 @@ impl VulkanContext {
         compiled_bytes: Vec<u8>,
     ) -> crate::Result<CompiledShaderModule> {
         self.create_shader_of_stage(compiled_bytes, ShaderStageFlags::FRAGMENT)
+    }
+
+    pub fn create_texture<T>(
+        &self,
+        format: Format,
+        texture_dimensions: Extent3D,
+        data: &[T],
+    ) -> crate::Result<Texture<T>>
+    where
+        T: Copy,
+    {
+        unsafe {
+            let virtual_device = self.virtual_device()?;
+            let mut texture = Texture::<T>::create(
+                self.virtual_device()?,
+                &mut self.lock_allocator()?,
+                format,
+                texture_dimensions,
+            )?;
+
+            let element_amount =
+                texture_dimensions.width * texture_dimensions.height * texture_dimensions.depth;
+            let mut staging_buffer = SetUpStagingBuffer::allocate(
+                virtual_device,
+                &mut self.lock_allocator()?,
+                element_amount as u64,
+            )?;
+            staging_buffer.copy_from_slice(virtual_device, data)?;
+
+            self.submit_immediate_setup_commands(|device, setup_command_buffer| {
+                texture.layout_transition_to_copy_target(device, setup_command_buffer);
+                texture.copy_from_staging_buffer(device, &staging_buffer, setup_command_buffer)?;
+                texture.layout_transition_to_shader_readable(device, setup_command_buffer);
+                Ok(())
+            })?;
+
+            staging_buffer.destroy(virtual_device, &mut self.lock_allocator()?)?;
+
+            Ok(texture)
+        }
     }
 }
 

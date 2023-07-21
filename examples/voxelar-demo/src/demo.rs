@@ -1,6 +1,4 @@
 use voxelar::ash::vk;
-use voxelar::ash::vk::DescriptorType;
-use voxelar::ash::vk::ShaderStageFlags;
 use voxelar::compile_shader;
 use voxelar::engine::frame_time::FrameTimeManager;
 use voxelar::nalgebra::Matrix4;
@@ -21,6 +19,7 @@ use voxelar::vulkan::per_frame::PerFrame;
 use voxelar::vulkan::pipeline_layout::SetUpPipelineLayout;
 use voxelar::vulkan::pipeline_layout_builder::PipelineLayoutBuilder;
 use voxelar::vulkan::shader::CompiledShaderModule;
+use voxelar::vulkan::texture::Texture;
 use voxelar::vulkan::typed_buffer::TypedAllocatedBuffer;
 use voxelar::vulkan::VulkanContext;
 use voxelar::window::VoxelarWindow;
@@ -67,6 +66,7 @@ pub struct Demo {
     vertex_color_buffer: TypedAllocatedBuffer<VertexColor>,
     index_buffer: TypedAllocatedBuffer<u32>,
     index_count: usize,
+    texture: Texture<u8>,
 
     pub frame_time_manager: FrameTimeManager,
     camera_position: Point3<f32>,
@@ -84,14 +84,14 @@ impl Demo {
             .add_binding(
                 0, // In the shader, this will specify binding = 0 in the uniform layout
                 1,
-                DescriptorType::UNIFORM_BUFFER_DYNAMIC,
-                ShaderStageFlags::VERTEX,
+                vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC,
+                vk::ShaderStageFlags::VERTEX,
             )
             .add_binding(
                 1, // In the shader, this will specify binding = 1 in the uniform layout
                 1,
-                DescriptorType::UNIFORM_BUFFER_DYNAMIC,
-                ShaderStageFlags::FRAGMENT,
+                vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC,
+                vk::ShaderStageFlags::FRAGMENT,
             )
             .build(virtual_device)?;
         let descriptor_set_layouts = vec![global_set_layout];
@@ -106,7 +106,7 @@ impl Demo {
         let per_frame_data = PerFrame::try_init(
             |_| {
                 let descriptor_set_logic = DescriptorSetLogicBuilder::new()
-                    .add_pool_size(DescriptorType::UNIFORM_BUFFER_DYNAMIC, 2)
+                    .add_pool_size(vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC, 2)
                     .set_layouts(&descriptor_set_layouts)
                     .build(virtual_device)?;
                 let destination_set = descriptor_set_logic.get_set(0);
@@ -116,12 +116,12 @@ impl Demo {
                     .add_dynamic_descriptor_buffer_write(
                         &descriptor_buffers.camera_buffer,
                         0,
-                        DescriptorType::UNIFORM_BUFFER_DYNAMIC,
+                        vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC,
                     )?
                     .add_dynamic_descriptor_buffer_write(
                         &descriptor_buffers.scene_buffer,
                         1,
-                        DescriptorType::UNIFORM_BUFFER_DYNAMIC,
+                        vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC,
                     )?
                     .update(virtual_device)?;
 
@@ -199,7 +199,7 @@ impl Demo {
         let vertex_input_state_builder = VertexInputStateBuilder::new()
             .add_data_from_type::<VertexPosition>(0)
             .add_data_from_type::<VertexColor>(1);
-        let vertex_input_state_info = *vertex_input_state_builder.build();
+        let vertex_input_state_info = vertex_input_state_builder.build();
 
         let index_buffer_data = vec![
             0, 1, 2, 2, 3, 0, // Front
@@ -217,7 +217,14 @@ impl Demo {
         let compiled_frag = compile_shader!(ShaderKind::Fragment, "../shader/triangle.frag")?;
         let fragment_shader_module = vulkan_context.create_fragment_shader(compiled_frag)?;
 
-        let image = voxelar::vulkan::image::open("textures/brick.jpg")?;
+        let image = voxelar::vulkan::image::open("textures/brick.jpg")?.into_rgba8();
+        let image_extent = vk::Extent3D {
+            width: image.width(),
+            height: image.height(),
+            depth: 4, // 4 channels
+        };
+        let texture =
+            vulkan_context.create_texture(vk::Format::R8G8B8A8_SRGB, image_extent, &image)?;
 
         let viewport = vk::Viewport {
             x: 0.0,
@@ -231,7 +238,7 @@ impl Demo {
         let scissor = surface_resolution.into();
 
         let graphics_pipeline = GraphicsPipelineBuilder::new()
-            .vertex_input(vertex_input_state_info)
+            .vertex_input(*vertex_input_state_info)
             .add_shader_stage(vertex_shader_module.get_stage_create_info())
             .add_shader_stage(fragment_shader_module.get_stage_create_info())
             .input_assembly_with_topology(vk::PrimitiveTopology::TRIANGLE_LIST)
@@ -263,6 +270,7 @@ impl Demo {
             vertex_color_buffer,
             index_buffer,
             index_count: index_buffer_data.len(),
+            texture,
 
             frame_time_manager: FrameTimeManager::new(&voxelar_context),
             camera_position: Point3::new(0.0, 2.0, -4.0),
@@ -490,6 +498,8 @@ impl Demo {
             self.vertex_color_buffer
                 .destroy(virtual_device, &mut allocator)?;
             self.vertex_buffer.destroy(virtual_device, &mut allocator)?;
+
+            self.texture.destroy(virtual_device, &mut allocator)?;
         }
 
         Ok(())

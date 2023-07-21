@@ -1,6 +1,7 @@
 use std::sync::MutexGuard;
 
 use ash::vk::Extent2D;
+use ash::vk::Extent3D;
 use ash::vk::Format;
 use ash::vk::SharingMode;
 use ash::vk::{AccessFlags, PipelineStageFlags, SampleCountFlags};
@@ -30,12 +31,17 @@ impl SetUpDepthImage {
         samples: SampleCountFlags,
         subresource_range: ImageSubresourceRange,
     ) -> crate::Result<Self> {
-        let depth_image = AllocatedImage::create(
+        let image_extent = Extent3D {
+            width: surface_extent.width,
+            height: surface_extent.height,
+            depth: 1,
+        };
+        let depth_image = AllocatedImage::allocate(
             virtual_device,
             allocator,
             ImageType::TYPE_2D,
             format,
-            surface_extent,
+            image_extent,
             1,
             1,
             samples,
@@ -86,7 +92,7 @@ impl SetUpDepthImage {
     }
 
     pub fn perform_layout_transition_pipeline_barrier(
-        &self,
+        &mut self,
         virtual_device: &SetUpVirtualDevice,
         setup_command_buffer: &SetUpCommandBufferWithFence,
     ) {
