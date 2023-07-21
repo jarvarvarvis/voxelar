@@ -1,6 +1,5 @@
 use std::sync::MutexGuard;
 
-use ash::vk::CommandBuffer;
 use ash::vk::Extent2D;
 use ash::vk::Format;
 use ash::vk::SharingMode;
@@ -13,6 +12,7 @@ use ash::vk::{
 use gpu_allocator::vulkan::*;
 use gpu_allocator::*;
 
+use super::command_buffer::SetUpCommandBufferWithFence;
 use super::surface::SetUpSurfaceInfo;
 use super::virtual_device::SetUpVirtualDevice;
 
@@ -120,7 +120,7 @@ impl SetUpDepthImage {
     pub fn submit_pipeline_barrier_command(
         &self,
         virtual_device: &SetUpVirtualDevice,
-        setup_command_buffer: CommandBuffer,
+        setup_command_buffer: &SetUpCommandBufferWithFence,
     ) {
         unsafe {
             let layout_transition_barriers = ImageMemoryBarrier::builder()
@@ -135,7 +135,7 @@ impl SetUpDepthImage {
                 .build();
 
             virtual_device.device.cmd_pipeline_barrier(
-                setup_command_buffer,
+                setup_command_buffer.command_buffer,
                 PipelineStageFlags::BOTTOM_OF_PIPE,
                 PipelineStageFlags::LATE_FRAGMENT_TESTS,
                 DependencyFlags::empty(),

@@ -18,13 +18,14 @@
 //! - frame\_data: Provides an abstraction for per-frame synchronization and command logic in double/triple/...-buffering scenarios
 //! - framebuffers: Provides an abstraction for framebuffer creation for each present image of a swapchain
 //! - graphics\_pipeline\_builder: Provides an abstraction for building Vulkan `Pipeline`s
-//! - per\_frame: Provides an abstraction for tracking data of each frame in double/triple/...-buffering scenarios, used with `FrameData` in this module
+//! - per\_frame: Provides an abstraction for tracking data of each frame in double/triple/...-buffering scenarios; used with `FrameData` in this module
 //! - physical\_device: Provides an abstraction for finding a suitable `PhysicalDevice` for rendering, also queries important device information
 //! - pipeline\_layout: Provide a wrapper around `PipelineLayout`s
 //! - pipeline\_layout\_builder: Provides an abstraction for building `(SetUp)PipelineLayout`s
 //! - present\_images: Provides an abstraction for getting the images of a swapchain
 //! - render\_pass: Provides an abstraction for the creation of a default render pass
 //! - shader: Provides an abstraction for shader compilation and shader module creation
+//! - staging\_buffer: Provides an abstraction for staging buffers (used when transferring data from CPU- to GPU-only memory)
 //! - surface: Provides an abstraction for the window surface and all related information
 //! - swapchain: Provides an abstraction for the creation of a default swapchain
 //! - sync: Provides a wrapper around synchronization structures (related to rendering)
@@ -80,6 +81,7 @@ pub mod pipeline_layout_builder;
 pub mod present_images;
 pub mod render_pass;
 pub mod shader;
+pub mod staging_buffer;
 pub mod surface;
 pub mod swapchain;
 pub mod sync;
@@ -107,6 +109,7 @@ use self::physical_device::SetUpPhysicalDevice;
 use self::present_images::SetUpPresentImages;
 use self::render_pass::SetUpRenderPass;
 use self::shader::CompiledShaderModule;
+use self::staging_buffer::SetUpStagingBuffer;
 use self::surface::SetUpSurfaceInfo;
 use self::swapchain::SetUpSwapchain;
 use self::typed_buffer::TypedAllocatedBuffer;
@@ -315,8 +318,7 @@ impl VulkanContext {
 
             let depth_image = self.depth_image()?;
             self.submit_immediate_setup_commands(|device, setup_command_buffer| {
-                depth_image
-                    .submit_pipeline_barrier_command(device, setup_command_buffer.command_buffer);
+                depth_image.submit_pipeline_barrier_command(device, setup_command_buffer);
                 Ok(())
             })?;
         }
@@ -569,16 +571,38 @@ impl VulkanContext {
         }
     }
 
+    pub fn copy_data_to_buffer<T: Copy>(
+        &self,
+        buffer: &TypedAllocatedBuffer<T>,
+        data: &[T],
+    ) -> crate::Result<()> {
+        let allocator = &mut self.lock_allocator()?;
+        let virtual_device = self.virtual_device()?;
+        let element_amount = buffer.element_amount;
+        unsafe {
+            let mut staging_buffer = SetUpStagingBuffer::allocate(virtual_device, allocator, element_amount)?;
+            staging_buffer.copy_from_slice(virtual_device, data)?;
+            self.submit_immediate_setup_commands(|device, setup_command_buffer| {
+                buffer.copy_from_staging_buffer(device, &staging_buffer, setup_command_buffer)
+            })?;
+            staging_buffer.destroy(virtual_device, allocator)?;
+        }
+        Ok(())
+    }
+
     pub fn create_vertex_buffer<T: Copy>(
         &self,
         data: &[T],
     ) -> crate::Result<TypedAllocatedBuffer<T>> {
         unsafe {
-            TypedAllocatedBuffer::<T>::create_vertex_buffer(
+            let data_amount = data.len() as u64;
+            let buffer = TypedAllocatedBuffer::<T>::allocate_vertex_buffer(
                 self.virtual_device()?,
                 &mut self.lock_allocator()?,
-                data,
-            )
+                data_amount,
+            )?;
+            self.copy_data_to_buffer(&buffer, data)?;
+            Ok(buffer)
         }
     }
 
@@ -587,11 +611,14 @@ impl VulkanContext {
         data: &[T],
     ) -> crate::Result<TypedAllocatedBuffer<T>> {
         unsafe {
-            TypedAllocatedBuffer::<T>::create_index_buffer(
+            let data_amount = data.len() as u64;
+            let buffer = TypedAllocatedBuffer::<T>::allocate_index_buffer(
                 self.virtual_device()?,
                 &mut self.lock_allocator()?,
-                data,
-            )
+                data_amount,
+            )?;
+            self.copy_data_to_buffer(&buffer, data)?;
+            Ok(buffer)
         }
     }
 
