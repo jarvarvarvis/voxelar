@@ -24,7 +24,7 @@ impl SetUpFramebuffers {
 
         let mut framebuffers: Vec<Framebuffer> = Vec::with_capacity(present_image_views.len());
         for present_image_view in present_image_views.iter() {
-            let framebuffer_attachments = [*present_image_view, *depth_image_view];
+            let framebuffer_attachments = [*present_image_view, depth_image_view.image_view];
             let frame_buffer_create_info = FramebufferCreateInfo::builder()
                 .render_pass(render_pass.render_pass)
                 .attachments(&framebuffer_attachments)

@@ -29,12 +29,12 @@
 //! - surface: Provides an abstraction for the window surface and all related information
 //! - swapchain: Provides an abstraction for the creation of a default swapchain
 //! - sync: Provides a wrapper around synchronization structures (related to rendering)
-//! - test\_context: Provides a full `VulkanContext` with a `VoxelarWindow` and `Voxelar` instance for test scenarios
+//! - texture: Provides an abstraction for GPU-allocated textures
 //! - typed\_buffer: Provides an abstraction for buffers that hold data of a specific type
 //! - util: Provides random utility functions used by the vulkan module
 //! - virtual\_device: Provides a wrapper around virtual Vulkan devices
 pub extern crate gpu_allocator;
-pub extern crate image;
+pub extern crate image as image_crate;
 
 use std::ffi::{c_char, CStr, CString};
 use std::mem::ManuallyDrop;
@@ -75,6 +75,8 @@ pub mod dynamic_descriptor_buffer;
 pub mod frame_data;
 pub mod framebuffers;
 pub mod graphics_pipeline_builder;
+pub mod image;
+pub mod image_view;
 pub mod per_frame;
 pub mod physical_device;
 pub mod pipeline_layout;
@@ -86,6 +88,7 @@ pub mod staging_buffer;
 pub mod surface;
 pub mod swapchain;
 pub mod sync;
+pub mod texture;
 pub mod typed_buffer;
 pub mod util;
 pub mod virtual_device;
@@ -310,18 +313,21 @@ impl VulkanContext {
 
     pub fn create_depth_image(&mut self) -> crate::Result<()> {
         unsafe {
-            let allocator = self.lock_allocator()?;
-            self.depth_image = Some(SetUpDepthImage::create_with_defaults(
-                self.virtual_device()?,
-                allocator,
-                &self.surface_info,
-            )?);
+            let depth_image = {
+                let allocator = &mut self.lock_allocator()?;
+                SetUpDepthImage::create_with_defaults(
+                    self.virtual_device()?,
+                    allocator,
+                    &self.surface_info,
+                )?
+            };
 
-            let depth_image = self.depth_image()?;
             self.submit_immediate_setup_commands(|device, setup_command_buffer| {
                 depth_image.perform_layout_transition_pipeline_barrier(device, setup_command_buffer);
                 Ok(())
             })?;
+
+            self.depth_image = Some(depth_image);
         }
         Ok(())
     }
