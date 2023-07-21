@@ -19,8 +19,8 @@ impl<'builder> VertexInputStateBuilder<'builder> {
         }
     }
 
-    pub fn add_data_from_type<T: VertexInput>(mut self) -> Self {
-        let data = T::input_state_info();
+    pub fn add_data_from_type<T: VertexInput>(mut self, binding: u32) -> Self {
+        let data = T::input_state_info(binding);
         self.vertex_input_binding_descriptions
             .extend(data.vertex_input_binding_descriptions);
         self.vertex_input_attribute_descriptions

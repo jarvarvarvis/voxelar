@@ -10,12 +10,9 @@ use quote::quote;
 use quote::ToTokens;
 
 #[derive(Debug, FromDeriveInput)]
-#[darling(attributes(vertex_input_spec), supports(struct_named))]
 struct VertexInputSpecArgs {
     #[allow(unused)]
     ident: syn::Ident,
-
-    binding: syn::LitInt,
 
     data: ast::Data<(), FieldInputArgs>,
 }
@@ -32,9 +29,6 @@ struct FieldInputArgs {
     format: syn::Expr,
 
     #[darling(skip)]
-    parent_binding_expr: Option<syn::LitInt>,
-
-    #[darling(skip)]
     parent_ty_ident: Option<syn::Ident>,
 }
 
@@ -46,15 +40,11 @@ impl ToTokens for FieldInputArgs {
             .expect("Parent type identifier was not set");
         let member_ident = self.ident.as_ref().expect("Fields must have a name");
         let location = &self.location;
-        let binding = self
-            .parent_binding_expr
-            .as_ref()
-            .expect("Parent binding expression was not set");
         let format = &self.format;
         let attribute_description_tokens = quote! {
             VertexInputAttributeDescription {
                 location: #location,
-                binding: #binding,
+                binding,
                 format: #format,
                 offset: voxelar_vertex::offset_of!(#parent_ty_ident, #member_ident) as u32,
             }
@@ -64,7 +54,7 @@ impl ToTokens for FieldInputArgs {
     }
 }
 
-#[proc_macro_derive(VertexInput, attributes(vertex_input_spec, input))]
+#[proc_macro_derive(VertexInput, attributes(input))]
 pub fn vertex_input_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let parsed_input = parse_macro_input!(input as DeriveInput);
 
@@ -77,23 +67,21 @@ pub fn vertex_input_derive(input: proc_macro::TokenStream) -> proc_macro::TokenS
         }
     };
 
-    let input_binding = spec_args.binding;
     let field_input_args = spec_args
         .data
         .take_struct()
         .unwrap()
         .map(|mut f| {
             f.parent_ty_ident = Some(name.clone());
-            f.parent_binding_expr = Some(input_binding.clone());
             f
         })
         .fields;
 
     let expanded = quote! {
         impl voxelar_vertex::VertexInput for #name {
-            fn input_state_info() -> VertexInputStateInfoConstructionData {
+            fn input_state_info(binding: u32) -> VertexInputStateInfoConstructionData {
                 let vertex_input_binding_descriptions = vec![VertexInputBindingDescription {
-                    binding: #input_binding,
+                    binding,
                     stride: std::mem::size_of::<#name>() as u32,
                     input_rate: VertexInputRate::VERTEX,
                 }];

@@ -197,8 +197,8 @@ impl Demo {
         let vertex_color_buffer = vulkan_context.create_vertex_buffer(&vertex_colors)?;
 
         let vertex_input_state_builder = VertexInputStateBuilder::new()
-            .add_data_from_type::<VertexPosition>()
-            .add_data_from_type::<VertexColor>();
+            .add_data_from_type::<VertexPosition>(0)
+            .add_data_from_type::<VertexColor>(1);
         let vertex_input_state_info = *vertex_input_state_builder.build();
 
         let index_buffer_data = vec![
