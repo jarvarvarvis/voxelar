@@ -1,28 +1,8 @@
 use std::marker::PhantomData;
 
+use voxelar_utils::keep_alive::KeepAlive;
+
 use super::*;
-
-pub struct KeepAlive<'other, T, Other> {
-    value: T,
-    phantom: PhantomData<&'other Other>,
-}
-
-impl<'other, T, Other> KeepAlive<'other, T, Other> {
-    pub fn new(value: T) -> Self {
-        Self {
-            value,
-            phantom: PhantomData,
-        }
-    }
-}
-
-impl<'other, T, Other> std::ops::Deref for KeepAlive<'other, T, Other> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.value
-    }
-}
 
 pub struct VertexInputStateBuilder<'builder> {
     pub vertex_input_binding_descriptions: Vec<VertexInputBindingDescription>,

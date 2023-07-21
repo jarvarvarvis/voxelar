@@ -23,10 +23,10 @@ pub extern crate ash;
 pub extern crate glfw;
 pub extern crate nalgebra;
 pub extern crate shaderc;
+pub extern crate voxelar_utils;
 
 use glfw::*;
 
-pub mod as_any_trait;
 pub mod engine;
 pub mod receivable_events;
 pub mod render_context;

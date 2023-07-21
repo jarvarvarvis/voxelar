@@ -1,4 +1,5 @@
 extern crate voxelar_vertex_derive;
+extern crate voxelar_utils;
 
 pub use voxelar_vertex_derive::*;
 
