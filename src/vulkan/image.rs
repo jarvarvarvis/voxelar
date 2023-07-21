@@ -2,14 +2,21 @@ pub use super::image_crate::*;
 
 use std::sync::MutexGuard;
 
+use ash::vk::AccessFlags;
+use ash::vk::DependencyFlags;
 use ash::vk::Extent2D;
 use ash::vk::Format;
+use ash::vk::PipelineStageFlags;
 use ash::vk::SampleCountFlags;
 use ash::vk::SharingMode;
-use ash::vk::{Image, ImageCreateInfo, ImageTiling, ImageType, ImageUsageFlags};
+use ash::vk::{
+    Image, ImageCreateInfo, ImageLayout, ImageMemoryBarrier,
+    ImageSubresourceRange, ImageTiling, ImageType, ImageUsageFlags,
+};
 use gpu_allocator::vulkan::*;
 use gpu_allocator::*;
 
+use super::command_buffer::SetUpCommandBufferWithFence;
 use super::virtual_device::SetUpVirtualDevice;
 
 pub struct AllocatedImage {
@@ -63,6 +70,39 @@ impl AllocatedImage {
             image,
             allocation: Some(allocation),
         })
+    }
+
+    pub fn perform_layout_transition_pipeline_barrier(
+        &self,
+        virtual_device: &SetUpVirtualDevice,
+        setup_command_buffer: &SetUpCommandBufferWithFence,
+        subresource_range: ImageSubresourceRange,
+        src_access_mask: AccessFlags,
+        dst_access_mask: AccessFlags,
+        old_layout: ImageLayout,
+        new_layout: ImageLayout,
+        src_stage: PipelineStageFlags,
+        dst_stage: PipelineStageFlags,
+    ) {
+        let layout_transition_barrier = ImageMemoryBarrier::builder()
+            .image(self.image)
+            .src_access_mask(src_access_mask)
+            .dst_access_mask(dst_access_mask)
+            .old_layout(old_layout)
+            .new_layout(new_layout)
+            .subresource_range(subresource_range);
+
+        unsafe {
+            virtual_device.device.cmd_pipeline_barrier(
+                setup_command_buffer.command_buffer,
+                src_stage,
+                dst_stage,
+                DependencyFlags::empty(),
+                &[],
+                &[],
+                &[*layout_transition_barrier],
+            );
+        }
     }
 
     pub fn destroy(

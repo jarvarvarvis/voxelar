@@ -3,9 +3,9 @@ use std::sync::MutexGuard;
 use ash::vk::Extent2D;
 use ash::vk::Format;
 use ash::vk::SharingMode;
-use ash::vk::{AccessFlags, DependencyFlags, PipelineStageFlags, SampleCountFlags};
+use ash::vk::{AccessFlags, PipelineStageFlags, SampleCountFlags};
 use ash::vk::{
-    ImageAspectFlags, ImageLayout, ImageMemoryBarrier, ImageSubresourceRange, ImageTiling,
+    ImageAspectFlags, ImageLayout, ImageSubresourceRange, ImageTiling,
     ImageType, ImageUsageFlags, ImageViewType,
 };
 use gpu_allocator::vulkan::*;
@@ -61,7 +61,9 @@ impl SetUpDepthImage {
     pub fn create_default_subresource_range() -> ImageSubresourceRange {
         ImageSubresourceRange::builder()
             .aspect_mask(ImageAspectFlags::DEPTH)
+            .base_mip_level(0)
             .level_count(1)
+            .base_array_layer(0)
             .layer_count(1)
             .build()
     }
@@ -88,28 +90,17 @@ impl SetUpDepthImage {
         virtual_device: &SetUpVirtualDevice,
         setup_command_buffer: &SetUpCommandBufferWithFence,
     ) {
-        unsafe {
-            let layout_transition_barriers = ImageMemoryBarrier::builder()
-                .image(self.depth_image.image)
-                .dst_access_mask(
-                    AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ
-                        | AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
-                )
-                .new_layout(ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-                .old_layout(ImageLayout::UNDEFINED)
-                .subresource_range(Self::create_default_subresource_range())
-                .build();
-
-            virtual_device.device.cmd_pipeline_barrier(
-                setup_command_buffer.command_buffer,
-                PipelineStageFlags::BOTTOM_OF_PIPE,
-                PipelineStageFlags::LATE_FRAGMENT_TESTS,
-                DependencyFlags::empty(),
-                &[],
-                &[],
-                &[layout_transition_barriers],
-            );
-        }
+        self.depth_image.perform_layout_transition_pipeline_barrier(
+            virtual_device,
+            setup_command_buffer,
+            Self::create_default_subresource_range(),
+            AccessFlags::empty(),
+            AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE | AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ,
+            ImageLayout::UNDEFINED,
+            ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            PipelineStageFlags::BOTTOM_OF_PIPE,
+            PipelineStageFlags::LATE_FRAGMENT_TESTS,
+        );
     }
 
     pub fn destroy(
