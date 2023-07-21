@@ -9,7 +9,6 @@ use voxelar::glfw::*;
 use voxelar::receivable_events::*;
 use voxelar::vulkan::creation_info::*;
 use voxelar::vulkan::debug::*;
-use voxelar::vulkan::experimental::dedicated_pool_allocator::DedicatedPoolAllocator;
 use voxelar::vulkan::VulkanContext;
 use voxelar::window::*;
 use voxelar::*;
@@ -27,13 +26,14 @@ fn main() -> Result<()> {
     window.set_receivable_events(ReceivableEvents::all());
 
     let mut vulkan_context = ctx
-        .load_render_context_for_window::<(DedicatedPoolAllocator, KHRVerificationAndDebugMessenger), VulkanContext>(
+        .load_render_context_for_window::<KHRVerificationAndDebugMessenger, VulkanContext>(
             &mut window,
         )?;
 
     let creation_info = DataStructureCreationInfo {
         swapchain_present_mode: PresentModeInitMode::Find(PresentModeKHR::FIFO),
         frame_overlap: 2,
+        allocator_debug_settings: Default::default(),
     };
     vulkan_context.create_default_data_structures(window.get_size(), creation_info)?;
 

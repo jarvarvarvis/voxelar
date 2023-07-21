@@ -1,4 +1,5 @@
 use ash::vk::PresentModeKHR;
+use gpu_allocator::AllocatorDebugSettings;
 
 use crate::result::Context;
 
@@ -36,4 +37,5 @@ impl PresentModeInitMode {
 pub struct DataStructureCreationInfo {
     pub swapchain_present_mode: PresentModeInitMode,
     pub frame_overlap: usize,
+    pub allocator_debug_settings: AllocatorDebugSettings,
 }

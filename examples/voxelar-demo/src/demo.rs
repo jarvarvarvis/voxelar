@@ -418,14 +418,16 @@ impl Demo {
 
     pub fn destroy(&mut self, vulkan_context: &VulkanContext) -> crate::Result<()> {
         let virtual_device = vulkan_context.virtual_device()?;
-        let allocator = vulkan_context.allocator.as_ref();
+        let mut allocator = vulkan_context.lock_allocator()?;
 
         virtual_device.wait();
         unsafe {
             self.descriptor_buffers
                 .camera_buffer
-                .destroy(virtual_device, allocator);
-            self.descriptor_buffers.scene_buffer.destroy(virtual_device, allocator);
+                .destroy(virtual_device, &mut allocator)?;
+            self.descriptor_buffers
+                .scene_buffer
+                .destroy(virtual_device, &mut allocator)?;
 
             for descriptor_data in self.per_frame_data.iter_mut() {
                 descriptor_data.descriptor_set_logic.destroy(virtual_device);
@@ -444,8 +446,8 @@ impl Demo {
             self.vertex_shader_module.destroy(virtual_device);
             self.fragment_shader_module.destroy(virtual_device);
 
-            self.index_buffer.destroy(virtual_device, allocator);
-            self.vertex_buffer.destroy(virtual_device, allocator);
+            self.index_buffer.destroy(virtual_device, &mut allocator)?;
+            self.vertex_buffer.destroy(virtual_device, &mut allocator)?;
         }
 
         Ok(())

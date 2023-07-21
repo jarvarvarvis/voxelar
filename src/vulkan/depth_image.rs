@@ -1,7 +1,8 @@
+use std::sync::MutexGuard;
+
 use ash::vk::CommandBuffer;
 use ash::vk::Extent2D;
 use ash::vk::Format;
-use ash::vk::MemoryPropertyFlags;
 use ash::vk::SharingMode;
 use ash::vk::{AccessFlags, DependencyFlags, PipelineStageFlags, SampleCountFlags};
 use ash::vk::{
@@ -9,24 +10,22 @@ use ash::vk::{
     ImageSubresourceRange, ImageTiling, ImageType, ImageUsageFlags, ImageView, ImageViewCreateInfo,
     ImageViewType,
 };
+use gpu_allocator::vulkan::*;
+use gpu_allocator::*;
 
-use super::experimental::allocator::Allocation;
-use super::experimental::allocator::Allocator;
-use super::physical_device::SetUpPhysicalDevice;
 use super::surface::SetUpSurfaceInfo;
 use super::virtual_device::SetUpVirtualDevice;
 
 pub struct SetUpDepthImage {
     pub depth_image: Image,
     pub depth_image_view: ImageView,
-    pub depth_image_allocation: Allocation,
+    pub depth_image_allocation: Option<Allocation>,
 }
 
 impl SetUpDepthImage {
     pub unsafe fn create(
-        physical_device: &SetUpPhysicalDevice,
         virtual_device: &SetUpVirtualDevice,
-        allocator: &dyn Allocator,
+        mut allocator: MutexGuard<Allocator>,
         image_type: ImageType,
         format: Format,
         surface_extent: Extent2D,
@@ -56,16 +55,19 @@ impl SetUpDepthImage {
             .device
             .get_image_memory_requirements(depth_image);
 
-        let depth_image_allocation = allocator.allocate(
-            virtual_device,
-            physical_device,
-            depth_image_memory_req,
-            MemoryPropertyFlags::DEVICE_LOCAL,
-        )?;
+        let depth_image_allocation = allocator.allocate(&AllocationCreateDesc {
+            name: "depth image",
+            requirements: depth_image_memory_req,
+            location: MemoryLocation::GpuOnly,
+            linear: true,
+            allocation_scheme: AllocationScheme::GpuAllocatorManaged,
+        })?;
 
-        virtual_device
-            .device
-            .bind_image_memory(depth_image, depth_image_allocation.memory, 0)?;
+        virtual_device.device.bind_image_memory(
+            depth_image,
+            depth_image_allocation.memory(),
+            depth_image_allocation.offset(),
+        )?;
 
         let depth_image_view_info = ImageViewCreateInfo::builder()
             .view_type(ImageViewType::TYPE_2D)
@@ -80,7 +82,7 @@ impl SetUpDepthImage {
         Ok(Self {
             depth_image,
             depth_image_view,
-            depth_image_allocation,
+            depth_image_allocation: Some(depth_image_allocation),
         })
     }
 
@@ -93,15 +95,13 @@ impl SetUpDepthImage {
     }
 
     pub unsafe fn create_with_defaults(
-        physical_device: &SetUpPhysicalDevice,
         virtual_device: &SetUpVirtualDevice,
-        allocator: &dyn Allocator,
+        allocator: MutexGuard<Allocator>,
         surface_info: &SetUpSurfaceInfo,
     ) -> crate::Result<Self> {
         let surface_extent = surface_info.surface_extent()?;
 
         Self::create(
-            physical_device,
             virtual_device,
             allocator,
             ImageType::TYPE_2D,
@@ -146,13 +146,21 @@ impl SetUpDepthImage {
         }
     }
 
-    pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice, allocator: &dyn Allocator) {
+    pub fn destroy(
+        &mut self,
+        virtual_device: &SetUpVirtualDevice,
+        allocator: &mut MutexGuard<Allocator>,
+    ) -> crate::Result<()> {
         unsafe {
             virtual_device
                 .device
                 .destroy_image_view(self.depth_image_view, None);
             virtual_device.device.destroy_image(self.depth_image, None);
-            allocator.deallocate(virtual_device, self.depth_image_allocation);
+            if let Some(depth_image_allocation) = self.depth_image_allocation.take() {
+                allocator.free(depth_image_allocation)?;
+            }
+
+            Ok(())
         }
     }
 }

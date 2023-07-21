@@ -67,6 +67,10 @@ pub enum VoxelarError {
     /// This variant wraps an `ash::LoadingError` that can occur when trying to load the Vulkan API
     /// using the `ash` crate.
     VkLoadingError(ash::LoadingError),
+
+    /// This variant wraps a `gpu_allocator::AllocationError` that can occur when trying to
+    /// allocate memory or when initializing the allocator using the `gpu_allocator` crate.
+    AllocationError(gpu_allocator::AllocationError),
 }
 
 macro_rules! write_err {
@@ -86,6 +90,7 @@ impl std::fmt::Display for VoxelarError {
             VoxelarError::GlfwInitError(err) => write_err!(f, GlfwInitError, err),
             VoxelarError::VkError(err) => write_err!(f, VkError, err),
             VoxelarError::VkLoadingError(err) => write_err!(f, VkLoadingError, err),
+            VoxelarError::AllocationError(err) => write_err!(f, AllocationError, err),
         }
     }
 }
@@ -108,6 +113,7 @@ error_impl_from!(Utf8Error, Self::Utf8Error);
 error_impl_from!(glfw::InitError, Self::GlfwInitError);
 error_impl_from!(ash::vk::Result, Self::VkError);
 error_impl_from!(ash::LoadingError, Self::VkLoadingError);
+error_impl_from!(gpu_allocator::AllocationError, Self::AllocationError);
 
 /// A type definition of `std::result::Result` that uses `VoxelarError` as the error type.
 ///

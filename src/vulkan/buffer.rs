@@ -1,19 +1,22 @@
 //! This is a module that contains the `AllocatedBuffer` structure, an abstraction for GPU
 //! memory-allocated buffers for various purposes
 
-use std::ffi::c_void;
+use std::ptr::NonNull;
+use std::sync::MutexGuard;
 
+use ash::vk::MemoryRequirements;
 use ash::vk::SharingMode;
 use ash::vk::{Buffer, BufferCreateInfo, BufferUsageFlags};
-use ash::vk::{MemoryMapFlags, MemoryPropertyFlags, MemoryRequirements};
+use gpu_allocator::vulkan::{Allocation, AllocationCreateDesc, AllocationScheme, Allocator};
+use gpu_allocator::MemoryLocation;
 
-use super::experimental::allocator::{Allocation, Allocator};
-use super::physical_device::SetUpPhysicalDevice;
+use crate::result::Context;
+
 use super::virtual_device::SetUpVirtualDevice;
 
-/// A GPU memory-allocated buffer
+/// An allocation-backed buffer
 pub struct AllocatedBuffer {
-    pub buffer_allocation: Allocation,
+    pub allocation: Option<Allocation>,
     pub buffer: Buffer,
 }
 
@@ -25,12 +28,11 @@ impl AllocatedBuffer {
     /// requirements using the provided `Allocator`.
     pub unsafe fn allocate(
         virtual_device: &SetUpVirtualDevice,
-        physical_device: &SetUpPhysicalDevice,
-        allocator: &dyn Allocator,
+        allocator: &mut MutexGuard<Allocator>,
         size: u64,
         usage: BufferUsageFlags,
         sharing_mode: SharingMode,
-        memory_properties: MemoryPropertyFlags,
+        memory_location: MemoryLocation,
     ) -> crate::Result<Self> {
         let buffer_info = BufferCreateInfo::builder()
             .size(size)
@@ -40,21 +42,22 @@ impl AllocatedBuffer {
         let buffer = virtual_device.device.create_buffer(&buffer_info, None)?;
         let memory_requirements = virtual_device.device.get_buffer_memory_requirements(buffer);
 
-        let buffer_allocation = allocator.allocate(
-            virtual_device,
-            physical_device,
-            memory_requirements,
-            memory_properties,
-        )?;
+        let buffer_allocation = allocator.allocate(&AllocationCreateDesc {
+            name: "buffer",
+            requirements: memory_requirements,
+            location: memory_location,
+            linear: true,
+            allocation_scheme: AllocationScheme::GpuAllocatorManaged,
+        })?;
 
         virtual_device.device.bind_buffer_memory(
             buffer,
-            buffer_allocation.memory,
-            buffer_allocation.offset,
+            buffer_allocation.memory(),
+            buffer_allocation.offset(),
         )?;
 
         Ok(Self {
-            buffer_allocation,
+            allocation: Some(buffer_allocation),
             buffer,
         })
     }
@@ -68,42 +71,32 @@ impl AllocatedBuffer {
         }
     }
 
-    /// This function maps the data of this buffer and returns a pointer to it.
-    ///
-    /// NOTE: This might fail if the buffer hasn't been allocated using the `HOST_VISIBLE` (Specifies
-    ///       that the "memory is mappable by host") `MemoryPropertyFlags`.
-    pub fn map_memory(&self, virtual_device: &SetUpVirtualDevice) -> crate::Result<*mut c_void> {
-        unsafe {
-            let buffer_memory_req = virtual_device
-                .device
-                .get_buffer_memory_requirements(self.buffer);
-            let buffer_ptr = virtual_device.device.map_memory(
-                self.buffer_allocation.memory,
-                self.buffer_allocation.offset,
-                buffer_memory_req.size,
-                MemoryMapFlags::empty(),
-            )?;
-            Ok(buffer_ptr)
-        }
+    /// Returns a reference to this buffer's allocation.
+    pub fn allocation(&self) -> crate::Result<&Allocation> {
+        self.allocation
+            .as_ref()
+            .context("Buffer has no backing memory allocation".to_string())
     }
 
-    /// This function unmaps the data of this buffer if it has been previously mapped using
-    /// `AllocatedBuffer::map_memory`.
-    ///
-    /// If not, this is (probably) a no-op.
-    pub fn unmap_memory(&self, virtual_device: &SetUpVirtualDevice) {
-        unsafe {
-            virtual_device
-                .device
-                .unmap_memory(self.buffer_allocation.memory);
-        }
+    /// Returns the pointer to this buffer's mapped memory if the allocation type supports it.
+    pub fn get_mapped_ptr(&self) -> crate::Result<NonNull<std::ffi::c_void>> {
+        self.allocation()?
+            .mapped_ptr()
+            .context("Couldn't get buffer's mapped memory pointer".to_string())
     }
 
     /// This function destroys this buffer and deallocates its memory using the provided `Allocator`.
-    pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice, allocator: &dyn Allocator) {
+    pub fn destroy(
+        &mut self,
+        virtual_device: &SetUpVirtualDevice,
+        allocator: &mut MutexGuard<Allocator>,
+    ) -> crate::Result<()> {
         unsafe {
-            allocator.deallocate(virtual_device, self.buffer_allocation);
+            if let Some(buffer_allocation) = self.allocation.take() {
+                allocator.free(buffer_allocation)?;
+            }
             virtual_device.device.destroy_buffer(self.buffer, None);
+            Ok(())
         }
     }
 }

@@ -11,6 +11,7 @@ allocator-debug-logs = []
 [dependencies]
 ash = "0.37.3"
 ash-window = "0.12.0"
+gpu-allocator = { version = "0.22.0", default-features = false, features = ["ash", "vulkan"] }
 shaderc = "0.8.2"
 
 nalgebra = "0.32.3"

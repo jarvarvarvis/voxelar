@@ -1,11 +1,12 @@
 use std::marker::PhantomData;
+use std::sync::MutexGuard;
 
 use ash::vk::BufferUsageFlags;
 use ash::vk::MappedMemoryRange;
-use ash::vk::MemoryPropertyFlags;
 use ash::vk::SharingMode;
+use gpu_allocator::vulkan::Allocator;
+use gpu_allocator::MemoryLocation;
 
-use super::experimental::allocator::Allocator;
 use super::buffer::AllocatedBuffer;
 use super::physical_device::SetUpPhysicalDevice;
 use super::virtual_device::SetUpVirtualDevice;
@@ -20,11 +21,11 @@ impl<T> DynamicDescriptorBuffer<T> {
     pub unsafe fn allocate(
         virtual_device: &SetUpVirtualDevice,
         physical_device: &SetUpPhysicalDevice,
-        allocator: &dyn Allocator,
+        allocator: &mut MutexGuard<Allocator>,
         count: usize,
         usage: BufferUsageFlags,
         sharing_mode: SharingMode,
-        memory_property_flags: MemoryPropertyFlags,
+        memory_location: MemoryLocation,
     ) -> crate::Result<Self> {
         let size = std::mem::size_of::<T>() as u64;
         let alignment = physical_device
@@ -35,12 +36,11 @@ impl<T> DynamicDescriptorBuffer<T> {
         Ok(Self {
             buffer: AllocatedBuffer::allocate(
                 virtual_device,
-                physical_device,
                 allocator,
                 count as u64 * aligned_size_of_type,
                 usage,
                 sharing_mode,
-                memory_property_flags,
+                memory_location,
             )?,
             aligned_size_of_type,
             phantom: PhantomData,
@@ -51,7 +51,7 @@ impl<T> DynamicDescriptorBuffer<T> {
         virtual_device: &SetUpVirtualDevice,
         physical_device: &SetUpPhysicalDevice,
         count: usize,
-        allocator: &dyn Allocator,
+        allocator: &mut MutexGuard<Allocator>,
     ) -> crate::Result<Self> {
         Self::allocate(
             virtual_device,
@@ -60,18 +60,8 @@ impl<T> DynamicDescriptorBuffer<T> {
             count,
             BufferUsageFlags::UNIFORM_BUFFER,
             SharingMode::EXCLUSIVE,
-            MemoryPropertyFlags::HOST_VISIBLE,
+            MemoryLocation::CpuToGpu,
         )
-    }
-
-    pub unsafe fn map_memory(&self, virtual_device: &SetUpVirtualDevice) -> crate::Result<*mut T> {
-        self.buffer
-            .map_memory(virtual_device)
-            .map(|value| value as *mut T)
-    }
-
-    pub unsafe fn unmap_memory(&self, virtual_device: &SetUpVirtualDevice) {
-        self.buffer.unmap_memory(virtual_device);
     }
 
     pub unsafe fn flush_memory(
@@ -81,9 +71,9 @@ impl<T> DynamicDescriptorBuffer<T> {
     ) -> crate::Result<()> {
         let offset = self.get_dynamic_offset(index);
         let memory_range = MappedMemoryRange::builder()
-            .memory(self.buffer.buffer_allocation.memory)
+            .memory(self.buffer.allocation()?.memory())
             .size(self.aligned_size_of_type)
-            .offset(self.buffer.buffer_allocation.offset + offset as u64)
+            .offset(self.buffer.allocation()?.offset() + offset as u64)
             .build();
 
         virtual_device
@@ -92,13 +82,17 @@ impl<T> DynamicDescriptorBuffer<T> {
         Ok(())
     }
 
+    pub unsafe fn mapped_ptr(&self) -> crate::Result<*mut T> {
+        Ok(self.buffer.get_mapped_ptr()?.as_ptr() as *mut T)
+    }
+
     pub unsafe fn store_at(
         &self,
         virtual_device: &SetUpVirtualDevice,
         value: T,
         index: usize,
     ) -> crate::Result<()> {
-        let ptr = self.map_memory(virtual_device)?;
+        let ptr = self.mapped_ptr()?;
         let offset = self.get_dynamic_offset(index);
 
         // Need to cast to *mut u8 to allow byte-level offsets
@@ -106,7 +100,6 @@ impl<T> DynamicDescriptorBuffer<T> {
         *ptr = value;
 
         self.flush_memory(virtual_device, index)?;
-        self.unmap_memory(virtual_device);
         Ok(())
     }
 
@@ -114,7 +107,11 @@ impl<T> DynamicDescriptorBuffer<T> {
         self.aligned_size_of_type as u32 * index as u32
     }
 
-    pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice, allocator: &dyn Allocator) {
-        self.buffer.destroy(virtual_device, allocator);
+    pub fn destroy(
+        &mut self,
+        virtual_device: &SetUpVirtualDevice,
+        allocator: &mut MutexGuard<Allocator>,
+    ) -> crate::Result<()> {
+        self.buffer.destroy(virtual_device, allocator)
     }
 }

@@ -1,14 +1,14 @@
 use std::marker::PhantomData;
 use std::mem::align_of;
+use std::sync::MutexGuard;
 
 use ash::util::Align;
-use ash::vk::MemoryPropertyFlags;
 use ash::vk::SharingMode;
 use ash::vk::{Buffer, BufferUsageFlags};
+use gpu_allocator::vulkan::Allocator;
+use gpu_allocator::MemoryLocation;
 
-use super::experimental::allocator::Allocator;
 use super::buffer::AllocatedBuffer;
-use super::physical_device::SetUpPhysicalDevice;
 use super::virtual_device::SetUpVirtualDevice;
 
 pub struct TypedAllocatedBuffer<T> {
@@ -19,22 +19,20 @@ pub struct TypedAllocatedBuffer<T> {
 impl<T> TypedAllocatedBuffer<T> {
     pub unsafe fn allocate(
         virtual_device: &SetUpVirtualDevice,
-        physical_device: &SetUpPhysicalDevice,
-        allocator: &dyn Allocator,
+        allocator: &mut MutexGuard<Allocator>,
         usage: BufferUsageFlags,
         sharing_mode: SharingMode,
-        memory_property_flags: MemoryPropertyFlags,
+        memory_location: MemoryLocation,
     ) -> crate::Result<Self> {
         let size = std::mem::size_of::<T>() as u64;
         Ok(Self {
             buffer: AllocatedBuffer::allocate(
                 virtual_device,
-                physical_device,
                 allocator,
                 size,
                 usage,
                 sharing_mode,
-                memory_property_flags,
+                memory_location,
             )?,
             phantom: PhantomData,
         })
@@ -42,27 +40,24 @@ impl<T> TypedAllocatedBuffer<T> {
 
     pub unsafe fn allocate_uniform_buffer(
         virtual_device: &SetUpVirtualDevice,
-        physical_device: &SetUpPhysicalDevice,
-        allocator: &dyn Allocator,
+        allocator: &mut MutexGuard<Allocator>,
     ) -> crate::Result<Self> {
         Self::allocate(
             virtual_device,
-            physical_device,
             allocator,
             BufferUsageFlags::UNIFORM_BUFFER,
             SharingMode::EXCLUSIVE,
-            MemoryPropertyFlags::HOST_VISIBLE | MemoryPropertyFlags::HOST_COHERENT,
+            MemoryLocation::CpuToGpu,
         )
     }
 
     pub unsafe fn create_from_data_slice(
         virtual_device: &SetUpVirtualDevice,
-        physical_device: &SetUpPhysicalDevice,
-        allocator: &dyn Allocator,
+        allocator: &mut MutexGuard<Allocator>,
         data: &[T],
         usage: BufferUsageFlags,
         sharing_mode: SharingMode,
-        memory_property_flags: MemoryPropertyFlags,
+        memory_location: MemoryLocation,
     ) -> crate::Result<Self>
     where
         T: Copy,
@@ -71,22 +66,19 @@ impl<T> TypedAllocatedBuffer<T> {
 
         let buffer = AllocatedBuffer::allocate(
             virtual_device,
-            physical_device,
             allocator,
             size,
             usage,
             sharing_mode,
-            memory_property_flags,
+            memory_location,
         )?;
         let buffer_memory_req = buffer.get_buffer_memory_req(virtual_device);
 
-        let buffer_ptr = buffer.map_memory(virtual_device)?;
+        let buffer_ptr = buffer.get_mapped_ptr()?.as_ptr();
 
         let mut buffer_align =
             Align::new(buffer_ptr, align_of::<T>() as u64, buffer_memory_req.size);
         buffer_align.copy_from_slice(data);
-
-        buffer.unmap_memory(virtual_device);
 
         Ok(Self {
             buffer,
@@ -96,8 +88,7 @@ impl<T> TypedAllocatedBuffer<T> {
 
     pub unsafe fn create_vertex_buffer(
         virtual_device: &SetUpVirtualDevice,
-        physical_device: &SetUpPhysicalDevice,
-        allocator: &dyn Allocator,
+        allocator: &mut MutexGuard<Allocator>,
         data: &[T],
     ) -> crate::Result<Self>
     where
@@ -105,19 +96,17 @@ impl<T> TypedAllocatedBuffer<T> {
     {
         Self::create_from_data_slice(
             virtual_device,
-            physical_device,
             allocator,
             data,
             BufferUsageFlags::VERTEX_BUFFER,
             SharingMode::EXCLUSIVE,
-            MemoryPropertyFlags::HOST_VISIBLE | MemoryPropertyFlags::HOST_COHERENT,
+            MemoryLocation::CpuToGpu,
         )
     }
 
     pub unsafe fn create_index_buffer(
         virtual_device: &SetUpVirtualDevice,
-        physical_device: &SetUpPhysicalDevice,
-        allocator: &dyn Allocator,
+        allocator: &mut MutexGuard<Allocator>,
         data: &[T],
     ) -> crate::Result<Self>
     where
@@ -125,29 +114,21 @@ impl<T> TypedAllocatedBuffer<T> {
     {
         Self::create_from_data_slice(
             virtual_device,
-            physical_device,
             allocator,
             data,
             BufferUsageFlags::INDEX_BUFFER,
             SharingMode::EXCLUSIVE,
-            MemoryPropertyFlags::HOST_VISIBLE | MemoryPropertyFlags::HOST_COHERENT,
+            MemoryLocation::CpuToGpu,
         )
     }
 
-    pub unsafe fn map_memory(&self, virtual_device: &SetUpVirtualDevice) -> crate::Result<*mut T> {
-        self.buffer
-            .map_memory(virtual_device)
-            .map(|value| value as *mut T)
+    pub unsafe fn mapped_ptr(&self) -> crate::Result<*mut T> {
+        Ok(self.buffer.get_mapped_ptr()?.as_ptr() as *mut T)
     }
 
-    pub unsafe fn unmap_memory(&self, virtual_device: &SetUpVirtualDevice) {
-        self.buffer.unmap_memory(virtual_device);
-    }
-
-    pub unsafe fn store(&self, virtual_device: &SetUpVirtualDevice, value: T) -> crate::Result<()> {
-        let ptr = self.map_memory(virtual_device)?;
+    pub unsafe fn store(&self, value: T) -> crate::Result<()> {
+        let ptr = self.mapped_ptr()?;
         *ptr = value;
-        self.unmap_memory(virtual_device);
         Ok(())
     }
 
@@ -155,7 +136,11 @@ impl<T> TypedAllocatedBuffer<T> {
         self.buffer.buffer
     }
 
-    pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice, allocator: &dyn Allocator) {
-        self.buffer.destroy(virtual_device, allocator);
+    pub fn destroy(
+        &mut self,
+        virtual_device: &SetUpVirtualDevice,
+        allocator: &mut MutexGuard<Allocator>,
+    ) -> crate::Result<()> {
+        self.buffer.destroy(virtual_device, allocator)
     }
 }
