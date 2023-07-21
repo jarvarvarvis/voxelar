@@ -71,7 +71,7 @@ fn main() -> Result<()> {
             Event::RedrawRequested(_) => {
                 demo.render(&mut window, &mut vulkan_context)?;
                 demo.update_frame_time_manager(&ctx);
-            },
+            }
             Event::LoopDestroyed => {
                 demo.destroy(&vulkan_context)?;
             }

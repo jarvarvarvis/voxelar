@@ -1,12 +1,7 @@
 use voxelar::ash::vk;
 use voxelar::compile_shader;
 use voxelar::engine::frame_time::FrameTimeManager;
-use voxelar::nalgebra::Matrix4;
-use voxelar::nalgebra::Point3;
-use voxelar::nalgebra::Rotation3;
-use voxelar::nalgebra::Translation3;
-use voxelar::nalgebra::Vector3;
-use voxelar::nalgebra::Vector4;
+use voxelar::nalgebra::*;
 use voxelar::shaderc::ShaderKind;
 use voxelar::vulkan::descriptor_set_layout::SetUpDescriptorSetLayout;
 use voxelar::vulkan::descriptor_set_layout_builder::DescriptorSetLayoutBuilder;
@@ -62,8 +57,7 @@ pub struct Demo {
 
     vertex_shader_module: CompiledShaderModule,
     fragment_shader_module: CompiledShaderModule,
-    vertex_buffer: TypedAllocatedBuffer<VertexPosition>,
-    vertex_color_buffer: TypedAllocatedBuffer<VertexColor>,
+    vertex_buffer: TypedAllocatedBuffer<VertexData>,
     index_buffer: TypedAllocatedBuffer<u32>,
     index_count: usize,
     texture: Texture<u8>,
@@ -141,64 +135,51 @@ impl Demo {
         let surface_height = surface_resolution.height;
 
         let vertices = vec![
-            VertexPosition {
+            VertexData {
                 pos: Vector3::new(-1.0, -1.0, 1.0),
+                color: Vector3::new(1.0, 1.0, 0.0),
+                uv: Vector2::new(-1.0, -1.0),
             },
-            VertexPosition {
+            VertexData {
                 pos: Vector3::new(1.0, -1.0, 1.0),
+                color: Vector3::new(0.0, 1.0, 0.0),
+                uv: Vector2::new(1.0, -1.0),
             },
-            VertexPosition {
+            VertexData {
                 pos: Vector3::new(1.0, 1.0, 1.0),
+                color: Vector3::new(0.0, 0.0, 0.0),
+                uv: Vector2::new(1.0, 1.0),
             },
-            VertexPosition {
+            VertexData {
                 pos: Vector3::new(-1.0, 1.0, 1.0),
+                color: Vector3::new(1.0, 0.0, 0.0),
+                uv: Vector2::new(-1.0, 1.0),
             },
-            VertexPosition {
+            VertexData {
                 pos: Vector3::new(-1.0, -1.0, -1.0),
+                color: Vector3::new(1.0, 1.0, 1.0),
+                uv: Vector2::new(-1.0, -1.0),
             },
-            VertexPosition {
+            VertexData {
                 pos: Vector3::new(1.0, -1.0, -1.0),
+                color: Vector3::new(0.0, 1.0, 1.0),
+                uv: Vector2::new(1.0, -1.0),
             },
-            VertexPosition {
+            VertexData {
                 pos: Vector3::new(1.0, 1.0, -1.0),
+                color: Vector3::new(0.0, 0.0, 1.0),
+                uv: Vector2::new(1.0, 1.0),
             },
-            VertexPosition {
+            VertexData {
                 pos: Vector3::new(-1.0, 1.0, -1.0),
+                color: Vector3::new(1.0, 0.0, 1.0),
+                uv: Vector2::new(-1.0, 1.0),
             },
         ];
         let vertex_buffer = vulkan_context.create_vertex_buffer(&vertices)?;
 
-        let vertex_colors = vec![
-            VertexColor {
-                color: Vector3::new(1.0, 1.0, 0.0),
-            },
-            VertexColor {
-                color: Vector3::new(0.0, 1.0, 0.0),
-            },
-            VertexColor {
-                color: Vector3::new(0.0, 0.0, 0.0),
-            },
-            VertexColor {
-                color: Vector3::new(1.0, 0.0, 0.0),
-            },
-            VertexColor {
-                color: Vector3::new(1.0, 1.0, 1.0),
-            },
-            VertexColor {
-                color: Vector3::new(0.0, 1.0, 1.0),
-            },
-            VertexColor {
-                color: Vector3::new(0.0, 0.0, 1.0),
-            },
-            VertexColor {
-                color: Vector3::new(1.0, 0.0, 1.0),
-            },
-        ];
-        let vertex_color_buffer = vulkan_context.create_vertex_buffer(&vertex_colors)?;
-
-        let vertex_input_state_builder = VertexInputStateBuilder::new()
-            .add_data_from_type::<VertexPosition>(0)
-            .add_data_from_type::<VertexColor>(1);
+        let vertex_input_state_builder =
+            VertexInputStateBuilder::new().add_data_from_type::<VertexData>(0);
         let vertex_input_state_info = vertex_input_state_builder.build();
 
         let index_buffer_data = vec![
@@ -267,7 +248,6 @@ impl Demo {
             vertex_shader_module,
             fragment_shader_module,
             vertex_buffer,
-            vertex_color_buffer,
             index_buffer,
             index_count: index_buffer_data.len(),
             texture,
@@ -388,11 +368,8 @@ impl Demo {
                     vk_device.cmd_bind_vertex_buffers(
                         draw_command_buffer,
                         0,
-                        &[
-                            self.vertex_buffer.raw_buffer(),
-                            self.vertex_color_buffer.raw_buffer(),
-                        ],
-                        &[0, 0],
+                        &[self.vertex_buffer.raw_buffer()],
+                        &[0],
                     );
                     vk_device.cmd_bind_index_buffer(
                         draw_command_buffer,
@@ -495,8 +472,6 @@ impl Demo {
             self.fragment_shader_module.destroy(virtual_device);
 
             self.index_buffer.destroy(virtual_device, &mut allocator)?;
-            self.vertex_color_buffer
-                .destroy(virtual_device, &mut allocator)?;
             self.vertex_buffer.destroy(virtual_device, &mut allocator)?;
 
             self.texture.destroy(virtual_device, &mut allocator)?;
