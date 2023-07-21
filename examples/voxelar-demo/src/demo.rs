@@ -13,6 +13,7 @@ use voxelar::vulkan::graphics_pipeline_builder::GraphicsPipelineBuilder;
 use voxelar::vulkan::per_frame::PerFrame;
 use voxelar::vulkan::pipeline_layout::SetUpPipelineLayout;
 use voxelar::vulkan::pipeline_layout_builder::PipelineLayoutBuilder;
+use voxelar::vulkan::sampler::SetUpSampler;
 use voxelar::vulkan::shader::CompiledShaderModule;
 use voxelar::vulkan::texture::Texture;
 use voxelar::vulkan::typed_buffer::TypedAllocatedBuffer;
@@ -60,6 +61,8 @@ pub struct Demo {
     vertex_buffer: TypedAllocatedBuffer<VertexData>,
     index_buffer: TypedAllocatedBuffer<u32>,
     index_count: usize,
+
+    sampler: SetUpSampler,
     texture: Texture<u8>,
 
     pub frame_time_manager: FrameTimeManager,
@@ -87,6 +90,12 @@ impl Demo {
                 vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC,
                 vk::ShaderStageFlags::FRAGMENT,
             )
+            .add_binding(
+                2, // In the shader, this will specifiy binding = 2 in the uniform layout
+                1,
+                vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
+                vk::ShaderStageFlags::FRAGMENT,
+            )
             .build(virtual_device)?;
         let descriptor_set_layouts = vec![global_set_layout];
 
@@ -97,27 +106,45 @@ impl Demo {
                 .allocate_dynamic_descriptor_uniform_buffer(vulkan_context.frame_overlap())?,
         };
 
+        let image = voxelar::vulkan::image::open("textures/brick.jpg")?.into_rgba8();
+        let image_extent = vk::Extent3D {
+            width: image.width(),
+            height: image.height(),
+            depth: 4, // 4 channels
+        };
+
+        let texture =
+            vulkan_context.create_texture(vk::Format::R8G8B8A8_SRGB, image_extent, &image)?;
+        let sampler =
+            vulkan_context.create_sampler(vk::Filter::NEAREST, vk::SamplerAddressMode::REPEAT)?;
+
         let per_frame_data = PerFrame::try_init(
             |_| {
                 let descriptor_set_logic = DescriptorSetLogicBuilder::new()
                     .add_pool_size(vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC, 2)
+                    .add_pool_size(vk::DescriptorType::COMBINED_IMAGE_SAMPLER, 1)
                     .set_layouts(&descriptor_set_layouts)
                     .build(virtual_device)?;
                 let destination_set = descriptor_set_logic.get_set(0);
 
                 DescriptorSetUpdateBuilder::new()
-                    .destination_set(*destination_set)
-                    .add_dynamic_descriptor_buffer_write(
+                    .add_dynamic_uniform_buffer_descriptor(
                         &descriptor_buffers.camera_buffer,
                         0,
                         vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC,
                     )?
-                    .add_dynamic_descriptor_buffer_write(
+                    .add_dynamic_uniform_buffer_descriptor(
                         &descriptor_buffers.scene_buffer,
                         1,
                         vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC,
                     )?
-                    .update(virtual_device)?;
+                    .add_texture_descriptor(
+                        &sampler,
+                        &texture,
+                        2,
+                        vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
+                    )?
+                    .update(virtual_device, destination_set)?;
 
                 Ok(PerFrameData {
                     descriptor_set_logic,
@@ -136,60 +163,30 @@ impl Demo {
 
         let vertices = vec![
             VertexData {
-                pos: Vector3::new(-1.0, -1.0, 1.0),
-                color: Vector3::new(1.0, 1.0, 0.0),
+                pos: Vector3::new(-1.0, 0.0, -1.0),
                 uv: Vector2::new(-1.0, -1.0),
             },
             VertexData {
-                pos: Vector3::new(1.0, -1.0, 1.0),
-                color: Vector3::new(0.0, 1.0, 0.0),
+                pos: Vector3::new(1.0, 0.0, -1.0),
                 uv: Vector2::new(1.0, -1.0),
             },
             VertexData {
-                pos: Vector3::new(1.0, 1.0, 1.0),
-                color: Vector3::new(0.0, 0.0, 0.0),
+                pos: Vector3::new(1.0, 0.0, 1.0),
                 uv: Vector2::new(1.0, 1.0),
             },
             VertexData {
-                pos: Vector3::new(-1.0, 1.0, 1.0),
-                color: Vector3::new(1.0, 0.0, 0.0),
-                uv: Vector2::new(-1.0, 1.0),
-            },
-            VertexData {
-                pos: Vector3::new(-1.0, -1.0, -1.0),
-                color: Vector3::new(1.0, 1.0, 1.0),
-                uv: Vector2::new(-1.0, -1.0),
-            },
-            VertexData {
-                pos: Vector3::new(1.0, -1.0, -1.0),
-                color: Vector3::new(0.0, 1.0, 1.0),
-                uv: Vector2::new(1.0, -1.0),
-            },
-            VertexData {
-                pos: Vector3::new(1.0, 1.0, -1.0),
-                color: Vector3::new(0.0, 0.0, 1.0),
-                uv: Vector2::new(1.0, 1.0),
-            },
-            VertexData {
-                pos: Vector3::new(-1.0, 1.0, -1.0),
-                color: Vector3::new(1.0, 0.0, 1.0),
+                pos: Vector3::new(-1.0, 0.0, 1.0),
                 uv: Vector2::new(-1.0, 1.0),
             },
         ];
+
         let vertex_buffer = vulkan_context.create_vertex_buffer(&vertices)?;
 
         let vertex_input_state_builder =
             VertexInputStateBuilder::new().add_data_from_type::<VertexData>(0);
         let vertex_input_state_info = vertex_input_state_builder.build();
 
-        let index_buffer_data = vec![
-            0, 1, 2, 2, 3, 0, // Front
-            1, 5, 6, 6, 2, 1, // Right
-            7, 6, 5, 5, 4, 7, // Back
-            4, 0, 3, 3, 7, 4, // Left
-            4, 5, 1, 1, 0, 4, // Bottom
-            3, 2, 6, 6, 7, 3, // Top
-        ];
+        let index_buffer_data = vec![0, 1, 2, 0, 2, 3];
         let index_buffer = vulkan_context.create_index_buffer(&index_buffer_data)?;
 
         let compiled_vert = compile_shader!(ShaderKind::Vertex, "../shader/triangle.vert")?;
@@ -197,15 +194,6 @@ impl Demo {
 
         let compiled_frag = compile_shader!(ShaderKind::Fragment, "../shader/triangle.frag")?;
         let fragment_shader_module = vulkan_context.create_fragment_shader(compiled_frag)?;
-
-        let image = voxelar::vulkan::image::open("textures/brick.jpg")?.into_rgba8();
-        let image_extent = vk::Extent3D {
-            width: image.width(),
-            height: image.height(),
-            depth: 4, // 4 channels
-        };
-        let texture =
-            vulkan_context.create_texture(vk::Format::R8G8B8A8_SRGB, image_extent, &image)?;
 
         let viewport = vk::Viewport {
             x: 0.0,
@@ -250,6 +238,8 @@ impl Demo {
             vertex_buffer,
             index_buffer,
             index_count: index_buffer_data.len(),
+
+            sampler,
             texture,
 
             frame_time_manager: FrameTimeManager::new(&voxelar_context),
@@ -475,6 +465,7 @@ impl Demo {
             self.vertex_buffer.destroy(virtual_device, &mut allocator)?;
 
             self.texture.destroy(virtual_device, &mut allocator)?;
+            self.sampler.destroy(virtual_device);
         }
 
         Ok(())

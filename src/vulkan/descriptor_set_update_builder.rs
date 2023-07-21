@@ -2,25 +2,34 @@ use ash::vk::DescriptorBufferInfo;
 use ash::vk::DescriptorSet;
 use ash::vk::DescriptorType;
 use ash::vk::WriteDescriptorSet;
-
-use crate::result::Context;
+use ash::vk::{DescriptorImageInfo, ImageLayout};
 
 use super::buffer::AllocatedBuffer;
 use super::dynamic_descriptor_buffer::DynamicDescriptorBuffer;
+use super::image_view::SetUpImageView;
+use super::sampler::SetUpSampler;
+use super::texture::Texture;
 use super::typed_buffer::TypedAllocatedBuffer;
 use super::virtual_device::SetUpVirtualDevice;
 
 #[derive(Debug)]
-pub struct WriteDescriptorSetParams {
+pub struct WriteBufferDescriptorSetParams {
     buffer_info: DescriptorBufferInfo,
+    destination_binding: u32,
+    descriptor_type: DescriptorType,
+}
+
+#[derive(Debug)]
+pub struct WriteImageDescriptorSetParams {
+    image_info: DescriptorImageInfo,
     destination_binding: u32,
     descriptor_type: DescriptorType,
 }
 
 #[derive(Default)]
 pub struct DescriptorSetUpdateBuilder {
-    write_params: Vec<WriteDescriptorSetParams>,
-    destination_set: Option<DescriptorSet>,
+    buffer_write_params: Vec<WriteBufferDescriptorSetParams>,
+    image_write_params: Vec<WriteImageDescriptorSetParams>,
 }
 
 impl DescriptorSetUpdateBuilder {
@@ -28,12 +37,7 @@ impl DescriptorSetUpdateBuilder {
         Self::default()
     }
 
-    pub fn destination_set(mut self, destination_set: DescriptorSet) -> Self {
-        self.destination_set = Some(destination_set);
-        self
-    }
-
-    pub fn add_buffer_write(
+    pub fn add_buffer_descriptor(
         mut self,
         buffer: &AllocatedBuffer,
         destination_binding: u32,
@@ -44,11 +48,64 @@ impl DescriptorSetUpdateBuilder {
         let descriptor_buffer_info = DescriptorBufferInfo::builder()
             .buffer(buffer.buffer)
             .offset(offset)
-            .range(range)
-            .build();
+            .range(range);
 
-        self.write_params.push(WriteDescriptorSetParams {
-            buffer_info: descriptor_buffer_info,
+        self.buffer_write_params
+            .push(WriteBufferDescriptorSetParams {
+                buffer_info: *descriptor_buffer_info,
+                destination_binding,
+                descriptor_type,
+            });
+
+        Ok(self)
+    }
+
+    pub fn add_typed_buffer_descriptor<T>(
+        self,
+        buffer: &TypedAllocatedBuffer<T>,
+        destination_binding: u32,
+        descriptor_type: DescriptorType,
+    ) -> crate::Result<Self> {
+        let range = std::mem::size_of::<T>() as u64;
+        self.add_buffer_descriptor(
+            &buffer.buffer,
+            destination_binding,
+            descriptor_type,
+            0,
+            range,
+        )
+    }
+
+    pub fn add_dynamic_uniform_buffer_descriptor<T>(
+        self,
+        buffer: &DynamicDescriptorBuffer<T>,
+        destination_binding: u32,
+        descriptor_type: DescriptorType,
+    ) -> crate::Result<Self> {
+        let range = buffer.aligned_size_of_type;
+        self.add_buffer_descriptor(
+            &buffer.buffer,
+            destination_binding,
+            descriptor_type,
+            0,
+            range,
+        )
+    }
+
+    pub fn add_image_descriptor(
+        mut self,
+        sampler: &SetUpSampler,
+        image_view: &SetUpImageView,
+        destination_binding: u32,
+        descriptor_type: DescriptorType,
+    ) -> crate::Result<Self> {
+        let descriptor_image_info = DescriptorImageInfo::builder()
+            .sampler(sampler.sampler)
+            .image_view(image_view.image_view)
+            .image_layout(ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+
+        self.image_write_params.push(WriteImageDescriptorSetParams {
+            image_info: *descriptor_image_info,
             destination_binding,
             descriptor_type,
         });
@@ -56,50 +113,44 @@ impl DescriptorSetUpdateBuilder {
         Ok(self)
     }
 
-    pub fn add_typed_buffer_write<T>(
+    pub fn add_texture_descriptor<T>(
         self,
-        buffer: &TypedAllocatedBuffer<T>,
+        sampler: &SetUpSampler,
+        texture: &Texture<T>,
         destination_binding: u32,
         descriptor_type: DescriptorType,
     ) -> crate::Result<Self> {
-        let range = std::mem::size_of::<T>() as u64;
-        self.add_buffer_write(
-            &buffer.buffer,
+        self.add_image_descriptor(
+            sampler,
+            &texture.image_view,
             destination_binding,
             descriptor_type,
-            0,
-            range,
         )
     }
 
-    pub fn add_dynamic_descriptor_buffer_write<T>(
+    pub fn update(
         self,
-        buffer: &DynamicDescriptorBuffer<T>,
-        destination_binding: u32,
-        descriptor_type: DescriptorType,
-    ) -> crate::Result<Self> {
-        let range = buffer.aligned_size_of_type;
-        self.add_buffer_write(
-            &buffer.buffer,
-            destination_binding,
-            descriptor_type,
-            0,
-            range,
-        )
-    }
-
-    pub fn update(self, virtual_device: &SetUpVirtualDevice) -> crate::Result<()> {
+        virtual_device: &SetUpVirtualDevice,
+        destination_set: &DescriptorSet,
+    ) -> crate::Result<()> {
         unsafe {
-            let mut writes = Vec::with_capacity(self.write_params.len());
-            for params in self.write_params.iter() {
-                let destination_set = self
-                    .destination_set
-                    .context("No destination descriptor set specified".to_string())?;
+            let mut writes = Vec::with_capacity(self.buffer_write_params.len());
+            for buf_params in self.buffer_write_params.iter() {
                 let write = WriteDescriptorSet::builder()
-                    .dst_binding(params.destination_binding)
-                    .dst_set(destination_set)
-                    .descriptor_type(params.descriptor_type)
-                    .buffer_info(std::slice::from_ref(&params.buffer_info))
+                    .dst_binding(buf_params.destination_binding)
+                    .dst_set(*destination_set)
+                    .descriptor_type(buf_params.descriptor_type)
+                    .buffer_info(std::slice::from_ref(&buf_params.buffer_info))
+                    .build();
+                writes.push(write);
+            }
+
+            for img_params in self.image_write_params.iter() {
+                let write = WriteDescriptorSet::builder()
+                    .dst_binding(img_params.destination_binding)
+                    .dst_set(*destination_set)
+                    .descriptor_type(img_params.descriptor_type)
+                    .image_info(std::slice::from_ref(&img_params.image_info))
                     .build();
                 writes.push(write);
             }

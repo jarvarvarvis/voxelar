@@ -8,9 +8,6 @@ pub struct VertexData {
     #[input(location = 0, format = Format::R32G32B32_SFLOAT)]
     pub pos: Vector3<f32>,
 
-    #[input(location = 1, format = Format::R32G32B32_SFLOAT)]
-    pub color: Vector3<f32>,
-
-    #[input(location = 2, format = Format::R32G32_SFLOAT)]
+    #[input(location = 1, format = Format::R32G32_SFLOAT)]
     pub uv: Vector2<f32>,
 }

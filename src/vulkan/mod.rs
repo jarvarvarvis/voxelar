@@ -26,6 +26,7 @@
 //! - pipeline\_layout\_builder: Provides an abstraction for building `(SetUp)PipelineLayout`s
 //! - present\_images: Provides an abstraction for getting the images of a swapchain
 //! - render\_pass: Provides an abstraction for the creation of a default render pass
+//! - sampler: Provides a wrapper around image samplers
 //! - shader: Provides an abstraction for shader compilation and shader module creation
 //! - staging\_buffer: Provides an abstraction for staging buffers (used when transferring data from CPU- to GPU-only memory)
 //! - surface: Provides an abstraction for the window surface and all related information
@@ -45,16 +46,17 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use ash::vk::ApplicationInfo;
 use ash::vk::ClearValue;
-use ash::vk::CommandBufferLevel;
-use ash::vk::CommandPoolResetFlags;
-use ash::vk::Extent2D;
-use ash::vk::Extent3D;
-use ash::vk::FenceCreateFlags;
+use ash::vk::Filter;
+use ash::vk::Format;
 use ash::vk::PipelineStageFlags;
+use ash::vk::PresentInfoKHR;
+use ash::vk::SamplerAddressMode;
 use ash::vk::ShaderStageFlags;
-use ash::vk::SubpassContents;
-use ash::vk::{self, Format};
+use ash::vk::{CommandBufferLevel, CommandPoolResetFlags};
+use ash::vk::{Extent2D, Extent3D};
+use ash::vk::{Fence, FenceCreateFlags};
 use ash::vk::{InstanceCreateFlags, InstanceCreateInfo};
+use ash::vk::{RenderPassBeginInfo, SubpassContents};
 use ash::{Entry, Instance};
 use gpu_allocator::vulkan::*;
 use gpu_allocator::*;
@@ -87,6 +89,7 @@ pub mod pipeline_layout;
 pub mod pipeline_layout_builder;
 pub mod present_images;
 pub mod render_pass;
+pub mod sampler;
 pub mod shader;
 pub mod staging_buffer;
 pub mod surface;
@@ -117,6 +120,7 @@ use self::framebuffers::SetUpFramebuffers;
 use self::physical_device::SetUpPhysicalDevice;
 use self::present_images::SetUpPresentImages;
 use self::render_pass::SetUpRenderPass;
+use self::sampler::SetUpSampler;
 use self::shader::CompiledShaderModule;
 use self::staging_buffer::SetUpStagingBuffer;
 use self::surface::SetUpSurfaceInfo;
@@ -169,7 +173,7 @@ impl VulkanContext {
             .application_version(0)
             .engine_name(&app_name)
             .engine_version(0)
-            .api_version(vk::make_api_version(0, 1, 0, 0));
+            .api_version(ash::vk::make_api_version(0, 1, 0, 0));
 
         *app_info
     }
@@ -501,7 +505,7 @@ impl VulkanContext {
                 self.swapchain()?.swapchain,
                 std::u64::MAX,
                 frame.sync_primitives.present_complete_semaphore,
-                vk::Fence::null(),
+                Fence::null(),
             );
 
             match result {
@@ -525,7 +529,7 @@ impl VulkanContext {
         let virtual_device = self.virtual_device()?;
 
         let surface_resolution = self.surface_info.surface_extent()?;
-        let render_pass_begin_info = vk::RenderPassBeginInfo::builder()
+        let render_pass_begin_info = RenderPassBeginInfo::builder()
             .render_pass(self.render_pass()?.render_pass)
             .framebuffer(self.framebuffers()?.framebuffers[present_index as usize])
             .render_area(surface_resolution.into())
@@ -566,7 +570,7 @@ impl VulkanContext {
         let wait_semaphores = [frame.sync_primitives.rendering_complete_semaphore];
         let swapchains = [self.swapchain()?.swapchain];
         let image_indices = [present_index];
-        let present_info = vk::PresentInfoKHR::builder()
+        let present_info = PresentInfoKHR::builder()
             .wait_semaphores(&wait_semaphores) // &base.rendering_complete_semaphore)
             .swapchains(&swapchains)
             .image_indices(&image_indices);
@@ -717,6 +721,14 @@ impl VulkanContext {
 
             Ok(texture)
         }
+    }
+
+    pub unsafe fn create_sampler(
+        &self,
+        filter: Filter,
+        sampler_address_mode: SamplerAddressMode,
+    ) -> crate::Result<SetUpSampler> {
+        unsafe { SetUpSampler::create(self.virtual_device()?, filter, sampler_address_mode) }
     }
 }
 
