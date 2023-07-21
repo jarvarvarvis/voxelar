@@ -5,7 +5,7 @@ use ash::vk::SurfaceKHR;
 use ash::vk::{MemoryPropertyFlags, MemoryRequirements, MemoryType};
 use ash::vk::{
     PhysicalDevice, PhysicalDeviceFeatures, PhysicalDeviceMemoryProperties,
-    PhysicalDeviceProperties,
+    PhysicalDeviceProperties, PhysicalDeviceType,
 };
 use ash::vk::{QueueFamilyProperties, QueueFlags};
 use ash::Instance;
@@ -24,7 +24,7 @@ pub struct SetUpPhysicalDevice {
 }
 
 impl SetUpPhysicalDevice {
-    unsafe fn is_device_suitable(
+    unsafe fn is_device_suitable_for_graphics(
         info: &QueueFamilyProperties,
         device: &PhysicalDevice,
         surface_loader: &Surface,
@@ -42,27 +42,55 @@ impl SetUpPhysicalDevice {
         surface_info: &SetUpSurfaceInfo,
     ) -> crate::Result<Self> {
         let pdevices = instance.enumerate_physical_devices()?;
-        let (device, queue_family_index) = pdevices
+        let mut supported_physical_devices = pdevices
             .iter()
-            .find_map(|pdevice| {
+            .filter_map(|pdevice| {
                 instance
                     .get_physical_device_queue_family_properties(*pdevice)
                     .iter()
                     .enumerate()
                     .find_map(|(index, info)| {
-                        let supports_graphic_and_surface = Self::is_device_suitable(
+                        let device_suitable = Self::is_device_suitable_for_graphics(
                             &info,
                             &pdevice,
                             &surface_info.surface_loader,
                             index as u32,
                             surface_info.surface,
                         );
-                        if supports_graphic_and_surface {
+                        if device_suitable {
                             Some((*pdevice, index))
                         } else {
                             None
                         }
                     })
+            })
+            .collect::<Vec<_>>();
+        if supported_physical_devices.is_empty() {
+            crate::bail!("No supported physical devices found!");
+        }
+
+        supported_physical_devices.sort_by_key(|(pdevice, _)| {
+            let properties = instance.get_physical_device_properties(*pdevice);
+            let device_type = properties.device_type;
+            if device_type == PhysicalDeviceType::DISCRETE_GPU {
+                2
+            } else if device_type == PhysicalDeviceType::INTEGRATED_GPU {
+                1
+            } else {
+                0
+            }
+        });
+
+        let (device, queue_family_index) = *supported_physical_devices
+            .iter()
+            .max_by_key(|(pdevice, _)| {
+                let properties = instance.get_physical_device_memory_properties(*pdevice);
+                let mut heaps_size_sum = 0;
+                for i in 0..(properties.memory_heap_count as usize) {
+                    let heap_size = properties.memory_heaps[i].size;
+                    heaps_size_sum += heap_size;
+                }
+                heaps_size_sum
             })
             .context("Unable to find usable physical device".to_string())?;
 
