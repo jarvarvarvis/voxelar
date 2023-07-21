@@ -62,6 +62,9 @@ fn main() -> Result<()> {
                 } => {
                     *control_flow = ControlFlow::Exit;
                 }
+                WindowEvent::CloseRequested | WindowEvent::Destroyed => {
+                    *control_flow = ControlFlow::Exit;
+                }
                 _ => {}
             },
             Event::MainEventsCleared => window.request_redraw(),
