@@ -38,7 +38,6 @@ use std::ffi::{c_char, CStr, CString};
 use std::mem::ManuallyDrop;
 use std::sync::{Arc, Mutex, MutexGuard};
 
-use ash::extensions::ext::DebugUtils;
 use ash::vk;
 use ash::vk::ApplicationInfo;
 use ash::vk::ClearValue;
@@ -653,7 +652,11 @@ impl<Verification: VerificationProvider + 'static> RenderContext<Verification> f
                 ash_window::enumerate_required_extensions(window.raw_display_handle())
                     .unwrap()
                     .to_vec();
-            extension_names_raw.push(DebugUtils::name().as_ptr());
+
+            let verification_required_extensions = Verification::get_extensions();
+            let verification_names_raw: Vec<*const c_char> =
+                util::map_vec_ref(&verification_required_extensions, |name| name.as_ptr());
+            extension_names_raw.extend(verification_names_raw);
 
             #[cfg(any(target_os = "macos", target_os = "ios"))]
             {
@@ -671,11 +674,11 @@ impl<Verification: VerificationProvider + 'static> RenderContext<Verification> f
             );
 
             // Layer names
-            let layer_names = Verification::get_layers();
-            println!("Layers: {:?}", layer_names);
+            let verification_required_layers = Verification::get_layers();
+            println!("Layers: {:?}", verification_required_layers);
 
             let layers_names_raw: Vec<*const c_char> =
-                util::map_vec_ref(&layer_names, |name| name.as_ptr());
+                util::map_vec_ref(&verification_required_layers, |name| name.as_ptr());
 
             // Create flags
             let create_flags = if cfg!(any(target_os = "macos", target_os = "ios")) {
@@ -740,7 +743,9 @@ impl Drop for VulkanContext {
 
             if let Some(mut depth_image) = self.depth_image.take() {
                 let mut allocator = self.lock_allocator().expect("No allocator defined");
-                depth_image.destroy(&virtual_device, &mut allocator).expect("Failed to destroy depth image");
+                depth_image
+                    .destroy(&virtual_device, &mut allocator)
+                    .expect("Failed to destroy depth image");
             }
 
             if let Some(command_pool_for_setup) = self.command_pool_for_setup.as_mut() {

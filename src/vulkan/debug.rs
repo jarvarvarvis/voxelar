@@ -15,6 +15,10 @@ pub trait VerificationProvider {
     where
         Self: Sized;
 
+    fn get_extensions<'a>() -> Vec<&'a CStr>
+    where
+        Self: Sized;
+
     fn load(entry: &Entry, instance: &Instance) -> crate::Result<Self>
     where
         Self: Sized;
@@ -26,6 +30,10 @@ pub struct NoVerification;
 
 impl VerificationProvider for NoVerification {
     fn get_layers<'a>() -> Vec<&'a CStr> {
+        vec![]
+    }
+
+    fn get_extensions<'a>() -> Vec<&'a CStr> {
         vec![]
     }
 
@@ -76,6 +84,10 @@ impl VerificationProvider for KHRVerificationAndDebugMessenger {
                 b"VK_LAYER_KHRONOS_validation\0",
             )]
         }
+    }
+
+    fn get_extensions<'a>() -> Vec<&'a CStr> {
+        vec![DebugUtils::name()]
     }
 
     fn load(entry: &Entry, instance: &Instance) -> crate::Result<Self> {
