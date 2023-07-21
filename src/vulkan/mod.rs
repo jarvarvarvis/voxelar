@@ -15,7 +15,6 @@
 //! - descriptor\_set\_logic\_builder: Provides an abstraction for building `SetUpDescriptorSetLogic`s
 //! - descriptor\_set\_update\_builder: Provides an abstraction for updating descriptor sets and specifying attached descriptors
 //! - dynamic\_descriptor\_buffer: Provides an abstraction for buffers that can be used with dynamic descriptor sets
-//! - experimental: A module that includes some experimental stuff (currently my now deprecated allocator system)
 //! - frame\_data: Provides an abstraction for per-frame synchronization and command logic in double/triple/...-buffering scenarios
 //! - framebuffers: Provides an abstraction for framebuffer creation for each present image of a swapchain
 //! - graphics\_pipeline\_builder: Provides an abstraction for building Vulkan `Pipeline`s
@@ -72,7 +71,6 @@ pub mod descriptor_set_logic;
 pub mod descriptor_set_logic_builder;
 pub mod descriptor_set_update_builder;
 pub mod dynamic_descriptor_buffer;
-pub mod experimental;
 pub mod frame_data;
 pub mod framebuffers;
 pub mod graphics_pipeline_builder;
