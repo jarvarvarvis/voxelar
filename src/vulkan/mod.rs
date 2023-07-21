@@ -34,6 +34,7 @@
 //! - util: Provides random utility functions used by the vulkan module
 //! - virtual\_device: Provides a wrapper around virtual Vulkan devices
 pub extern crate gpu_allocator;
+pub extern crate image;
 
 use std::ffi::{c_char, CStr, CString};
 use std::mem::ManuallyDrop;

@@ -72,6 +72,9 @@ pub enum VoxelarError {
     /// This variant wraps a `gpu_allocator::AllocationError` that can occur when trying to
     /// allocate memory or when initializing the allocator using the `gpu_allocator` crate.
     AllocationError(gpu_allocator::AllocationError),
+
+    /// This variant wraps an `image::ImageError` that can occur in functions of the `image` crate.
+    ImageError(image::ImageError),
 }
 
 macro_rules! write_err {
@@ -92,6 +95,7 @@ impl std::fmt::Display for VoxelarError {
             VoxelarError::VkError(err) => write_err!(f, VkError, err),
             VoxelarError::VkLoadingError(err) => write_err!(f, VkLoadingError, err),
             VoxelarError::AllocationError(err) => write_err!(f, AllocationError, err),
+            VoxelarError::ImageError(err) => write_err!(f, ImageError, err),
         }
     }
 }
@@ -115,6 +119,7 @@ error_impl_from!(winit::error::OsError, Self::WinitOsError);
 error_impl_from!(ash::vk::Result, Self::VkError);
 error_impl_from!(ash::LoadingError, Self::VkLoadingError);
 error_impl_from!(gpu_allocator::AllocationError, Self::AllocationError);
+error_impl_from!(image::ImageError, Self::ImageError);
 
 /// A type definition of `std::result::Result` that uses `VoxelarError` as the error type.
 ///

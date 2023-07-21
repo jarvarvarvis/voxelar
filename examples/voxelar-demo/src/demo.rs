@@ -217,6 +217,8 @@ impl Demo {
         let compiled_frag = compile_shader!(ShaderKind::Fragment, "../shader/triangle.frag")?;
         let fragment_shader_module = vulkan_context.create_fragment_shader(compiled_frag)?;
 
+        let image = voxelar::vulkan::image::open("textures/brick.jpg")?;
+
         let viewport = vk::Viewport {
             x: 0.0,
             y: 0.0,
