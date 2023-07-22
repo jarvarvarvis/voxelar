@@ -30,24 +30,34 @@ impl FrameData {
         })
     }
 
+    pub fn draw_buffers_count(&self) -> usize {
+        self.command_pool.command_buffers.len()
+    }
+
     pub fn wait_for_draw_buffer_fence(
         &self,
         virtual_device: &SetUpVirtualDevice,
+        draw_buffer_index: usize,
     ) -> crate::Result<()> {
-        let draw_command_buffer = self.command_pool.get_command_buffer(0);
+        let draw_command_buffer = self.command_pool.get_command_buffer(draw_buffer_index);
         draw_command_buffer.wait_for_fence(virtual_device)
     }
 
     pub fn reset_draw_buffer_fence(
         &self,
         virtual_device: &SetUpVirtualDevice,
+        draw_buffer_index: usize,
     ) -> crate::Result<()> {
-        let draw_command_buffer = self.command_pool.get_command_buffer(0);
+        let draw_command_buffer = self.command_pool.get_command_buffer(draw_buffer_index);
         draw_command_buffer.reset_fence(virtual_device)
     }
 
-    pub fn reset_draw_buffer(&self, virtual_device: &SetUpVirtualDevice) -> crate::Result<()> {
-        let draw_command_buffer = self.command_pool.get_command_buffer(0);
+    pub fn reset_draw_buffer(
+        &self,
+        virtual_device: &SetUpVirtualDevice,
+        draw_buffer_index: usize,
+    ) -> crate::Result<()> {
+        let draw_command_buffer = self.command_pool.get_command_buffer(draw_buffer_index);
         draw_command_buffer.reset(virtual_device, CommandBufferResetFlags::RELEASE_RESOURCES)
     }
 
@@ -56,19 +66,21 @@ impl FrameData {
     >(
         &self,
         virtual_device: &SetUpVirtualDevice,
+        draw_buffer_index: usize,
         f: F,
     ) -> crate::Result<()> {
-        let draw_command_buffer = self.command_pool.get_command_buffer(0);
+        let draw_command_buffer = self.command_pool.get_command_buffer(draw_buffer_index);
         draw_command_buffer.record_commands_for_one_time_submit(virtual_device, f)
     }
 
-    pub fn submit_draw_buffer(
+    pub fn submit_draw_buffer_to_queue(
         &self,
         virtual_device: &SetUpVirtualDevice,
+        draw_buffer_index: usize,
         present_queue: Queue,
         wait_mask: &[PipelineStageFlags],
     ) -> crate::Result<()> {
-        let draw_command_buffer = self.command_pool.get_command_buffer(0);
+        let draw_command_buffer = self.command_pool.get_command_buffer(draw_buffer_index);
         draw_command_buffer.submit(
             virtual_device,
             present_queue,

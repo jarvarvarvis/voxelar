@@ -68,9 +68,10 @@ impl SetUpVirtualDevice {
         )
     }
 
-    pub fn wait(&self) {
+    pub fn wait(&self) -> crate::Result<()> {
         unsafe {
-            self.device.device_wait_idle().unwrap();
+            self.device.device_wait_idle()?;
+            Ok(())
         }
     }
 

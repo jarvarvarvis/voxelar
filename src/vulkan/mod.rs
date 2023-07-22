@@ -15,6 +15,7 @@
 //! - descriptor\_set\_logic\_builder: Provides an abstraction for building `SetUpDescriptorSetLogic`s
 //! - descriptor\_set\_update\_builder: Provides an abstraction for updating descriptor sets and specifying attached descriptors
 //! - dynamic\_descriptor\_buffer: Provides an abstraction for buffers that can be used with dynamic descriptor sets
+//! - egui\_integration: A wrapper for the egui integration provided by the `egui-winit-ash-integration` crate
 //! - frame\_data: Provides an abstraction for per-frame synchronization and command logic in double/triple/...-buffering scenarios
 //! - framebuffers: Provides an abstraction for framebuffer creation for each present image of a swapchain
 //! - graphics\_pipeline\_builder: Provides an abstraction for building Vulkan `Pipeline`s
@@ -37,6 +38,7 @@
 //! - typed\_image: Provides an abstraction for images that hold data of a specific type
 //! - util: Provides random utility functions used by the vulkan module
 //! - virtual\_device: Provides a wrapper around virtual Vulkan devices
+pub extern crate egui;
 pub extern crate gpu_allocator;
 pub extern crate image as image_crate;
 
@@ -78,6 +80,7 @@ pub mod descriptor_set_logic;
 pub mod descriptor_set_logic_builder;
 pub mod descriptor_set_update_builder;
 pub mod dynamic_descriptor_buffer;
+pub mod egui_integration;
 pub mod frame_data;
 pub mod framebuffers;
 pub mod graphics_pipeline_builder;
@@ -103,7 +106,7 @@ pub mod virtual_device;
 
 use crate::render_context::RenderContext;
 use crate::result::Context;
-use crate::window::VoxelarWindow;
+use crate::window::{VoxelarEventLoop, VoxelarWindow};
 use crate::Voxelar;
 
 use crate::vulkan::per_frame::PerFrame;
@@ -115,6 +118,7 @@ use self::creation_info::PresentModeInitMode;
 use self::debug::VerificationProvider;
 use self::depth_image::SetUpDepthImage;
 use self::dynamic_descriptor_buffer::DynamicDescriptorBuffer;
+use self::egui_integration::SetUpEguiIntegration;
 use self::frame_data::FrameData;
 use self::framebuffers::SetUpFramebuffers;
 use self::physical_device::SetUpPhysicalDevice;
@@ -197,6 +201,13 @@ impl VulkanContext {
         Ok(allocator
             .lock()
             .context("Unable to acquire allocator mutex lock".to_string())?)
+    }
+
+    pub fn create_allocator_ref(&self) -> crate::Result<Arc<Mutex<Allocator>>> {
+        let allocator = self.allocator.as_ref().context(
+            "No allocator was set up yet! Use VulkanContext::create_allocator to do so".to_string(),
+        )?;
+        Ok(Arc::clone(&allocator))
     }
 
     generate_safe_getter!(
@@ -402,10 +413,7 @@ impl VulkanContext {
         Ok(())
     }
 
-    pub fn recreate_swapchain_and_related_data_structures_with_size(
-        &mut self,
-        window_size: (i32, i32),
-    ) -> crate::Result<()> {
+    pub fn update_swapchain(&mut self, window_size: (i32, i32)) -> crate::Result<()> {
         let creation_info = self.last_creation_info.context(
             "No last creation info was set, so data structures can't be recreated".to_string(),
         )?;
@@ -417,7 +425,7 @@ impl VulkanContext {
         let new_swapchain = self.create_new_swapchain(creation_info.swapchain_present_mode)?;
 
         if let Some(virtual_device) = self.virtual_device.as_ref() {
-            virtual_device.wait();
+            virtual_device.wait()?;
 
             if let Some(render_pass) = self.render_pass.as_mut() {
                 render_pass.destroy(&virtual_device);
@@ -459,6 +467,42 @@ impl VulkanContext {
 
         Ok(())
     }
+
+    pub fn create_egui_integration(
+        &self,
+        window: &VoxelarWindow,
+        event_loop: &VoxelarEventLoop,
+    ) -> crate::Result<SetUpEguiIntegration> {
+        let size = window.get_size();
+        let virtual_device = self.virtual_device()?;
+        let allocator = self.create_allocator_ref()?;
+        let surface_format = self.surface_info.surface_format(0)?;
+        Ok(SetUpEguiIntegration::new(
+            &event_loop.event_loop,
+            size.0 as u32,
+            size.1 as u32,
+            window.scale_factor(),
+            virtual_device,
+            allocator,
+            self.physical_device()?.queue_family_index,
+            virtual_device.present_queue,
+            self.swapchain()?,
+            surface_format,
+        ))
+    }
+
+    pub fn update_egui_integration_swapchain(
+        &self,
+        window_size: (i32, i32),
+        egui_integration: &mut SetUpEguiIntegration,
+    ) -> crate::Result<()> {
+        egui_integration.update_swapchain(
+            window_size.0 as u32,
+            window_size.1 as u32,
+            self.swapchain()?,
+            &self.surface_info,
+        )
+    }
 }
 
 impl VulkanContext {
@@ -492,9 +536,13 @@ impl VulkanContext {
         self.frames.select(current_frame_index);
     }
 
-    pub fn wait_for_current_frame_draw_buffer_fence(&self) -> crate::Result<()> {
+    pub fn wait_for_current_frame_draw_buffer_fences(&self) -> crate::Result<()> {
         let current_frame = self.frames.current();
-        current_frame.wait_for_draw_buffer_fence(self.virtual_device()?)?;
+
+        for draw_buffer_index in 0..current_frame.draw_buffers_count() {
+            current_frame.wait_for_draw_buffer_fence(self.virtual_device()?, draw_buffer_index)?;
+        }
+
         Ok(())
     }
 
@@ -517,14 +565,37 @@ impl VulkanContext {
         }
     }
 
-    pub fn submit_immediate_render_pass_commands<F>(
+    pub fn record_commands_to_draw_buffer<CommandOp>(
         &self,
-        present_index: u32,
-        clear_values: &[ClearValue],
-        command_buffer_op: F,
+        command_op: CommandOp,
     ) -> crate::Result<()>
     where
-        F: FnOnce(&SetUpVirtualDevice, &SetUpCommandBufferWithFence) -> crate::Result<()>,
+        CommandOp: FnOnce(&SetUpVirtualDevice, &SetUpCommandBufferWithFence) -> crate::Result<()>,
+    {
+        let virtual_device = self.virtual_device()?;
+
+        let current_frame = self.frames.current();
+
+        current_frame.reset_draw_buffer_fence(virtual_device, 0)?;
+        current_frame.reset_draw_buffer(virtual_device, 0)?;
+        current_frame.record_draw_buffer_commands(
+            virtual_device,
+            0,
+            |device, draw_command_buffer| command_op(device, draw_command_buffer),
+        )?;
+
+        Ok(())
+    }
+
+    pub fn record_render_pass<RenderPassOp>(
+        &self,
+        present_index: u32,
+        draw_command_buffer: &SetUpCommandBufferWithFence,
+        clear_values: &[ClearValue],
+        mut render_pass_op: RenderPassOp,
+    ) -> crate::Result<()>
+    where
+        RenderPassOp: FnMut() -> crate::Result<()>,
     {
         let virtual_device = self.virtual_device()?;
 
@@ -535,33 +606,33 @@ impl VulkanContext {
             .render_area(surface_resolution.into())
             .clear_values(clear_values);
 
+        unsafe {
+            virtual_device.device.cmd_begin_render_pass(
+                draw_command_buffer.command_buffer,
+                &render_pass_begin_info,
+                SubpassContents::INLINE,
+            );
+            render_pass_op()?;
+            virtual_device
+                .device
+                .cmd_end_render_pass(draw_command_buffer.command_buffer);
+        }
+
+        Ok(())
+    }
+
+    pub fn submit_draw_buffers(&self) -> crate::Result<()> {
         let current_frame = self.frames.current();
-        let present_queue = virtual_device.present_queue;
+        let virtual_device = self.virtual_device()?;
 
-        current_frame.reset_draw_buffer_fence(virtual_device)?;
-        current_frame.reset_draw_buffer(virtual_device)?;
-        current_frame.record_draw_buffer_commands(
-            virtual_device,
-            |device, draw_command_buffer| {
-                let vk_device = &device.device;
-                unsafe {
-                    vk_device.cmd_begin_render_pass(
-                        draw_command_buffer.command_buffer,
-                        &render_pass_begin_info,
-                        SubpassContents::INLINE,
-                    );
-                    command_buffer_op(device, draw_command_buffer)?;
-                    vk_device.cmd_end_render_pass(draw_command_buffer.command_buffer);
-                    Ok(())
-                }
-            },
-        )?;
-        current_frame.submit_draw_buffer(
-            self.virtual_device()?,
-            present_queue,
-            &[PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT],
-        )?;
-
+        for draw_buffer_index in 0..current_frame.draw_buffers_count() {
+            current_frame.submit_draw_buffer_to_queue(
+                virtual_device,
+                draw_buffer_index,
+                virtual_device.present_queue,
+                &[PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT],
+            )?;
+        }
         Ok(())
     }
 
@@ -730,6 +801,16 @@ impl VulkanContext {
     ) -> crate::Result<SetUpSampler> {
         unsafe { SetUpSampler::create(self.virtual_device()?, filter, sampler_address_mode) }
     }
+
+    pub fn wait_for_present_queue(&self) -> crate::Result<()> {
+        unsafe {
+            let virtual_device = self.virtual_device()?;
+            virtual_device
+                .device
+                .queue_wait_idle(virtual_device.present_queue)?;
+            Ok(())
+        }
+    }
 }
 
 impl<Verification: VerificationProvider + 'static> RenderContext<Verification> for VulkanContext {
@@ -825,7 +906,7 @@ impl<Verification: VerificationProvider + 'static> RenderContext<Verification> f
 impl Drop for VulkanContext {
     fn drop(&mut self) {
         if let Some(virtual_device) = self.virtual_device.as_ref() {
-            virtual_device.wait();
+            virtual_device.wait().unwrap();
 
             if let Some(render_pass) = self.render_pass.as_mut() {
                 render_pass.destroy(&virtual_device);

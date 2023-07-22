@@ -11,7 +11,7 @@ pub enum VoxelarWindowMode {
 }
 
 pub struct VoxelarWindow {
-    window: Window,
+    pub window: Window,
 }
 
 impl VoxelarWindow {
@@ -53,10 +53,14 @@ impl VoxelarWindow {
     pub fn request_redraw(&self) {
         self.window.request_redraw()
     }
+
+    pub fn scale_factor(&self) -> f64 {
+        self.window.scale_factor()
+    }
 }
 
 pub struct VoxelarEventLoop {
-    event_loop: EventLoop<()>,
+    pub event_loop: EventLoop<()>,
 }
 
 impl VoxelarEventLoop {

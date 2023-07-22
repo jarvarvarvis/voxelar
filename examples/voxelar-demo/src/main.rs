@@ -36,7 +36,9 @@ fn main() -> Result<()> {
     let phys_device = vulkan_context.physical_device()?;
     println!("Found physical device: {:?}", phys_device.name());
 
-    let mut demo = Demo::new(&ctx, &vulkan_context)?;
+    let egui_integration = vulkan_context.create_egui_integration(&window, &event_loop)?;
+
+    let mut demo = Demo::new(&ctx, &vulkan_context, egui_integration)?;
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
@@ -44,28 +46,31 @@ fn main() -> Result<()> {
             Event::WindowEvent {
                 event: window_event,
                 window_id: _,
-            } => match window_event {
-                WindowEvent::Resized(_) => {
-                    demo.recreate_swapchain = true;
+            } => {
+                demo.handle_egui_integration_event(&window_event);
+                match window_event {
+                    WindowEvent::Resized(_) => {
+                        demo.recreate_swapchain = true;
+                    }
+                    WindowEvent::ScaleFactorChanged { .. } => {
+                        demo.recreate_swapchain = true;
+                    }
+                    WindowEvent::KeyboardInput {
+                        input:
+                            KeyboardInput {
+                                state: ElementState::Pressed,
+                                virtual_keycode: Some(VirtualKeyCode::Escape),
+                                ..
+                            },
+                        ..
+                    } => {
+                        *control_flow = ControlFlow::Exit;
+                    }
+                    WindowEvent::CloseRequested | WindowEvent::Destroyed => {
+                        *control_flow = ControlFlow::Exit;
+                    }
+                    _ => {}
                 }
-                WindowEvent::ScaleFactorChanged { .. } => {
-                    demo.recreate_swapchain = true;
-                }
-                WindowEvent::KeyboardInput {
-                    input:
-                        KeyboardInput {
-                            state: ElementState::Pressed,
-                            virtual_keycode: Some(VirtualKeyCode::Escape),
-                            ..
-                        },
-                    ..
-                } => {
-                    *control_flow = ControlFlow::Exit;
-                }
-                WindowEvent::CloseRequested | WindowEvent::Destroyed => {
-                    *control_flow = ControlFlow::Exit;
-                }
-                _ => {}
             },
             Event::MainEventsCleared => window.request_redraw(),
             Event::RedrawRequested(_) => {

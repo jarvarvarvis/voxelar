@@ -59,23 +59,26 @@ impl SetUpRenderPass {
     ) -> crate::Result<Self> {
         let surface_format = surface_info.surface_format(0)?;
         let renderpass_attachments = [
-            AttachmentDescription {
-                format: surface_format.format,
-                samples: SampleCountFlags::TYPE_1,
-                load_op: AttachmentLoadOp::CLEAR,
-                store_op: AttachmentStoreOp::STORE,
-                final_layout: ImageLayout::PRESENT_SRC_KHR,
-                ..Default::default()
-            },
-            AttachmentDescription {
-                format: Format::D16_UNORM,
-                samples: SampleCountFlags::TYPE_1,
-                load_op: AttachmentLoadOp::CLEAR,
-                store_op: AttachmentStoreOp::STORE,
-                initial_layout: ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                final_layout: ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                ..Default::default()
-            },
+            AttachmentDescription::builder()
+                .format(surface_format.format)
+                .samples(SampleCountFlags::TYPE_1)
+                .load_op(AttachmentLoadOp::CLEAR)
+                .store_op(AttachmentStoreOp::STORE)
+                .stencil_load_op(AttachmentLoadOp::DONT_CARE)
+                .stencil_store_op(AttachmentStoreOp::DONT_CARE)
+                .initial_layout(ImageLayout::UNDEFINED)
+                .final_layout(ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
+                .build(),
+            AttachmentDescription::builder()
+                .format(Format::D16_UNORM)
+                .samples(SampleCountFlags::TYPE_1)
+                .load_op(AttachmentLoadOp::CLEAR)
+                .store_op(AttachmentStoreOp::DONT_CARE)
+                .stencil_load_op(AttachmentLoadOp::DONT_CARE)
+                .stencil_store_op(AttachmentStoreOp::DONT_CARE)
+                .initial_layout(ImageLayout::UNDEFINED)
+                .final_layout(ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                .build(),
         ];
         let color_attachment_refs = [AttachmentReference {
             attachment: 0,

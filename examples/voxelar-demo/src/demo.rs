@@ -9,6 +9,7 @@ use voxelar::vulkan::descriptor_set_logic::SetUpDescriptorSetLogic;
 use voxelar::vulkan::descriptor_set_logic_builder::DescriptorSetLogicBuilder;
 use voxelar::vulkan::descriptor_set_update_builder::DescriptorSetUpdateBuilder;
 use voxelar::vulkan::dynamic_descriptor_buffer::DynamicDescriptorBuffer;
+use voxelar::vulkan::egui_integration::SetUpEguiIntegration;
 use voxelar::vulkan::graphics_pipeline_builder::GraphicsPipelineBuilder;
 use voxelar::vulkan::per_frame::PerFrame;
 use voxelar::vulkan::pipeline_layout::SetUpPipelineLayout;
@@ -19,6 +20,7 @@ use voxelar::vulkan::texture::Texture;
 use voxelar::vulkan::typed_buffer::TypedAllocatedBuffer;
 use voxelar::vulkan::VulkanContext;
 use voxelar::window::VoxelarWindow;
+use voxelar::winit::event::*;
 use voxelar::Voxelar;
 
 use voxelar_vertex::input_state_builder::VertexInputStateBuilder;
@@ -67,12 +69,15 @@ pub struct Demo {
 
     pub frame_time_manager: FrameTimeManager,
     camera_position: Point3<f32>,
+
+    egui_integration: SetUpEguiIntegration,
 }
 
 impl Demo {
     pub unsafe fn create(
         voxelar_context: &Voxelar,
         vulkan_context: &VulkanContext,
+        egui_integration: SetUpEguiIntegration,
     ) -> crate::Result<Self> {
         let render_pass = vulkan_context.render_pass()?;
         let virtual_device = vulkan_context.virtual_device()?;
@@ -244,11 +249,17 @@ impl Demo {
 
             frame_time_manager: FrameTimeManager::new(&voxelar_context),
             camera_position: Point3::new(0.0, 2.0, -4.0),
+
+            egui_integration,
         })
     }
 
-    pub fn new(voxelar_context: &Voxelar, vulkan_context: &VulkanContext) -> crate::Result<Self> {
-        unsafe { Self::create(voxelar_context, vulkan_context) }
+    pub fn new(
+        voxelar_context: &Voxelar,
+        vulkan_context: &VulkanContext,
+        egui_integration: SetUpEguiIntegration,
+    ) -> crate::Result<Self> {
+        unsafe { Self::create(voxelar_context, vulkan_context, egui_integration) }
     }
 
     fn update_viewports_and_scissors(
@@ -267,6 +278,10 @@ impl Demo {
         self.scissor = surface_extent.into();
 
         Ok(())
+    }
+
+    pub fn handle_egui_integration_event(&mut self, window_event: &WindowEvent<'_>) {
+        let _ = self.egui_integration.handle_event(window_event);
     }
 
     pub fn update_camera_and_get_mvp_matrix(&mut self, aspect_ratio: f32) -> Matrix4<f32> {
@@ -294,29 +309,25 @@ impl Demo {
     ) -> crate::Result<()> {
         let graphics_pipeline = self.pipelines[0];
 
-        window.set_title(&format!(
-            "FPS: {:.4}, Delta Time: {:.4}",
-            self.frame_time_manager.fps(),
-            self.frame_time_manager.delta_time()
-        ));
-
         unsafe {
+            if self.recreate_swapchain {
+                let new_size = window.get_size();
+                vulkan_context.update_swapchain(new_size)?;
+                vulkan_context
+                    .update_egui_integration_swapchain(new_size, &mut self.egui_integration)?;
+
+                self.update_viewports_and_scissors(vulkan_context)?;
+
+                self.recreate_swapchain = false;
+                return Ok(());
+            }
+
             let total_frames = self.frame_time_manager.total_frames();
             let current_frame_index = total_frames as usize % vulkan_context.frame_overlap();
             vulkan_context.select_frame(current_frame_index);
             self.per_frame_data.select(current_frame_index);
 
-            if self.recreate_swapchain {
-                let new_size = window.get_size();
-                vulkan_context
-                    .recreate_swapchain_and_related_data_structures_with_size(new_size)?;
-                self.update_viewports_and_scissors(vulkan_context)?;
-                self.recreate_swapchain = false;
-
-                return Ok(());
-            }
-
-            vulkan_context.wait_for_current_frame_draw_buffer_fence()?;
+            vulkan_context.wait_for_current_frame_draw_buffer_fences()?;
             let (present_index, swapchain_suboptimal) = vulkan_context.acquire_next_image()?;
 
             // If the swapchain is suboptimal for this image, only recreate it on the next frame.
@@ -326,97 +337,119 @@ impl Demo {
                 self.recreate_swapchain = true;
             }
 
-            let clear_values = [
-                vk::ClearValue {
-                    color: vk::ClearColorValue {
-                        float32: [0.0, 0.0, 0.0, 0.0],
+            vulkan_context.record_commands_to_draw_buffer(|device, draw_command_buffer| {
+                let clear_values = [
+                    vk::ClearValue {
+                        color: vk::ClearColorValue {
+                            float32: [0.0, 0.0, 0.0, 0.0],
+                        },
                     },
-                },
-                vk::ClearValue {
-                    depth_stencil: vk::ClearDepthStencilValue {
-                        depth: 1.0,
-                        stencil: 0,
+                    vk::ClearValue {
+                        depth_stencil: vk::ClearDepthStencilValue {
+                            depth: 1.0,
+                            stencil: 0,
+                        },
                     },
-                },
-            ];
+                ];
 
-            vulkan_context.submit_immediate_render_pass_commands(
-                present_index,
-                &clear_values,
-                |device, draw_command_buffer| {
-                    let vk_device = &device.device;
-                    let draw_command_buffer = draw_command_buffer.command_buffer;
-                    vk_device.cmd_bind_pipeline(
-                        draw_command_buffer,
-                        vk::PipelineBindPoint::GRAPHICS,
-                        graphics_pipeline,
-                    );
+                vulkan_context.record_render_pass(
+                    present_index,
+                    draw_command_buffer,
+                    &clear_values,
+                    || {
+                        let vk_device = &device.device;
+                        let draw_command_buffer = draw_command_buffer.command_buffer;
+                        vk_device.cmd_bind_pipeline(
+                            draw_command_buffer,
+                            vk::PipelineBindPoint::GRAPHICS,
+                            graphics_pipeline,
+                        );
 
-                    vk_device.cmd_set_viewport(draw_command_buffer, 0, &[self.viewport]);
-                    vk_device.cmd_set_scissor(draw_command_buffer, 0, &[self.scissor]);
+                        vk_device.cmd_set_viewport(draw_command_buffer, 0, &[self.viewport]);
+                        vk_device.cmd_set_scissor(draw_command_buffer, 0, &[self.scissor]);
 
-                    vk_device.cmd_bind_vertex_buffers(
-                        draw_command_buffer,
-                        0,
-                        &[self.vertex_buffer.raw_buffer()],
-                        &[0],
-                    );
-                    vk_device.cmd_bind_index_buffer(
-                        draw_command_buffer,
-                        self.index_buffer.raw_buffer(),
-                        0,
-                        vk::IndexType::UINT32,
-                    );
+                        vk_device.cmd_bind_vertex_buffers(
+                            draw_command_buffer,
+                            0,
+                            &[self.vertex_buffer.raw_buffer()],
+                            &[0],
+                        );
+                        vk_device.cmd_bind_index_buffer(
+                            draw_command_buffer,
+                            self.index_buffer.raw_buffer(),
+                            0,
+                            vk::IndexType::UINT32,
+                        );
 
-                    let mvp_matrix = self.update_camera_and_get_mvp_matrix(window.aspect_ratio());
-                    let current_descriptor_data = self.per_frame_data.current();
-                    let camera_buffer = DemoCameraBuffer { mvp_matrix };
-                    self.descriptor_buffers.camera_buffer.store_at(
-                        device,
-                        camera_buffer,
-                        current_frame_index,
-                    )?;
+                        let mvp_matrix =
+                            self.update_camera_and_get_mvp_matrix(window.aspect_ratio());
+                        let current_descriptor_data = self.per_frame_data.current();
+                        let camera_buffer = DemoCameraBuffer { mvp_matrix };
+                        self.descriptor_buffers.camera_buffer.store_at(
+                            device,
+                            camera_buffer,
+                            current_frame_index,
+                        )?;
 
-                    let frame_360_cycle = (total_frames % 360) as f32;
-                    let light_cycle = (frame_360_cycle.to_radians().sin() + 1.0) / 2.0;
-                    let ambient_color = Vector4::new(light_cycle, light_cycle, light_cycle, 0.0);
-                    let scene_buffer = DemoSceneBuffer { ambient_color };
-                    self.descriptor_buffers.scene_buffer.store_at(
-                        device,
-                        scene_buffer,
-                        current_frame_index,
-                    )?;
+                        let frame_360_cycle = (total_frames % 360) as f32;
+                        let light_cycle = (frame_360_cycle.to_radians().sin() + 1.0) / 2.0;
+                        let ambient_color =
+                            Vector4::new(light_cycle, light_cycle, light_cycle, 0.0);
+                        let scene_buffer = DemoSceneBuffer { ambient_color };
+                        self.descriptor_buffers.scene_buffer.store_at(
+                            device,
+                            scene_buffer,
+                            current_frame_index,
+                        )?;
 
-                    let camera_buffer_offset = self
-                        .descriptor_buffers
-                        .scene_buffer
-                        .get_dynamic_offset(current_frame_index);
-                    let scene_buffer_offset = self
-                        .descriptor_buffers
-                        .camera_buffer
-                        .get_dynamic_offset(current_frame_index);
+                        let camera_buffer_offset = self
+                            .descriptor_buffers
+                            .scene_buffer
+                            .get_dynamic_offset(current_frame_index);
+                        let scene_buffer_offset = self
+                            .descriptor_buffers
+                            .camera_buffer
+                            .get_dynamic_offset(current_frame_index);
 
-                    vk_device.cmd_bind_descriptor_sets(
-                        draw_command_buffer,
-                        vk::PipelineBindPoint::GRAPHICS,
-                        self.pipeline_layout.pipeline_layout,
-                        0,
-                        &current_descriptor_data.descriptor_set_logic.descriptor_sets,
-                        &[camera_buffer_offset, scene_buffer_offset],
-                    );
+                        vk_device.cmd_bind_descriptor_sets(
+                            draw_command_buffer,
+                            vk::PipelineBindPoint::GRAPHICS,
+                            self.pipeline_layout.pipeline_layout,
+                            0,
+                            &current_descriptor_data.descriptor_set_logic.descriptor_sets,
+                            &[camera_buffer_offset, scene_buffer_offset],
+                        );
 
-                    vk_device.cmd_draw_indexed(
-                        draw_command_buffer,
-                        self.index_count as u32,
-                        1,
-                        0,
-                        0,
-                        1,
-                    );
+                        vk_device.cmd_draw_indexed(
+                            draw_command_buffer,
+                            self.index_count as u32,
+                            1,
+                            0,
+                            0,
+                            1,
+                        );
 
-                    Ok(())
-                },
-            )?;
+                        Ok(())
+                    },
+                )?;
+
+                self.egui_integration
+                    .draw(&window, draw_command_buffer, present_index, |integration| {
+                        let integration = &integration.integration;
+                        let ctx = integration.context();
+
+                        use voxelar::vulkan::egui;
+                        egui::Window::new("Engine Info").show(&ctx, |ui| {
+                            ui.label(format!("FPS: {:.4}", self.frame_time_manager.fps()));
+                            ui.label(format!("Delta Time: {:.4}", self.frame_time_manager.delta_time()));
+                        });
+                        Ok(())
+                    })?;
+
+                Ok(())
+            })?;
+
+            vulkan_context.submit_draw_buffers()?;
 
             let swapchain_suboptimal = vulkan_context.present_image(present_index)?;
             if swapchain_suboptimal {
@@ -433,10 +466,13 @@ impl Demo {
 
     pub fn destroy(&mut self, vulkan_context: &VulkanContext) -> crate::Result<()> {
         let virtual_device = vulkan_context.virtual_device()?;
-        let mut allocator = vulkan_context.lock_allocator()?;
 
-        virtual_device.wait();
+        virtual_device.wait()?;
+        self.egui_integration.destroy();
+
         unsafe {
+            let mut allocator = vulkan_context.lock_allocator()?;
+
             self.descriptor_buffers
                 .camera_buffer
                 .destroy(virtual_device, &mut allocator)?;
@@ -451,12 +487,12 @@ impl Demo {
             for descriptor_set_layout in self.descriptor_set_layouts.iter_mut() {
                 descriptor_set_layout.destroy(virtual_device);
             }
-            self.pipeline_layout.destroy(virtual_device);
 
             let device = &virtual_device.device;
             for pipeline in self.pipelines.iter() {
                 device.destroy_pipeline(*pipeline, None);
             }
+            self.pipeline_layout.destroy(virtual_device);
 
             self.vertex_shader_module.destroy(virtual_device);
             self.fragment_shader_module.destroy(virtual_device);

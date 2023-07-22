@@ -5,9 +5,6 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[features]
-allocator-debug-logs = []
-
 [dependencies]
 winit = "0.28.6"
 raw-window-handle = "0.5.2"
@@ -17,6 +14,10 @@ ash-window = "0.12.0"
 gpu-allocator = { version = "0.22.0", default-features = false, features = ["ash", "vulkan"] }
 shaderc = "0.8.2"
 image = { version = "0.24.6", default-features = false, features = ["png", "jpeg"] }
+
+egui = "0.22.0"
+egui-winit = "0.22.0"
+egui-winit-ash-integration = { git = "https://github.com/jarvarvarvis/egui-winit-ash-integration" }
 
 nalgebra = "0.32.3"
 
