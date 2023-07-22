@@ -5,18 +5,16 @@
 //!
 //! Module overview:
 //! - engine: Provides various game engine utilities (e.g. frame time/FPS measurement etc.)
-//! - vulkan: Provides all Vulkan functionality
-//! - as_any_trait: Provides the `AsAnyTrait` for conversions to `std::any::Any`
 //! - render\_context: Contains the `RenderContext` trait
 //! - result: Provides voxelar's error type, a `Result` with that type and more
+//! - vulkan: Provides all Vulkan functionality
 //! - window: Provides the window creation API
-//! - window_events: Provides the window event API
 //!
 //! Furthermore, this module provides access to the following external crates:
 //! - ash: Bindings for Vulkan
-//! - shaderc: Bindings for the Shaderc library
 //! - nalgebra: A linear algebra library
-//! - voxelar_utils: Various general-purpose Rust utilities provided and used by voxelar
+//! - shaderc: Bindings for the Shaderc library
+//! - voxelar_utils: Various general-purpose Rust utilities used by voxelar
 //! - winit: A cross-platform windowing library
 
 pub extern crate ash;
