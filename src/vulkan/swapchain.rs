@@ -71,7 +71,7 @@ impl SetUpSwapchain {
     ) -> crate::Result<Self> {
         let surface_capabilities = surface_info.surface_capabilities()?;
 
-        let mut desired_image_count = surface_capabilities.min_image_count + 1;
+        let mut desired_image_count = surface_capabilities.min_image_count;
         if surface_capabilities.max_image_count > 0
             && desired_image_count > surface_capabilities.max_image_count
         {
