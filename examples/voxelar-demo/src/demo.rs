@@ -443,8 +443,8 @@ impl Demo {
                         egui::Window::new("Engine Info").show(&ctx, |ui| {
                             ui.label(format!("FPS: {:.4}", self.frame_time_manager.fps()));
                             ui.label(format!(
-                                "Time per frame: {:.1}ms",
-                                self.frame_time_manager.time_per_frame() * 1000.0
+                                "Frame Time: {:.1}ms",
+                                self.frame_time_manager.frame_time() * 1000.0
                             ));
                         });
                         Ok(())

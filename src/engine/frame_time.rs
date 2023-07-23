@@ -93,7 +93,7 @@ impl FrameTimeManager {
     /// Returns the average time per frame in floating point seconds.
     ///
     /// A value of 1.0 returned from this function is equal to one second.
-    pub fn time_per_frame(&self) -> f64 {
+    pub fn frame_time(&self) -> f64 {
         1.0 / self.fps
     }
 }
