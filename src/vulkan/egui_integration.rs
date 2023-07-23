@@ -104,3 +104,11 @@ impl SetUpEguiIntegration {
         }
     }
 }
+
+impl std::ops::Deref for SetUpEguiIntegration {
+    type Target = egui_winit_ash_integration::Integration<Arc<Mutex<Allocator>>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.integration
+    }
+}

@@ -437,7 +437,6 @@ impl Demo {
                     draw_command_buffer,
                     present_index,
                     |integration| {
-                        let integration = &integration.integration;
                         let ctx = integration.context();
 
                         use voxelar::vulkan::egui;
