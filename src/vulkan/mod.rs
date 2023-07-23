@@ -40,9 +40,17 @@
 //! - typed\_buffer: Provides an abstraction for buffers that hold data of a specific type
 //! - typed\_image: Provides an abstraction for images that hold data of a specific type
 //! - util: Provides random utility functions used by the vulkan module
+//!
+//! Furthermore, this module provides some Vulkan-related external crates:
+//! - egui: An immediate mode GUI library
+//! - gpu_allocator: A memory allocator for Vulkan
+//! - image (as image_crate): An image loading, encoding and decoding library
+//! - shaderc: Bindings for the Shaderc library
+
 pub extern crate egui;
 pub extern crate gpu_allocator;
 pub extern crate image as image_crate;
+pub extern crate shaderc;
 
 use std::ffi::{c_char, CStr, CString};
 use std::mem::ManuallyDrop;

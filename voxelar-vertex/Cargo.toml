@@ -7,6 +7,6 @@ edition = "2021"
 
 [dependencies]
 ash = "0.37.3"
-voxelar-vertex-derive = { path = "../voxelar-vertex-derive" }
 
+voxelar-vertex-derive = { path = "../voxelar-vertex-derive" }
 voxelar-utils = { path = "../voxelar-utils/" }

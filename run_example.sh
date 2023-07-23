@@ -1,2 +1,3 @@
 #!/bin/sh
-cd examples/voxelar-demo; cargo run
+EXAMPLE_DIRECTORY="$1"
+cd examples/$EXAMPLE_DIRECTORY; cargo run

@@ -19,11 +19,9 @@ egui = "0.22.0"
 egui-winit = "0.22.0"
 egui-winit-ash-integration = { git = "https://github.com/jarvarvarvis/egui-winit-ash-integration" }
 
+voxelar-utils = { path = "voxelar-utils" }
+
 nalgebra = "0.32.3"
 
 paste = "1.0.13"
 lazy_static = "1.4.0"
-voxelar-utils = { version = "0.1.0", path = "voxelar-utils" }
-
-[dev-dependencies]
-rstest = "0.18.1"

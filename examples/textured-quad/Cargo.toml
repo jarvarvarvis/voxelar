@@ -1,5 +1,5 @@
 [package]
-name = "voxelar-demo"
+name = "textured-quad"
 version = "0.1.0"
 edition = "2021"
 

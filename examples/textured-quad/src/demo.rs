@@ -2,7 +2,7 @@ use voxelar::ash::vk;
 use voxelar::compile_shader;
 use voxelar::engine::frame_time::FrameTimeManager;
 use voxelar::nalgebra::*;
-use voxelar::shaderc::ShaderKind;
+use voxelar::vulkan::shaderc::ShaderKind;
 use voxelar::vulkan::descriptor_set_layout::SetUpDescriptorSetLayout;
 use voxelar::vulkan::descriptor_set_layout_builder::DescriptorSetLayoutBuilder;
 use voxelar::vulkan::descriptor_set_logic::SetUpDescriptorSetLogic;

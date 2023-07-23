@@ -13,13 +13,11 @@
 //! Furthermore, this module provides access to the following external crates:
 //! - ash: Bindings for Vulkan
 //! - nalgebra: A linear algebra library
-//! - shaderc: Bindings for the Shaderc library
 //! - voxelar_utils: Various general-purpose Rust utilities used by voxelar
 //! - winit: A cross-platform windowing library
 
 pub extern crate ash;
 pub extern crate nalgebra;
-pub extern crate shaderc;
 pub extern crate voxelar_utils;
 pub extern crate winit;
 
