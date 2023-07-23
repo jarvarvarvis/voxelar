@@ -213,8 +213,8 @@ impl Demo {
 
         let graphics_pipeline = GraphicsPipelineBuilder::new()
             .vertex_input(*vertex_input_state_info)
-            .add_shader_stage(vertex_shader_module.get_stage_create_info())
-            .add_shader_stage(fragment_shader_module.get_stage_create_info())
+            .add_shader_stage_from_module(&vertex_shader_module)
+            .add_shader_stage_from_module(&fragment_shader_module)
             .input_assembly_with_topology(vk::PrimitiveTopology::TRIANGLE_LIST)
             .rasterization_with_polygon_mode(vk::PolygonMode::FILL)
             .multisample_with_samples(vk::SampleCountFlags::TYPE_1)

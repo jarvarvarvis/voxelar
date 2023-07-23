@@ -20,6 +20,7 @@ use crate::result::Context;
 use super::logical_device::SetUpLogicalDevice;
 use super::pipeline_layout::SetUpPipelineLayout;
 use super::render_pass::SetUpRenderPass;
+use super::shader::CompiledShaderModule;
 
 #[derive(Default)]
 pub struct GraphicsPipelineBuilder {
@@ -69,6 +70,11 @@ impl GraphicsPipelineBuilder {
 
     pub fn add_shader_stage(mut self, shader_stage: PipelineShaderStageCreateInfo) -> Self {
         self.shader_stages.push(shader_stage);
+        self
+    }
+
+    pub fn add_shader_stage_from_module(mut self, shader_module: &CompiledShaderModule) -> Self {
+        self.shader_stages.push(shader_module.get_stage_create_info());
         self
     }
 
