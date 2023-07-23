@@ -5,12 +5,13 @@ use ash::vk::WriteDescriptorSet;
 use ash::vk::{DescriptorImageInfo, ImageLayout};
 
 use super::buffer::AllocatedBuffer;
-use super::dynamic_descriptor_buffer::DynamicDescriptorBuffer;
 use super::image_view::SetUpImageView;
 use super::logical_device::SetUpLogicalDevice;
 use super::sampler::SetUpSampler;
+use super::storage_buffer::SetUpStorageBuffer;
 use super::texture::Texture;
 use super::typed_buffer::TypedAllocatedBuffer;
+use super::uniform_buffer::SetUpUniformBuffer;
 
 #[derive(Debug)]
 pub struct WriteBufferDescriptorSetParams {
@@ -68,7 +69,7 @@ impl DescriptorSetUpdateBuilder {
     ) -> crate::Result<Self> {
         let range = std::mem::size_of::<T>();
         self.add_buffer_descriptor(
-            &buffer.buffer,
+            &buffer,
             destination_binding,
             descriptor_type,
             0,
@@ -76,15 +77,31 @@ impl DescriptorSetUpdateBuilder {
         )
     }
 
-    pub fn add_dynamic_uniform_buffer_descriptor<T>(
+    pub fn add_uniform_buffer_descriptor<T>(
         self,
-        buffer: &DynamicDescriptorBuffer<T>,
+        buffer: &SetUpUniformBuffer<T>,
         destination_binding: u32,
         descriptor_type: DescriptorType,
     ) -> crate::Result<Self> {
         let range = buffer.aligned_size_of_type;
         self.add_buffer_descriptor(
-            &buffer.buffer,
+            &buffer,
+            destination_binding,
+            descriptor_type,
+            0,
+            range,
+        )
+    }
+
+    pub fn add_storage_buffer_descriptor<T>(
+        self,
+        buffer: &SetUpStorageBuffer<T>,
+        destination_binding: u32,
+        descriptor_type: DescriptorType,
+    ) -> crate::Result<Self> {
+        let range = buffer.aligned_size_of_type;
+        self.add_buffer_descriptor(
+            &buffer,
             destination_binding,
             descriptor_type,
             0,

@@ -15,7 +15,7 @@
 //! - descriptor\_set\_logic: Provides an abstraction for `DescriptorSet` allocation
 //! - descriptor\_set\_logic\_builder: Provides an abstraction for building `SetUpDescriptorSetLogic`s
 //! - descriptor\_set\_update\_builder: Provides an abstraction for updating descriptor sets and specifying attached descriptors
-//! - dynamic\_descriptor\_buffer: Provides an abstraction for buffers that can be used with dynamic descriptor sets
+//! - dynamic\_uniform\_buffer: Provides an abstraction for uniform buffers that can be used with dynamic descriptor sets
 //! - egui\_integration: A wrapper for the egui integration provided by the `egui-winit-ash-integration` crate
 //! - frame\_data: Provides an abstraction for per-frame synchronization and command logic in double/triple/...-buffering scenarios
 //! - framebuffers: Provides an abstraction for framebuffer creation for each present image of a swapchain
@@ -32,6 +32,7 @@
 //! - sampler: Provides a wrapper around image samplers
 //! - shader: Provides an abstraction for shader compilation and shader module creation
 //! - staging\_buffer: Provides an abstraction for staging buffers (used when transferring data from CPU- to GPU-only memory)
+//! - storage\_buffer: Provides an abstraction for shader storage buffers
 //! - surface: Provides an abstraction for the window surface and all related information
 //! - swapchain: Provides an abstraction for the creation of a default swapchain
 //! - sync: Provides a wrapper around synchronization structures (related to rendering)
@@ -81,7 +82,6 @@ pub mod descriptor_set_layout_builder;
 pub mod descriptor_set_logic;
 pub mod descriptor_set_logic_builder;
 pub mod descriptor_set_update_builder;
-pub mod dynamic_descriptor_buffer;
 pub mod egui_integration;
 pub mod frame_data;
 pub mod framebuffers;
@@ -98,12 +98,14 @@ pub mod render_pass;
 pub mod sampler;
 pub mod shader;
 pub mod staging_buffer;
+pub mod storage_buffer;
 pub mod surface;
 pub mod swapchain;
 pub mod sync;
 pub mod texture;
 pub mod typed_buffer;
 pub mod typed_image;
+pub mod uniform_buffer;
 pub mod util;
 
 use crate::render_context::RenderContext;
@@ -119,7 +121,6 @@ use self::creation_info::DataStructureCreationInfo;
 use self::creation_info::PresentModeInitMode;
 use self::debug::VerificationProvider;
 use self::depth_image::SetUpDepthImage;
-use self::dynamic_descriptor_buffer::DynamicDescriptorBuffer;
 use self::egui_integration::SetUpEguiIntegration;
 use self::frame_data::FrameData;
 use self::framebuffers::SetUpFramebuffers;
@@ -130,10 +131,12 @@ use self::render_pass::SetUpRenderPass;
 use self::sampler::SetUpSampler;
 use self::shader::CompiledShaderModule;
 use self::staging_buffer::SetUpStagingBuffer;
+use self::storage_buffer::SetUpStorageBuffer;
 use self::surface::SetUpSurfaceInfo;
 use self::swapchain::SetUpSwapchain;
 use self::texture::Texture;
 use self::typed_buffer::TypedAllocatedBuffer;
+use self::uniform_buffer::SetUpUniformBuffer;
 
 pub struct VulkanContext {
     pub entry: Entry,
@@ -712,16 +715,37 @@ impl VulkanContext {
         }
     }
 
-    pub fn allocate_dynamic_descriptor_uniform_buffer<T>(
-        &self,
-        count: usize,
-    ) -> crate::Result<DynamicDescriptorBuffer<T>> {
+    pub fn allocate_static_uniform_buffer<T>(&self) -> crate::Result<SetUpUniformBuffer<T>> {
         unsafe {
-            DynamicDescriptorBuffer::<T>::allocate_uniform_buffer(
+            SetUpUniformBuffer::<T>::allocate_static_uniform_buffer(
                 self.logical_device()?,
                 self.physical_device()?,
-                count,
                 &mut self.lock_allocator()?,
+            )
+        }
+    }
+
+    pub fn allocate_dynamic_uniform_buffer<T>(
+        &self,
+        count: usize,
+    ) -> crate::Result<SetUpUniformBuffer<T>> {
+        unsafe {
+            SetUpUniformBuffer::<T>::allocate_dynamic_uniform_buffer(
+                self.logical_device()?,
+                self.physical_device()?,
+                &mut self.lock_allocator()?,
+                count,
+            )
+        }
+    }
+
+    pub fn allocate_storage_buffer<T>(&self, count: usize) -> crate::Result<SetUpStorageBuffer<T>> {
+        unsafe {
+            SetUpStorageBuffer::<T>::allocate(
+                self.logical_device()?,
+                self.physical_device()?,
+                &mut self.lock_allocator()?,
+                count,
             )
         }
     }

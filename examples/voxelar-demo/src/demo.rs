@@ -8,7 +8,6 @@ use voxelar::vulkan::descriptor_set_layout_builder::DescriptorSetLayoutBuilder;
 use voxelar::vulkan::descriptor_set_logic::SetUpDescriptorSetLogic;
 use voxelar::vulkan::descriptor_set_logic_builder::DescriptorSetLogicBuilder;
 use voxelar::vulkan::descriptor_set_update_builder::DescriptorSetUpdateBuilder;
-use voxelar::vulkan::dynamic_descriptor_buffer::DynamicDescriptorBuffer;
 use voxelar::vulkan::egui_integration::SetUpEguiIntegration;
 use voxelar::vulkan::graphics_pipeline_builder::GraphicsPipelineBuilder;
 use voxelar::vulkan::per_frame::PerFrame;
@@ -18,6 +17,7 @@ use voxelar::vulkan::sampler::SetUpSampler;
 use voxelar::vulkan::shader::CompiledShaderModule;
 use voxelar::vulkan::texture::Texture;
 use voxelar::vulkan::typed_buffer::TypedAllocatedBuffer;
+use voxelar::vulkan::uniform_buffer::SetUpUniformBuffer;
 use voxelar::vulkan::VulkanContext;
 use voxelar::window::VoxelarWindow;
 use voxelar::winit::event::*;
@@ -38,8 +38,8 @@ pub struct DemoSceneBuffer {
 }
 
 pub struct DemoDescriptorBuffers {
-    camera_buffer: DynamicDescriptorBuffer<DemoCameraBuffer>,
-    scene_buffer: DynamicDescriptorBuffer<DemoSceneBuffer>,
+    camera_buffer: SetUpUniformBuffer<DemoCameraBuffer>,
+    scene_buffer: SetUpUniformBuffer<DemoSceneBuffer>,
 }
 
 pub struct PerFrameData {
@@ -106,9 +106,9 @@ impl Demo {
 
         let descriptor_buffers = DemoDescriptorBuffers {
             camera_buffer: vulkan_context
-                .allocate_dynamic_descriptor_uniform_buffer(vulkan_context.frame_overlap())?,
+                .allocate_dynamic_uniform_buffer(vulkan_context.frame_overlap())?,
             scene_buffer: vulkan_context
-                .allocate_dynamic_descriptor_uniform_buffer(vulkan_context.frame_overlap())?,
+                .allocate_dynamic_uniform_buffer(vulkan_context.frame_overlap())?,
         };
 
         let image = voxelar::vulkan::image::open("textures/brick.jpg")?.into_rgba8();
@@ -133,12 +133,12 @@ impl Demo {
                 let destination_set = descriptor_set_logic.get_set(0);
 
                 DescriptorSetUpdateBuilder::new()
-                    .add_dynamic_uniform_buffer_descriptor(
+                    .add_uniform_buffer_descriptor(
                         &descriptor_buffers.camera_buffer,
                         0,
                         vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC,
                     )?
-                    .add_dynamic_uniform_buffer_descriptor(
+                    .add_uniform_buffer_descriptor(
                         &descriptor_buffers.scene_buffer,
                         1,
                         vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC,

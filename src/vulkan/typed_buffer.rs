@@ -145,3 +145,11 @@ impl<T> TypedAllocatedBuffer<T> {
         self.buffer.destroy(logical_device, allocator)
     }
 }
+
+impl<T> std::ops::Deref for TypedAllocatedBuffer<T> {
+    type Target = AllocatedBuffer;
+
+    fn deref(&self) -> &Self::Target {
+        &self.buffer
+    }
+}
