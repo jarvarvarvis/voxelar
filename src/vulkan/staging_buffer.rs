@@ -19,7 +19,7 @@ impl<T> SetUpStagingBuffer<T> {
     pub unsafe fn allocate(
         logical_device: &SetUpLogicalDevice,
         allocator: &mut MutexGuard<Allocator>,
-        element_amount: u64,
+        element_amount: usize,
     ) -> crate::Result<Self> {
         let buffer = TypedAllocatedBuffer::allocate(
             logical_device,
@@ -42,7 +42,7 @@ impl<T> SetUpStagingBuffer<T> {
         T: Copy,
     {
         crate::verify!(
-            data.len() as u64 == self.buffer.element_amount,
+            data.len() == self.buffer.element_amount,
             "The provided data slice must have the same size as the source buffer"
         );
 

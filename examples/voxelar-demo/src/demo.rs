@@ -404,11 +404,11 @@ impl Demo {
                         let camera_buffer_offset = self
                             .descriptor_buffers
                             .scene_buffer
-                            .get_dynamic_offset(current_frame_index);
+                            .get_offset(current_frame_index);
                         let scene_buffer_offset = self
                             .descriptor_buffers
                             .camera_buffer
-                            .get_dynamic_offset(current_frame_index);
+                            .get_offset(current_frame_index);
 
                         device.cmd_bind_descriptor_sets(
                             draw_command_buffer,
@@ -416,7 +416,7 @@ impl Demo {
                             self.pipeline_layout.pipeline_layout,
                             0,
                             &current_descriptor_data.descriptor_set_logic.descriptor_sets,
-                            &[camera_buffer_offset, scene_buffer_offset],
+                            &[camera_buffer_offset as u32, scene_buffer_offset as u32],
                         );
 
                         device.cmd_draw_indexed(

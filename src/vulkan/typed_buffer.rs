@@ -13,7 +13,7 @@ use super::staging_buffer::SetUpStagingBuffer;
 
 pub struct TypedAllocatedBuffer<T> {
     pub buffer: AllocatedBuffer,
-    pub element_amount: u64,
+    pub element_amount: usize,
     phantom: PhantomData<T>,
 }
 
@@ -21,12 +21,12 @@ impl<T> TypedAllocatedBuffer<T> {
     pub unsafe fn allocate(
         logical_device: &SetUpLogicalDevice,
         allocator: &mut MutexGuard<Allocator>,
-        element_amount: u64,
+        element_amount: usize,
         usage: BufferUsageFlags,
         sharing_mode: SharingMode,
         memory_location: MemoryLocation,
     ) -> crate::Result<Self> {
-        let size = std::mem::size_of::<T>() as u64 * element_amount;
+        let size = std::mem::size_of::<T>() * element_amount;
         Ok(Self {
             buffer: AllocatedBuffer::allocate(
                 logical_device,
@@ -58,7 +58,7 @@ impl<T> TypedAllocatedBuffer<T> {
     pub unsafe fn allocate_vertex_buffer(
         logical_device: &SetUpLogicalDevice,
         allocator: &mut MutexGuard<Allocator>,
-        element_amount: u64,
+        element_amount: usize,
     ) -> crate::Result<Self>
     where
         T: Copy,
@@ -77,7 +77,7 @@ impl<T> TypedAllocatedBuffer<T> {
     pub unsafe fn allocate_index_buffer(
         logical_device: &SetUpLogicalDevice,
         allocator: &mut MutexGuard<Allocator>,
-        element_amount: u64,
+        element_amount: usize,
     ) -> crate::Result<Self>
     where
         T: Copy,
@@ -107,7 +107,7 @@ impl<T> TypedAllocatedBuffer<T> {
             let buffer_copy = BufferCopy::builder()
                 .dst_offset(0)
                 .src_offset(0)
-                .size(self.data_amount());
+                .size(self.data_amount() as u64);
 
             logical_device.cmd_copy_buffer(
                 setup_command_buffer.command_buffer,
@@ -133,8 +133,8 @@ impl<T> TypedAllocatedBuffer<T> {
         self.buffer.buffer
     }
 
-    pub fn data_amount(&self) -> u64 {
-        std::mem::size_of::<T>() as u64 * self.element_amount
+    pub fn data_amount(&self) -> usize {
+        std::mem::size_of::<T>() * self.element_amount
     }
 
     pub fn destroy(

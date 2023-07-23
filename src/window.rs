@@ -40,9 +40,9 @@ impl VoxelarWindow {
         self.window.set_title(title)
     }
 
-    pub fn get_size(&self) -> (i32, i32) {
-        let inner_size = self.window.inner_size();
-        (inner_size.width as i32, inner_size.height as i32)
+    pub fn get_size(&self) -> (u32, u32) {
+        let size = self.window.inner_size();
+        (size.width, size.height)
     }
 
     pub fn aspect_ratio(&self) -> f32 {

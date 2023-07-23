@@ -42,13 +42,13 @@ impl DescriptorSetUpdateBuilder {
         buffer: &AllocatedBuffer,
         destination_binding: u32,
         descriptor_type: DescriptorType,
-        offset: u64,
-        range: u64,
+        offset: usize,
+        range: usize,
     ) -> crate::Result<Self> {
         let descriptor_buffer_info = DescriptorBufferInfo::builder()
             .buffer(buffer.buffer)
-            .offset(offset)
-            .range(range);
+            .offset(offset as u64)
+            .range(range as u64);
 
         self.buffer_write_params
             .push(WriteBufferDescriptorSetParams {
@@ -66,7 +66,7 @@ impl DescriptorSetUpdateBuilder {
         destination_binding: u32,
         descriptor_type: DescriptorType,
     ) -> crate::Result<Self> {
-        let range = std::mem::size_of::<T>() as u64;
+        let range = std::mem::size_of::<T>();
         self.add_buffer_descriptor(
             &buffer.buffer,
             destination_binding,

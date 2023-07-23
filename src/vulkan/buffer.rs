@@ -29,13 +29,13 @@ impl AllocatedBuffer {
     pub unsafe fn allocate(
         logical_device: &SetUpLogicalDevice,
         allocator: &mut MutexGuard<Allocator>,
-        size: u64,
+        size: usize,
         usage: BufferUsageFlags,
         sharing_mode: SharingMode,
         memory_location: MemoryLocation,
     ) -> crate::Result<Self> {
         let buffer_info = BufferCreateInfo::builder()
-            .size(size)
+            .size(size as u64)
             .usage(usage)
             .sharing_mode(sharing_mode);
 

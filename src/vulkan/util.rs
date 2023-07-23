@@ -16,7 +16,7 @@ pub const unsafe fn transmute_as_u8_slice<T: Sized>(value: &T) -> &[u8] {
     std::slice::from_raw_parts((value as *const T) as *const u8, std::mem::size_of::<T>())
 }
 
-pub const fn pad_uniform_buffer_size(original_size: u64, alignment: u64) -> u64 {
+pub const fn pad_buffer_size_for_alignment(original_size: usize, alignment: usize) -> usize {
     if alignment > 0 {
         (original_size + alignment - 1) & !(alignment - 1)
     } else {

@@ -49,7 +49,7 @@ impl SetUpSurfaceInfo {
     pub fn update(
         &mut self,
         physical_device: &SetUpPhysicalDevice,
-        fallback_size: (i32, i32),
+        fallback_size: (u32, u32),
     ) -> crate::Result<()> {
         unsafe {
             self.surface_formats = Some(self.surface_loader.get_physical_device_surface_formats(

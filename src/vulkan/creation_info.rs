@@ -36,6 +36,6 @@ impl PresentModeInitMode {
 #[derive(Clone, Copy)]
 pub struct DataStructureCreationInfo {
     pub swapchain_present_mode: PresentModeInitMode,
-    pub frame_overlap: usize,
+    pub frame_overlap: u32,
     pub allocator_debug_settings: AllocatorDebugSettings,
 }

@@ -3,6 +3,7 @@
 //! This is the module that provides Vulkan-related abstractions and functionality.
 //!
 //! Module overview:
+//! - aligned\_buffer: Provides an abstraction for buffers with custom alignments
 //! - buffer: Provides an abstraction for GPU memory-allocated buffers
 //! - command\_buffer: Provides an abstraction for command buffers and access synchronization
 //! - command\_pool: Provides an abstraction for command buffer allocation
@@ -20,7 +21,7 @@
 //! - framebuffers: Provides an abstraction for framebuffer creation for each present image of a swapchain
 //! - graphics\_pipeline\_builder: Provides an abstraction for building Vulkan `Pipeline`s
 //! - image: Provides an abstraction for GPU memory-allocated images
-//! - image_view: Provides an abstraction for Vulkan image views
+//! - image\_view: Provides an abstraction for Vulkan image views
 //! - logical\_device: Provides a wrapper around logical Vulkan devices
 //! - per\_frame: Provides an abstraction for tracking data of each frame in double/triple/...-buffering scenarios; used with `FrameData` in this module
 //! - physical\_device: Provides an abstraction for finding a suitable `PhysicalDevice` for rendering, also queries important device information
@@ -68,6 +69,7 @@ use paste::paste;
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 use ash::vk::{KhrGetPhysicalDeviceProperties2Fn, KhrPortabilityEnumerationFn};
 
+pub mod aligned_buffer;
 pub mod buffer;
 pub mod command_buffer;
 pub mod command_pool;
@@ -379,12 +381,12 @@ impl VulkanContext {
         Ok(())
     }
 
-    pub fn create_per_frame_data(&mut self, frame_overlap: usize) -> crate::Result<()> {
+    pub fn create_per_frame_data(&mut self, frame_overlap: u32) -> crate::Result<()> {
         unsafe {
             let logical_device = self.logical_device()?;
             self.frames = PerFrame::try_init(
                 |_| FrameData::create_with_defaults(logical_device),
-                frame_overlap,
+                frame_overlap as usize,
             )?;
             Ok(())
         }
@@ -392,7 +394,7 @@ impl VulkanContext {
 
     pub fn create_default_data_structures(
         &mut self,
-        window_size: (i32, i32),
+        window_size: (u32, u32),
         creation_info: DataStructureCreationInfo,
     ) -> crate::Result<()> {
         self.find_usable_physical_device()?;
@@ -413,7 +415,7 @@ impl VulkanContext {
         Ok(())
     }
 
-    pub fn update_swapchain(&mut self, window_size: (i32, i32)) -> crate::Result<()> {
+    pub fn update_swapchain(&mut self, window_size: (u32, u32)) -> crate::Result<()> {
         let creation_info = self.last_creation_info.context(
             "No last creation info was set, so data structures can't be recreated".to_string(),
         )?;
@@ -493,12 +495,12 @@ impl VulkanContext {
 
     pub fn update_egui_integration_swapchain(
         &self,
-        window_size: (i32, i32),
+        window_size: (u32, u32),
         egui_integration: &mut SetUpEguiIntegration,
     ) -> crate::Result<()> {
         egui_integration.update_swapchain(
-            window_size.0 as u32,
-            window_size.1 as u32,
+            window_size.0,
+            window_size.1,
             self.swapchain()?,
             &self.surface_info,
         )
@@ -683,7 +685,7 @@ impl VulkanContext {
         data: &[T],
     ) -> crate::Result<TypedAllocatedBuffer<T>> {
         unsafe {
-            let data_amount = data.len() as u64;
+            let data_amount = data.len();
             let buffer = TypedAllocatedBuffer::<T>::allocate_vertex_buffer(
                 self.logical_device()?,
                 &mut self.lock_allocator()?,
@@ -699,7 +701,7 @@ impl VulkanContext {
         data: &[T],
     ) -> crate::Result<TypedAllocatedBuffer<T>> {
         unsafe {
-            let data_amount = data.len() as u64;
+            let data_amount = data.len();
             let buffer = TypedAllocatedBuffer::<T>::allocate_index_buffer(
                 self.logical_device()?,
                 &mut self.lock_allocator()?,
@@ -775,7 +777,7 @@ impl VulkanContext {
             let mut staging_buffer = SetUpStagingBuffer::allocate(
                 logical_device,
                 &mut self.lock_allocator()?,
-                element_amount as u64,
+                element_amount as usize,
             )?;
             staging_buffer.copy_from_slice(logical_device, data)?;
 

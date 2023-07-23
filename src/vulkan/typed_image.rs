@@ -81,10 +81,10 @@ impl<T> TypedAllocatedImage<T> {
         setup_command_buffer: &SetUpCommandBufferWithFence,
         image_subresource: ImageSubresourceLayers,
     ) -> crate::Result<()> {
-        let image_size = self.image.full_image_size() as u64;
+        let image_size = self.image.full_image_size();
         let staging_buffer_size = staging_buffer.buffer.element_amount;
         crate::verify!(
-            image_size == staging_buffer_size,
+            image_size as usize == staging_buffer_size,
             "The staging buffer must have the same size as the source buffer! Expected: {image_size}, got: {staging_buffer_size}"
         );
         unsafe {

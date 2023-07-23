@@ -13,7 +13,7 @@ pub struct SetUpCommandPool {
 impl SetUpCommandPool {
     pub unsafe fn create(
         logical_device: &SetUpLogicalDevice,
-        command_buffer_count: u32,
+        command_buffer_count: usize,
         level: CommandBufferLevel,
         command_buffer_fence_create_flags: FenceCreateFlags,
     ) -> crate::Result<Self> {
@@ -24,7 +24,7 @@ impl SetUpCommandPool {
         let pool = logical_device.create_command_pool(&pool_create_info, None)?;
 
         let command_buffer_allocate_info = CommandBufferAllocateInfo::builder()
-            .command_buffer_count(command_buffer_count)
+            .command_buffer_count(command_buffer_count as u32)
             .command_pool(pool)
             .level(level);
 
