@@ -1,10 +1,10 @@
 use ash::vk::{Framebuffer, FramebufferCreateInfo};
 
 use super::depth_image::SetUpDepthImage;
+use super::logical_device::SetUpLogicalDevice;
 use super::present_images::SetUpPresentImages;
 use super::render_pass::SetUpRenderPass;
 use super::surface::SetUpSurfaceInfo;
-use super::logical_device::SetUpLogicalDevice;
 
 pub struct SetUpFramebuffers {
     pub framebuffers: Vec<Framebuffer>,
@@ -32,9 +32,7 @@ impl SetUpFramebuffers {
                 .height(surface_extent.height)
                 .layers(1);
 
-            let framebuffer = logical_device
-                .device
-                .create_framebuffer(&frame_buffer_create_info, None)?;
+            let framebuffer = logical_device.create_framebuffer(&frame_buffer_create_info, None)?;
             framebuffers.push(framebuffer);
         }
 
@@ -44,9 +42,7 @@ impl SetUpFramebuffers {
     pub fn destroy(&mut self, logical_device: &SetUpLogicalDevice) {
         unsafe {
             for framebuffer in self.framebuffers.iter() {
-                logical_device
-                    .device
-                    .destroy_framebuffer(*framebuffer, None);
+                logical_device.destroy_framebuffer(*framebuffer, None);
             }
         }
     }

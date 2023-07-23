@@ -11,18 +11,15 @@ impl SetUpPipelineLayout {
         logical_device: &SetUpLogicalDevice,
         pipeline_layout_create_info: PipelineLayoutCreateInfo,
     ) -> crate::Result<Self> {
-        let pipeline_layout = logical_device
-            .device
-            .create_pipeline_layout(&pipeline_layout_create_info, None)?;
+        let pipeline_layout =
+            logical_device.create_pipeline_layout(&pipeline_layout_create_info, None)?;
 
         Ok(Self { pipeline_layout })
     }
 
     pub fn destroy(&mut self, logical_device: &SetUpLogicalDevice) {
         unsafe {
-            logical_device
-                .device
-                .destroy_pipeline_layout(self.pipeline_layout, None);
+            logical_device.destroy_pipeline_layout(self.pipeline_layout, None);
         }
     }
 }

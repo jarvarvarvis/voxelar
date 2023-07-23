@@ -35,9 +35,7 @@ impl CompiledShaderModule {
         let mut cursor = Cursor::new(&compiled_bytes);
         let code = read_spv(&mut cursor)?;
         let create_info = ShaderModuleCreateInfo::builder().code(&code);
-        let shader_module = logical_device
-            .device
-            .create_shader_module(&create_info, None)?;
+        let shader_module = logical_device.create_shader_module(&create_info, None)?;
         Ok(Self {
             shader_module,
             stage,
@@ -64,9 +62,7 @@ impl CompiledShaderModule {
 
     pub fn destroy(&mut self, logical_device: &SetUpLogicalDevice) {
         unsafe {
-            logical_device
-                .device
-                .destroy_shader_module(self.shader_module, None);
+            logical_device.destroy_shader_module(self.shader_module, None);
         }
     }
 }

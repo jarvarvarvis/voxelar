@@ -52,14 +52,17 @@ impl SetUpSurfaceInfo {
         fallback_size: (i32, i32),
     ) -> crate::Result<()> {
         unsafe {
-            self.surface_formats = Some(
-                self.surface_loader
-                    .get_physical_device_surface_formats(physical_device.device, self.surface)?,
-            );
+            self.surface_formats = Some(self.surface_loader.get_physical_device_surface_formats(
+                physical_device.physical_device,
+                self.surface,
+            )?);
 
             let surface_capabilities = self
                 .surface_loader
-                .get_physical_device_surface_capabilities(physical_device.device, self.surface)?;
+                .get_physical_device_surface_capabilities(
+                    physical_device.physical_device,
+                    self.surface,
+                )?;
 
             self.surface_extent = Some(match surface_capabilities.current_extent {
                 Extent2D {
@@ -77,7 +80,7 @@ impl SetUpSurfaceInfo {
             self.surface_present_modes = Some(
                 self.surface_loader
                     .get_physical_device_surface_present_modes(
-                        physical_device.device,
+                        physical_device.physical_device,
                         self.surface,
                     )?,
             );

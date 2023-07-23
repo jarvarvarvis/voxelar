@@ -58,10 +58,8 @@ impl AllocatedImage {
             .usage(image_usage)
             .sharing_mode(sharing_mode);
 
-        let image = logical_device
-            .device
-            .create_image(&image_create_info, None)?;
-        let image_memory_req = logical_device.device.get_image_memory_requirements(image);
+        let image = logical_device.create_image(&image_create_info, None)?;
+        let image_memory_req = logical_device.get_image_memory_requirements(image);
 
         let allocation = allocator.allocate(&AllocationCreateDesc {
             name: "image",
@@ -71,9 +69,7 @@ impl AllocatedImage {
             allocation_scheme: AllocationScheme::GpuAllocatorManaged,
         })?;
 
-        logical_device
-            .device
-            .bind_image_memory(image, allocation.memory(), allocation.offset())?;
+        logical_device.bind_image_memory(image, allocation.memory(), allocation.offset())?;
 
         Ok(Self {
             image,
@@ -108,7 +104,7 @@ impl AllocatedImage {
             .subresource_range(subresource_range);
 
         unsafe {
-            logical_device.device.cmd_pipeline_barrier(
+            logical_device.cmd_pipeline_barrier(
                 setup_command_buffer.command_buffer,
                 src_stage,
                 dst_stage,
@@ -126,7 +122,7 @@ impl AllocatedImage {
         allocator: &mut MutexGuard<Allocator>,
     ) -> crate::Result<()> {
         unsafe {
-            logical_device.device.destroy_image(self.image, None);
+            logical_device.destroy_image(self.image, None);
             if let Some(image_allocation) = self.allocation.take() {
                 allocator.free(image_allocation)?;
             }

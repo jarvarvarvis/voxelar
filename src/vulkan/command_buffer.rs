@@ -26,9 +26,7 @@ impl SetUpCommandBufferWithFence {
         fence_create_flags: FenceCreateFlags,
     ) -> crate::Result<Self> {
         let reuse_fence_create_info = FenceCreateInfo::builder().flags(fence_create_flags);
-        let reuse_fence = logical_device
-            .device
-            .create_fence(&reuse_fence_create_info, None)?;
+        let reuse_fence = logical_device.create_fence(&reuse_fence_create_info, None)?;
         Ok(SetUpCommandBufferWithFence {
             command_buffer,
             reuse_fence,
@@ -38,10 +36,8 @@ impl SetUpCommandBufferWithFence {
     /// This function waits for this `SetUpCommandBufferWithFence`'s reuse fence
     pub fn wait_for_fence(&self, logical_device: &SetUpLogicalDevice) -> crate::Result<()> {
         unsafe {
-            logical_device
-                .device
-                .wait_for_fences(&[self.reuse_fence], true, std::u64::MAX)?;
-            logical_device.device.reset_fences(&[self.reuse_fence])?;
+            logical_device.wait_for_fences(&[self.reuse_fence], true, std::u64::MAX)?;
+            logical_device.reset_fences(&[self.reuse_fence])?;
             Ok(())
         }
     }
@@ -49,7 +45,7 @@ impl SetUpCommandBufferWithFence {
     /// This function resets this `SetUpCommandBufferWithFence`'s reuse fence
     pub fn reset_fence(&self, logical_device: &SetUpLogicalDevice) -> crate::Result<()> {
         unsafe {
-            logical_device.device.reset_fences(&[self.reuse_fence])?;
+            logical_device.reset_fences(&[self.reuse_fence])?;
             Ok(())
         }
     }
@@ -61,9 +57,7 @@ impl SetUpCommandBufferWithFence {
         flags: CommandBufferResetFlags,
     ) -> crate::Result<()> {
         unsafe {
-            logical_device
-                .device
-                .reset_command_buffer(self.command_buffer, flags)?;
+            logical_device.reset_command_buffer(self.command_buffer, flags)?;
             Ok(())
         }
     }
@@ -81,13 +75,9 @@ impl SetUpCommandBufferWithFence {
         unsafe {
             let command_buffer_begin_info = CommandBufferBeginInfo::builder().flags(usage);
 
-            logical_device
-                .device
-                .begin_command_buffer(self.command_buffer, &command_buffer_begin_info)?;
+            logical_device.begin_command_buffer(self.command_buffer, &command_buffer_begin_info)?;
             f(&logical_device, &self)?;
-            logical_device
-                .device
-                .end_command_buffer(self.command_buffer)?;
+            logical_device.end_command_buffer(self.command_buffer)?;
 
             Ok(())
         }
@@ -141,8 +131,6 @@ impl SetUpCommandBufferWithFence {
         signal_semaphores: &[Semaphore],
     ) -> crate::Result<()> {
         unsafe {
-            let device = &logical_device.device;
-
             let submit_info = SubmitInfo::builder()
                 .wait_semaphores(wait_semaphores)
                 .wait_dst_stage_mask(wait_mask)
@@ -150,7 +138,7 @@ impl SetUpCommandBufferWithFence {
                 .signal_semaphores(signal_semaphores)
                 .build();
 
-            device.queue_submit(submit_queue, &[submit_info], self.reuse_fence)?;
+            logical_device.queue_submit(submit_queue, &[submit_info], self.reuse_fence)?;
 
             Ok(())
         }
@@ -159,7 +147,7 @@ impl SetUpCommandBufferWithFence {
     /// This function destroys this buffer's reuse fence.
     pub fn destroy(&mut self, logical_device: &SetUpLogicalDevice) {
         unsafe {
-            logical_device.device.destroy_fence(self.reuse_fence, None);
+            logical_device.destroy_fence(self.reuse_fence, None);
         }
     }
 }

@@ -20,16 +20,14 @@ impl SetUpSampler {
             .address_mode_v(sampler_address_mode)
             .address_mode_w(sampler_address_mode);
 
-        let sampler = logical_device
-            .device
-            .create_sampler(&sampler_create_info, None)?;
+        let sampler = logical_device.create_sampler(&sampler_create_info, None)?;
 
         Ok(Self { sampler })
     }
 
     pub fn destroy(&mut self, logical_device: &SetUpLogicalDevice) {
         unsafe {
-            logical_device.device.destroy_sampler(self.sampler, None);
+            logical_device.destroy_sampler(self.sampler, None);
         }
     }
 }

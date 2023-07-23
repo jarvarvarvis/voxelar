@@ -4,8 +4,8 @@ use ash::vk::PushConstantRange;
 use ash::vk::ShaderStageFlags;
 
 use super::descriptor_set_layout::SetUpDescriptorSetLayout;
-use super::pipeline_layout::SetUpPipelineLayout;
 use super::logical_device::SetUpLogicalDevice;
+use super::pipeline_layout::SetUpPipelineLayout;
 
 #[derive(Default)]
 pub struct PipelineLayoutBuilder<'builder> {
@@ -51,9 +51,10 @@ impl<'builder> PipelineLayoutBuilder<'builder> {
                 //         SetUpDescriptorSetLayouts has the same memory layout as a slice over
                 //         DescriptorSetLayouts.
                 pipeline_layout_create_info =
-                    pipeline_layout_create_info.set_layouts(
-                        std::mem::transmute::<&[SetUpDescriptorSetLayout], &[DescriptorSetLayout]>(set_layouts)
-                    );
+                    pipeline_layout_create_info.set_layouts(std::mem::transmute::<
+                        &[SetUpDescriptorSetLayout],
+                        &[DescriptorSetLayout],
+                    >(set_layouts));
             }
             SetUpPipelineLayout::create_from_build_info(
                 logical_device,

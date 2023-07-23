@@ -1,5 +1,5 @@
-use ash::vk::{DescriptorType, DescriptorSetLayout};
 use ash::vk::{DescriptorPoolCreateFlags, DescriptorPoolCreateInfo, DescriptorPoolSize};
+use ash::vk::{DescriptorSetLayout, DescriptorType};
 
 use crate::result::Context;
 
@@ -54,7 +54,9 @@ impl<'builder> DescriptorSetLogicBuilder<'builder> {
             SetUpDescriptorSetLogic::create(
                 logical_device,
                 *descriptor_pool_create_info,
-                std::mem::transmute::<&[SetUpDescriptorSetLayout], &[DescriptorSetLayout]>(set_layouts),
+                std::mem::transmute::<&[SetUpDescriptorSetLayout], &[DescriptorSetLayout]>(
+                    set_layouts,
+                ),
             )
         }
     }

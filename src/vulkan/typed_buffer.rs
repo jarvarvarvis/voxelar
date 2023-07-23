@@ -8,8 +8,8 @@ use gpu_allocator::MemoryLocation;
 
 use super::buffer::AllocatedBuffer;
 use super::command_buffer::SetUpCommandBufferWithFence;
-use super::staging_buffer::SetUpStagingBuffer;
 use super::logical_device::SetUpLogicalDevice;
+use super::staging_buffer::SetUpStagingBuffer;
 
 pub struct TypedAllocatedBuffer<T> {
     pub buffer: AllocatedBuffer,
@@ -108,7 +108,8 @@ impl<T> TypedAllocatedBuffer<T> {
                 .dst_offset(0)
                 .src_offset(0)
                 .size(self.data_amount());
-            logical_device.device.cmd_copy_buffer(
+
+            logical_device.cmd_copy_buffer(
                 setup_command_buffer.command_buffer,
                 staging_buffer.raw_buffer(),
                 self.raw_buffer(),

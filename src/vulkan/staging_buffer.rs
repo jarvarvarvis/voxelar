@@ -8,8 +8,8 @@ use ash::vk::{Buffer, BufferUsageFlags};
 use gpu_allocator::vulkan::Allocator;
 use gpu_allocator::MemoryLocation;
 
-use super::typed_buffer::TypedAllocatedBuffer;
 use super::logical_device::SetUpLogicalDevice;
+use super::typed_buffer::TypedAllocatedBuffer;
 
 pub struct SetUpStagingBuffer<T> {
     pub buffer: TypedAllocatedBuffer<T>,

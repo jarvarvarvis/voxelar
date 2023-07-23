@@ -11,9 +11,9 @@ use winit::event_loop::EventLoop;
 use crate::window::VoxelarWindow;
 
 use super::command_buffer::SetUpCommandBufferWithFence;
+use super::logical_device::SetUpLogicalDevice;
 use super::surface::SetUpSurfaceInfo;
 use super::swapchain::SetUpSwapchain;
-use super::logical_device::SetUpLogicalDevice;
 
 pub struct SetUpEguiIntegration {
     pub integration: ManuallyDrop<egui_winit_ash_integration::Integration<Arc<Mutex<Allocator>>>>,

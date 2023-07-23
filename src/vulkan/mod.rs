@@ -274,7 +274,7 @@ impl VulkanContext {
         let allocator = Allocator::new(&AllocatorCreateDesc {
             instance: self.instance.clone(),
             device: self.logical_device()?.device.clone(),
-            physical_device: self.physical_device()?.device,
+            physical_device: self.physical_device()?.physical_device,
             debug_settings,
             buffer_device_address: false,
         })?;
@@ -607,15 +607,13 @@ impl VulkanContext {
             .clear_values(clear_values);
 
         unsafe {
-            logical_device.device.cmd_begin_render_pass(
+            logical_device.cmd_begin_render_pass(
                 draw_command_buffer.command_buffer,
                 &render_pass_begin_info,
                 SubpassContents::INLINE,
             );
             render_pass_op()?;
-            logical_device
-                .device
-                .cmd_end_render_pass(draw_command_buffer.command_buffer);
+            logical_device.cmd_end_render_pass(draw_command_buffer.command_buffer);
         }
 
         Ok(())
@@ -805,9 +803,7 @@ impl VulkanContext {
     pub fn wait_for_present_queue(&self) -> crate::Result<()> {
         unsafe {
             let logical_device = self.logical_device()?;
-            logical_device
-                .device
-                .queue_wait_idle(logical_device.present_queue)?;
+            logical_device.queue_wait_idle(logical_device.present_queue)?;
             Ok(())
         }
     }

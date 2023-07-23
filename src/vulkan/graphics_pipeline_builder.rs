@@ -17,9 +17,9 @@ use ash::vk::{Rect2D, Viewport};
 
 use crate::result::Context;
 
+use super::logical_device::SetUpLogicalDevice;
 use super::pipeline_layout::SetUpPipelineLayout;
 use super::render_pass::SetUpRenderPass;
-use super::logical_device::SetUpLogicalDevice;
 
 #[derive(Default)]
 pub struct GraphicsPipelineBuilder {
@@ -190,7 +190,6 @@ impl GraphicsPipelineBuilder {
 
         unsafe {
             let graphics_pipeline = logical_device
-                .device
                 .create_graphics_pipelines(PipelineCache::null(), &[pipeline_create_info], None)
                 .map_err(|(_, err)| err)?;
             Ok(graphics_pipeline[0])

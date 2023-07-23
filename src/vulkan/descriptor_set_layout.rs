@@ -13,7 +13,6 @@ impl SetUpDescriptorSetLayout {
         descriptor_set_layout_create_info: DescriptorSetLayoutCreateInfo,
     ) -> crate::Result<Self> {
         let descriptor_set_layout = logical_device
-            .device
             .create_descriptor_set_layout(&descriptor_set_layout_create_info, None)?;
 
         Ok(Self {
@@ -23,9 +22,7 @@ impl SetUpDescriptorSetLayout {
 
     pub fn destroy(&mut self, logical_device: &SetUpLogicalDevice) {
         unsafe {
-            logical_device
-                .device
-                .destroy_descriptor_set_layout(self.descriptor_set_layout, None);
+            logical_device.destroy_descriptor_set_layout(self.descriptor_set_layout, None);
         }
     }
 }

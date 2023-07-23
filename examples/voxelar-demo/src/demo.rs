@@ -357,24 +357,23 @@ impl Demo {
                     draw_command_buffer,
                     &clear_values,
                     || {
-                        let vk_device = &device.device;
                         let draw_command_buffer = draw_command_buffer.command_buffer;
-                        vk_device.cmd_bind_pipeline(
+                        device.cmd_bind_pipeline(
                             draw_command_buffer,
                             vk::PipelineBindPoint::GRAPHICS,
                             graphics_pipeline,
                         );
 
-                        vk_device.cmd_set_viewport(draw_command_buffer, 0, &[self.viewport]);
-                        vk_device.cmd_set_scissor(draw_command_buffer, 0, &[self.scissor]);
+                        device.cmd_set_viewport(draw_command_buffer, 0, &[self.viewport]);
+                        device.cmd_set_scissor(draw_command_buffer, 0, &[self.scissor]);
 
-                        vk_device.cmd_bind_vertex_buffers(
+                        device.cmd_bind_vertex_buffers(
                             draw_command_buffer,
                             0,
                             &[self.vertex_buffer.raw_buffer()],
                             &[0],
                         );
-                        vk_device.cmd_bind_index_buffer(
+                        device.cmd_bind_index_buffer(
                             draw_command_buffer,
                             self.index_buffer.raw_buffer(),
                             0,
@@ -411,7 +410,7 @@ impl Demo {
                             .camera_buffer
                             .get_dynamic_offset(current_frame_index);
 
-                        vk_device.cmd_bind_descriptor_sets(
+                        device.cmd_bind_descriptor_sets(
                             draw_command_buffer,
                             vk::PipelineBindPoint::GRAPHICS,
                             self.pipeline_layout.pipeline_layout,
@@ -420,7 +419,7 @@ impl Demo {
                             &[camera_buffer_offset, scene_buffer_offset],
                         );
 
-                        vk_device.cmd_draw_indexed(
+                        device.cmd_draw_indexed(
                             draw_command_buffer,
                             self.index_count as u32,
                             1,
@@ -495,9 +494,8 @@ impl Demo {
                 descriptor_set_layout.destroy(logical_device);
             }
 
-            let device = &logical_device.device;
             for pipeline in self.pipelines.iter() {
-                device.destroy_pipeline(*pipeline, None);
+                logical_device.destroy_pipeline(*pipeline, None);
             }
             self.pipeline_layout.destroy(logical_device);
 

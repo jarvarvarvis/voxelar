@@ -13,9 +13,9 @@ use gpu_allocator::vulkan::Allocator;
 
 use super::command_buffer::SetUpCommandBufferWithFence;
 use super::image_view::SetUpImageView;
+use super::logical_device::SetUpLogicalDevice;
 use super::staging_buffer::SetUpStagingBuffer;
 use super::typed_image::TypedAllocatedImage;
-use super::logical_device::SetUpLogicalDevice;
 
 pub struct Texture<T> {
     pub image: TypedAllocatedImage<T>,

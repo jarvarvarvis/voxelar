@@ -8,8 +8,8 @@ use ash::vk::{SwapchainCreateInfoKHR, SwapchainKHR};
 use ash::Instance;
 
 use super::creation_info::PresentModeInitMode;
-use super::surface::SetUpSurfaceInfo;
 use super::logical_device::SetUpLogicalDevice;
+use super::surface::SetUpSurfaceInfo;
 
 pub struct SetUpSwapchain {
     pub swapchain_loader: Swapchain,
@@ -31,7 +31,7 @@ impl SetUpSwapchain {
         logical_device: &SetUpLogicalDevice,
         old_swapchain: Option<&SetUpSwapchain>,
     ) -> crate::Result<Self> {
-        let swapchain_loader = Swapchain::new(&instance, &logical_device.device);
+        let swapchain_loader = Swapchain::new(&instance, &logical_device);
 
         let surface_format = surface_info.surface_format(0)?;
         let surface_extent = surface_info.surface_extent()?;

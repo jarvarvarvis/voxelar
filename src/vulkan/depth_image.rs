@@ -6,16 +6,16 @@ use ash::vk::Format;
 use ash::vk::SharingMode;
 use ash::vk::{AccessFlags, PipelineStageFlags, SampleCountFlags};
 use ash::vk::{
-    ImageAspectFlags, ImageLayout, ImageSubresourceRange, ImageTiling,
-    ImageType, ImageUsageFlags, ImageViewType,
+    ImageAspectFlags, ImageLayout, ImageSubresourceRange, ImageTiling, ImageType, ImageUsageFlags,
+    ImageViewType,
 };
 use gpu_allocator::vulkan::*;
 
 use super::command_buffer::SetUpCommandBufferWithFence;
 use super::image::AllocatedImage;
 use super::image_view::SetUpImageView;
-use super::surface::SetUpSurfaceInfo;
 use super::logical_device::SetUpLogicalDevice;
+use super::surface::SetUpSurfaceInfo;
 
 pub struct SetUpDepthImage {
     pub depth_image: AllocatedImage,
@@ -101,7 +101,8 @@ impl SetUpDepthImage {
             setup_command_buffer,
             Self::create_default_subresource_range(),
             AccessFlags::empty(),
-            AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE | AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ,
+            AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE
+                | AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ,
             ImageLayout::UNDEFINED,
             ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
             PipelineStageFlags::BOTTOM_OF_PIPE,

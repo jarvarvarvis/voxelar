@@ -39,8 +39,8 @@ impl AllocatedBuffer {
             .usage(usage)
             .sharing_mode(sharing_mode);
 
-        let buffer = logical_device.device.create_buffer(&buffer_info, None)?;
-        let memory_requirements = logical_device.device.get_buffer_memory_requirements(buffer);
+        let buffer = logical_device.create_buffer(&buffer_info, None)?;
+        let memory_requirements = logical_device.get_buffer_memory_requirements(buffer);
 
         let buffer_allocation = allocator.allocate(&AllocationCreateDesc {
             name: "buffer",
@@ -50,7 +50,7 @@ impl AllocatedBuffer {
             allocation_scheme: AllocationScheme::GpuAllocatorManaged,
         })?;
 
-        logical_device.device.bind_buffer_memory(
+        logical_device.bind_buffer_memory(
             buffer,
             buffer_allocation.memory(),
             buffer_allocation.offset(),
@@ -64,11 +64,7 @@ impl AllocatedBuffer {
 
     /// This function returns the memory requirements of the internal buffer.
     pub fn get_buffer_memory_req(&self, logical_device: &SetUpLogicalDevice) -> MemoryRequirements {
-        unsafe {
-            logical_device
-                .device
-                .get_buffer_memory_requirements(self.buffer)
-        }
+        unsafe { logical_device.get_buffer_memory_requirements(self.buffer) }
     }
 
     /// Returns a reference to this buffer's allocation.
@@ -95,7 +91,7 @@ impl AllocatedBuffer {
             if let Some(buffer_allocation) = self.allocation.take() {
                 allocator.free(buffer_allocation)?;
             }
-            logical_device.device.destroy_buffer(self.buffer, None);
+            logical_device.destroy_buffer(self.buffer, None);
             Ok(())
         }
     }

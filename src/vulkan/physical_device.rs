@@ -15,7 +15,7 @@ use crate::result::Context;
 use super::surface::SetUpSurfaceInfo;
 
 pub struct SetUpPhysicalDevice {
-    pub device: PhysicalDevice,
+    pub physical_device: PhysicalDevice,
     pub device_properties: PhysicalDeviceProperties,
     pub device_memory_properties: PhysicalDeviceMemoryProperties,
     pub device_features: PhysicalDeviceFeatures,
@@ -81,7 +81,7 @@ impl SetUpPhysicalDevice {
             }
         });
 
-        let (device, queue_family_index) = *supported_physical_devices
+        let (physical_device, queue_family_index) = *supported_physical_devices
             .iter()
             .max_by_key(|(pdevice, _)| {
                 let properties = instance.get_physical_device_memory_properties(*pdevice);
@@ -94,12 +94,13 @@ impl SetUpPhysicalDevice {
             })
             .context("Unable to find usable physical device".to_string())?;
 
-        let device_memory_properties = instance.get_physical_device_memory_properties(device);
-        let device_properties = instance.get_physical_device_properties(device);
-        let device_features = instance.get_physical_device_features(device);
+        let device_memory_properties =
+            instance.get_physical_device_memory_properties(physical_device);
+        let device_properties = instance.get_physical_device_properties(physical_device);
+        let device_features = instance.get_physical_device_features(physical_device);
 
         Ok(Self {
-            device,
+            physical_device,
             device_memory_properties,
             device_properties,
             device_features,
@@ -130,4 +131,12 @@ impl SetUpPhysicalDevice {
 
 fn memory_type_supports_flags(memory_type: MemoryType, flags: MemoryPropertyFlags) -> bool {
     memory_type.property_flags & flags == flags
+}
+
+impl std::ops::Deref for SetUpPhysicalDevice {
+    type Target = PhysicalDevice;
+
+    fn deref(&self) -> &Self::Target {
+        &self.physical_device
+    }
 }

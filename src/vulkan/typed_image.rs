@@ -15,8 +15,8 @@ use gpu_allocator::vulkan::Allocator;
 
 use super::command_buffer::SetUpCommandBufferWithFence;
 use super::image::AllocatedImage;
-use super::staging_buffer::SetUpStagingBuffer;
 use super::logical_device::SetUpLogicalDevice;
+use super::staging_buffer::SetUpStagingBuffer;
 
 pub struct TypedAllocatedImage<T> {
     pub image: AllocatedImage,
@@ -93,7 +93,7 @@ impl<T> TypedAllocatedImage<T> {
                 .image_subresource(image_subresource)
                 .image_extent(self.image.image_extent);
 
-            logical_device.device.cmd_copy_buffer_to_image(
+            logical_device.cmd_copy_buffer_to_image(
                 setup_command_buffer.command_buffer,
                 staging_buffer.raw_buffer(),
                 self.raw_image(),

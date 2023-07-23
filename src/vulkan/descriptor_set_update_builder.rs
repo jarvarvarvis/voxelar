@@ -7,10 +7,10 @@ use ash::vk::{DescriptorImageInfo, ImageLayout};
 use super::buffer::AllocatedBuffer;
 use super::dynamic_descriptor_buffer::DynamicDescriptorBuffer;
 use super::image_view::SetUpImageView;
+use super::logical_device::SetUpLogicalDevice;
 use super::sampler::SetUpSampler;
 use super::texture::Texture;
 use super::typed_buffer::TypedAllocatedBuffer;
-use super::logical_device::SetUpLogicalDevice;
 
 #[derive(Debug)]
 pub struct WriteBufferDescriptorSetParams {
@@ -155,7 +155,7 @@ impl DescriptorSetUpdateBuilder {
                 writes.push(write);
             }
 
-            logical_device.device.update_descriptor_sets(&writes, &[]);
+            logical_device.update_descriptor_sets(&writes, &[]);
 
             Ok(())
         }

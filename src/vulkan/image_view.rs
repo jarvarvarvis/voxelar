@@ -21,18 +21,14 @@ impl SetUpImageView {
             .subresource_range(subresource_range)
             .image(image);
 
-        let image_view = logical_device
-            .device
-            .create_image_view(&image_view_info, None)?;
+        let image_view = logical_device.create_image_view(&image_view_info, None)?;
 
         Ok(Self { image_view })
     }
 
     pub fn destroy(&mut self, logical_device: &SetUpLogicalDevice) {
         unsafe {
-            logical_device
-                .device
-                .destroy_image_view(self.image_view, None);
+            logical_device.destroy_image_view(self.image_view, None);
         }
     }
 }

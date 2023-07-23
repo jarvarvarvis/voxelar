@@ -6,8 +6,8 @@ use ash::vk::Queue;
 
 use super::command_buffer::SetUpCommandBufferWithFence;
 use super::command_pool::SetUpCommandPool;
-use super::sync::RenderingSyncPrimitives;
 use super::logical_device::SetUpLogicalDevice;
+use super::sync::RenderingSyncPrimitives;
 
 pub struct FrameData {
     pub sync_primitives: RenderingSyncPrimitives,

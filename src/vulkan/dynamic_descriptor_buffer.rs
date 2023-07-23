@@ -8,8 +8,8 @@ use gpu_allocator::vulkan::Allocator;
 use gpu_allocator::MemoryLocation;
 
 use super::buffer::AllocatedBuffer;
-use super::physical_device::SetUpPhysicalDevice;
 use super::logical_device::SetUpLogicalDevice;
+use super::physical_device::SetUpPhysicalDevice;
 
 pub struct DynamicDescriptorBuffer<T> {
     pub buffer: AllocatedBuffer,
@@ -76,9 +76,7 @@ impl<T> DynamicDescriptorBuffer<T> {
             .offset(self.buffer.allocation()?.offset() + offset as u64)
             .build();
 
-        logical_device
-            .device
-            .flush_mapped_memory_ranges(&[memory_range])?;
+        logical_device.flush_mapped_memory_ranges(&[memory_range])?;
         Ok(())
     }
 

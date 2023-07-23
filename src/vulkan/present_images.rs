@@ -3,9 +3,9 @@ use ash::vk::{
     Image, ImageAspectFlags, ImageSubresourceRange, ImageView, ImageViewCreateInfo, ImageViewType,
 };
 
+use super::logical_device::SetUpLogicalDevice;
 use super::surface::SetUpSurfaceInfo;
 use super::swapchain::SetUpSwapchain;
-use super::logical_device::SetUpLogicalDevice;
 
 pub struct SetUpPresentImages {
     pub present_images: Vec<Image>,
@@ -20,7 +20,6 @@ impl SetUpPresentImages {
         components: ComponentMapping,
         subresource_range: ImageSubresourceRange,
     ) -> crate::Result<Self> {
-        let device = &logical_device.device;
         let present_images = swapchain
             .swapchain_loader
             .get_swapchain_images(swapchain.swapchain)?;
@@ -35,7 +34,7 @@ impl SetUpPresentImages {
                 .components(components)
                 .subresource_range(subresource_range)
                 .image(*image);
-            let image_view = device.create_image_view(&image_view_create_info, None)?;
+            let image_view = logical_device.create_image_view(&image_view_create_info, None)?;
             present_image_views.push(image_view);
         }
 
@@ -72,10 +71,10 @@ impl SetUpPresentImages {
         )
     }
 
-    pub fn destroy(&mut self, device: &SetUpLogicalDevice) {
+    pub fn destroy(&mut self, logical_device: &SetUpLogicalDevice) {
         unsafe {
             for image_view in self.present_image_views.iter() {
-                device.device.destroy_image_view(*image_view, None);
+                logical_device.destroy_image_view(*image_view, None);
             }
         }
     }

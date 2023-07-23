@@ -7,8 +7,8 @@ use ash::vk::{PipelineBindPoint, PipelineStageFlags};
 use ash::vk::{RenderPass, RenderPassCreateInfo};
 use ash::vk::{SampleCountFlags, SubpassDependency, SubpassDescription};
 
-use super::surface::SetUpSurfaceInfo;
 use super::logical_device::SetUpLogicalDevice;
+use super::surface::SetUpSurfaceInfo;
 
 pub struct SetUpRenderPass {
     pub render_pass: RenderPass,
@@ -26,9 +26,7 @@ impl SetUpRenderPass {
             .subpasses(subpasses)
             .dependencies(subpass_dependencies);
 
-        let render_pass = logical_device
-            .device
-            .create_render_pass(&renderpass_create_info, None)?;
+        let render_pass = logical_device.create_render_pass(&renderpass_create_info, None)?;
 
         Ok(Self { render_pass })
     }
@@ -108,9 +106,7 @@ impl SetUpRenderPass {
 
     pub fn destroy(&mut self, logical_device: &SetUpLogicalDevice) {
         unsafe {
-            logical_device
-                .device
-                .destroy_render_pass(self.render_pass, None);
+            logical_device.destroy_render_pass(self.render_pass, None);
         }
     }
 }

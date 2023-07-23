@@ -21,18 +21,15 @@ impl SetUpCommandPool {
             .flags(CommandPoolCreateFlags::RESET_COMMAND_BUFFER)
             .queue_family_index(logical_device.queue_family_index);
 
-        let pool = logical_device
-            .device
-            .create_command_pool(&pool_create_info, None)?;
+        let pool = logical_device.create_command_pool(&pool_create_info, None)?;
 
         let command_buffer_allocate_info = CommandBufferAllocateInfo::builder()
             .command_buffer_count(command_buffer_count)
             .command_pool(pool)
             .level(level);
 
-        let just_command_buffers = logical_device
-            .device
-            .allocate_command_buffers(&command_buffer_allocate_info)?;
+        let just_command_buffers =
+            logical_device.allocate_command_buffers(&command_buffer_allocate_info)?;
 
         let mut command_buffers = Vec::with_capacity(just_command_buffers.len());
         for command_buffer in just_command_buffers {
@@ -59,7 +56,7 @@ impl SetUpCommandPool {
         flags: CommandPoolResetFlags,
     ) -> crate::Result<()> {
         unsafe {
-            logical_device.device.reset_command_pool(self.pool, flags)?;
+            logical_device.reset_command_pool(self.pool, flags)?;
             Ok(())
         }
     }
@@ -73,7 +70,7 @@ impl SetUpCommandPool {
             for command_buffer in self.command_buffers.iter_mut() {
                 command_buffer.destroy(&logical_device);
             }
-            logical_device.device.destroy_command_pool(self.pool, None);
+            logical_device.destroy_command_pool(self.pool, None);
         }
     }
 }

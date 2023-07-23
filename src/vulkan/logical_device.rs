@@ -18,13 +18,13 @@ pub struct SetUpLogicalDevice {
 impl SetUpLogicalDevice {
     pub unsafe fn create(
         instance: &Instance,
-        physical_device_info: &SetUpPhysicalDevice,
+        physical_device: &SetUpPhysicalDevice,
         device_extension_names_raw: &[*const i8],
         features: PhysicalDeviceFeatures,
         priorities: &[f32],
     ) -> crate::Result<Self> {
         let queue_info = DeviceQueueCreateInfo::builder()
-            .queue_family_index(physical_device_info.queue_family_index)
+            .queue_family_index(physical_device.queue_family_index)
             .queue_priorities(&priorities);
 
         let device_create_info = DeviceCreateInfo::builder()
@@ -32,15 +32,14 @@ impl SetUpLogicalDevice {
             .enabled_extension_names(&device_extension_names_raw)
             .enabled_features(&features);
 
-        let device =
-            instance.create_device(physical_device_info.device, &device_create_info, None)?;
+        let device = instance.create_device(**physical_device, &device_create_info, None)?;
 
-        let present_queue = device.get_device_queue(physical_device_info.queue_family_index, 0);
+        let present_queue = device.get_device_queue(physical_device.queue_family_index, 0);
 
         Ok(Self {
             device,
             present_queue,
-            queue_family_index: physical_device_info.queue_family_index,
+            queue_family_index: physical_device.queue_family_index,
         })
     }
 
@@ -70,14 +69,22 @@ impl SetUpLogicalDevice {
 
     pub fn wait(&self) -> crate::Result<()> {
         unsafe {
-            self.device.device_wait_idle()?;
+            self.device_wait_idle()?;
             Ok(())
         }
     }
 
     pub fn destroy(&mut self) {
         unsafe {
-            self.device.destroy_device(None);
+            self.destroy_device(None);
         }
+    }
+}
+
+impl std::ops::Deref for SetUpLogicalDevice {
+    type Target = Device;
+
+    fn deref(&self) -> &Self::Target {
+        &self.device
     }
 }
