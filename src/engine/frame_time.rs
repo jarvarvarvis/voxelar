@@ -1,4 +1,4 @@
-//! This is a module that provides frame count, FPS and delta time measurement functionality in the
+//! This is a module that provides frame count, FPS and frame time measurement functionality in the
 //! form of a `FrameTimeManager` struct.
 //!
 //! # Examples
@@ -13,7 +13,6 @@
 //!     let delta_time = frame_time_manager.delta_time();
 //!
 //!     println!("FPS: {}", fps);
-//!     println!("Delta time: {}", delta_time);
 //!
 //!     // Do your rendering here...
 //!
@@ -35,11 +34,6 @@ pub struct FrameTimeManager {
     // Frame counters
     frames: u64,
     total_frames: u128,
-
-    // Delta time
-    next_delta_time_stamp: f64,
-    last_delta_time_stamp: f64,
-    delta_time: f64,
 }
 
 impl FrameTimeManager {
@@ -55,10 +49,6 @@ impl FrameTimeManager {
 
             frames: 0,
             total_frames: 0,
-
-            next_delta_time_stamp: 0.0,
-            last_delta_time_stamp: context.current_time(),
-            delta_time: 0.0,
         }
     }
 
@@ -76,11 +66,6 @@ impl FrameTimeManager {
             self.frames = 0;
         }
 
-        // Measure delta time
-        self.next_delta_time_stamp = context.current_time();
-        self.delta_time = self.next_delta_time_stamp - self.last_delta_time_stamp;
-        self.last_delta_time_stamp = self.next_delta_time_stamp;
-
         // Update frame counts
         self.frames += 1;
         self.total_frames += 1;
@@ -88,11 +73,6 @@ impl FrameTimeManager {
 
     pub(crate) fn frame_time_diff(&self) -> f64 {
         self.next_frame_time_stamp - self.last_frame_time_stamp
-    }
-
-    /// Returns the current delta time value.
-    pub fn delta_time(&self) -> f64 {
-        self.delta_time
     }
 
     /// Returns the total number of frames that the `FrameTimeManager` has counted.
@@ -108,5 +88,12 @@ impl FrameTimeManager {
     /// Returns the current FPS value.
     pub fn fps(&self) -> f64 {
         self.fps
+    }
+
+    /// Returns the average time per frame in floating point seconds.
+    ///
+    /// A value of 1.0 returned from this function is equal to one second.
+    pub fn time_per_frame(&self) -> f64 {
+        1.0 / self.fps
     }
 }
