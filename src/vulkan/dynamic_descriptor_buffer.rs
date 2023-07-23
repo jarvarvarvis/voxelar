@@ -9,7 +9,7 @@ use gpu_allocator::MemoryLocation;
 
 use super::buffer::AllocatedBuffer;
 use super::physical_device::SetUpPhysicalDevice;
-use super::virtual_device::SetUpVirtualDevice;
+use super::logical_device::SetUpLogicalDevice;
 
 pub struct DynamicDescriptorBuffer<T> {
     pub buffer: AllocatedBuffer,
@@ -19,7 +19,7 @@ pub struct DynamicDescriptorBuffer<T> {
 
 impl<T> DynamicDescriptorBuffer<T> {
     pub unsafe fn allocate(
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         physical_device: &SetUpPhysicalDevice,
         allocator: &mut MutexGuard<Allocator>,
         count: usize,
@@ -35,7 +35,7 @@ impl<T> DynamicDescriptorBuffer<T> {
         let aligned_size_of_type = super::util::pad_uniform_buffer_size(size, alignment);
         Ok(Self {
             buffer: AllocatedBuffer::allocate(
-                virtual_device,
+                logical_device,
                 allocator,
                 count as u64 * aligned_size_of_type,
                 usage,
@@ -48,13 +48,13 @@ impl<T> DynamicDescriptorBuffer<T> {
     }
 
     pub unsafe fn allocate_uniform_buffer(
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         physical_device: &SetUpPhysicalDevice,
         count: usize,
         allocator: &mut MutexGuard<Allocator>,
     ) -> crate::Result<Self> {
         Self::allocate(
-            virtual_device,
+            logical_device,
             physical_device,
             allocator,
             count,
@@ -66,7 +66,7 @@ impl<T> DynamicDescriptorBuffer<T> {
 
     pub unsafe fn flush_memory(
         &self,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         index: usize,
     ) -> crate::Result<()> {
         let offset = self.get_dynamic_offset(index);
@@ -76,7 +76,7 @@ impl<T> DynamicDescriptorBuffer<T> {
             .offset(self.buffer.allocation()?.offset() + offset as u64)
             .build();
 
-        virtual_device
+        logical_device
             .device
             .flush_mapped_memory_ranges(&[memory_range])?;
         Ok(())
@@ -88,7 +88,7 @@ impl<T> DynamicDescriptorBuffer<T> {
 
     pub unsafe fn store_at(
         &self,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         value: T,
         index: usize,
     ) -> crate::Result<()> {
@@ -99,7 +99,7 @@ impl<T> DynamicDescriptorBuffer<T> {
         let ptr = ptr.cast::<u8>().offset(offset as isize).cast();
         *ptr = value;
 
-        self.flush_memory(virtual_device, index)?;
+        self.flush_memory(logical_device, index)?;
         Ok(())
     }
 
@@ -109,9 +109,9 @@ impl<T> DynamicDescriptorBuffer<T> {
 
     pub fn destroy(
         &mut self,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         allocator: &mut MutexGuard<Allocator>,
     ) -> crate::Result<()> {
-        self.buffer.destroy(virtual_device, allocator)
+        self.buffer.destroy(logical_device, allocator)
     }
 }

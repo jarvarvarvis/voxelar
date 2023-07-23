@@ -13,7 +13,7 @@ use ash::vk::{
 
 use crate::result::Context;
 
-use super::virtual_device::SetUpVirtualDevice;
+use super::logical_device::SetUpLogicalDevice;
 
 lazy_static! {
     static ref SHADERC_COMPILER: Compiler = Compiler::new().unwrap();
@@ -28,14 +28,14 @@ pub struct CompiledShaderModule {
 impl CompiledShaderModule {
     pub unsafe fn create(
         compiled_bytes: Vec<u8>,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         stage: ShaderStageFlags,
         entry_name: CString,
     ) -> crate::Result<Self> {
         let mut cursor = Cursor::new(&compiled_bytes);
         let code = read_spv(&mut cursor)?;
         let create_info = ShaderModuleCreateInfo::builder().code(&code);
-        let shader_module = virtual_device
+        let shader_module = logical_device
             .device
             .create_shader_module(&create_info, None)?;
         Ok(Self {
@@ -47,10 +47,10 @@ impl CompiledShaderModule {
 
     pub unsafe fn create_shader_of_stage(
         compiled_bytes: Vec<u8>,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         stage: ShaderStageFlags,
     ) -> crate::Result<Self> {
-        Self::create(compiled_bytes, virtual_device, stage, CString::new("main")?)
+        Self::create(compiled_bytes, logical_device, stage, CString::new("main")?)
     }
 
     pub fn get_stage_create_info(&self) -> PipelineShaderStageCreateInfo {
@@ -62,9 +62,9 @@ impl CompiledShaderModule {
         }
     }
 
-    pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice) {
+    pub fn destroy(&mut self, logical_device: &SetUpLogicalDevice) {
         unsafe {
-            virtual_device
+            logical_device
                 .device
                 .destroy_shader_module(self.shader_module, None);
         }

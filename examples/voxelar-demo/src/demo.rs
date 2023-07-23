@@ -80,7 +80,7 @@ impl Demo {
         egui_integration: SetUpEguiIntegration,
     ) -> crate::Result<Self> {
         let render_pass = vulkan_context.render_pass()?;
-        let virtual_device = vulkan_context.virtual_device()?;
+        let logical_device = vulkan_context.logical_device()?;
 
         let global_set_layout = DescriptorSetLayoutBuilder::new()
             .add_binding(
@@ -101,7 +101,7 @@ impl Demo {
                 vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
                 vk::ShaderStageFlags::FRAGMENT,
             )
-            .build(virtual_device)?;
+            .build(logical_device)?;
         let descriptor_set_layouts = vec![global_set_layout];
 
         let descriptor_buffers = DemoDescriptorBuffers {
@@ -129,7 +129,7 @@ impl Demo {
                     .add_pool_size(vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC, 2)
                     .add_pool_size(vk::DescriptorType::COMBINED_IMAGE_SAMPLER, 1)
                     .set_layouts(&descriptor_set_layouts)
-                    .build(virtual_device)?;
+                    .build(logical_device)?;
                 let destination_set = descriptor_set_logic.get_set(0);
 
                 DescriptorSetUpdateBuilder::new()
@@ -149,7 +149,7 @@ impl Demo {
                         2,
                         vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
                     )?
-                    .update(virtual_device, destination_set)?;
+                    .update(logical_device, destination_set)?;
 
                 Ok(PerFrameData {
                     descriptor_set_logic,
@@ -160,7 +160,7 @@ impl Demo {
 
         let pipeline_layout = PipelineLayoutBuilder::new()
             .set_layouts(&descriptor_set_layouts)
-            .build(virtual_device)?;
+            .build(logical_device)?;
 
         let surface_resolution = vulkan_context.get_surface_extent()?;
         let surface_width = surface_resolution.width;
@@ -224,7 +224,7 @@ impl Demo {
             .add_dynamic_state(vk::DynamicState::SCISSOR)
             .viewport(viewport)
             .scissor(scissor)
-            .build(&virtual_device, &render_pass, &pipeline_layout)?;
+            .build(&logical_device, &render_pass, &pipeline_layout)?;
 
         Ok(Self {
             recreate_swapchain: false,
@@ -433,18 +433,25 @@ impl Demo {
                     },
                 )?;
 
-                self.egui_integration
-                    .draw(&window, draw_command_buffer, present_index, |integration| {
+                self.egui_integration.draw(
+                    &window,
+                    draw_command_buffer,
+                    present_index,
+                    |integration| {
                         let integration = &integration.integration;
                         let ctx = integration.context();
 
                         use voxelar::vulkan::egui;
                         egui::Window::new("Engine Info").show(&ctx, |ui| {
                             ui.label(format!("FPS: {:.4}", self.frame_time_manager.fps()));
-                            ui.label(format!("Delta Time: {:.4}", self.frame_time_manager.delta_time()));
+                            ui.label(format!(
+                                "Delta Time: {:.4}",
+                                self.frame_time_manager.delta_time()
+                            ));
                         });
                         Ok(())
-                    })?;
+                    },
+                )?;
 
                 Ok(())
             })?;
@@ -465,9 +472,9 @@ impl Demo {
     }
 
     pub fn destroy(&mut self, vulkan_context: &VulkanContext) -> crate::Result<()> {
-        let virtual_device = vulkan_context.virtual_device()?;
+        let logical_device = vulkan_context.logical_device()?;
 
-        virtual_device.wait()?;
+        logical_device.wait()?;
         self.egui_integration.destroy();
 
         unsafe {
@@ -475,33 +482,33 @@ impl Demo {
 
             self.descriptor_buffers
                 .camera_buffer
-                .destroy(virtual_device, &mut allocator)?;
+                .destroy(logical_device, &mut allocator)?;
             self.descriptor_buffers
                 .scene_buffer
-                .destroy(virtual_device, &mut allocator)?;
+                .destroy(logical_device, &mut allocator)?;
 
             for descriptor_data in self.per_frame_data.iter_mut() {
-                descriptor_data.descriptor_set_logic.destroy(virtual_device);
+                descriptor_data.descriptor_set_logic.destroy(logical_device);
             }
 
             for descriptor_set_layout in self.descriptor_set_layouts.iter_mut() {
-                descriptor_set_layout.destroy(virtual_device);
+                descriptor_set_layout.destroy(logical_device);
             }
 
-            let device = &virtual_device.device;
+            let device = &logical_device.device;
             for pipeline in self.pipelines.iter() {
                 device.destroy_pipeline(*pipeline, None);
             }
-            self.pipeline_layout.destroy(virtual_device);
+            self.pipeline_layout.destroy(logical_device);
 
-            self.vertex_shader_module.destroy(virtual_device);
-            self.fragment_shader_module.destroy(virtual_device);
+            self.vertex_shader_module.destroy(logical_device);
+            self.fragment_shader_module.destroy(logical_device);
 
-            self.index_buffer.destroy(virtual_device, &mut allocator)?;
-            self.vertex_buffer.destroy(virtual_device, &mut allocator)?;
+            self.index_buffer.destroy(logical_device, &mut allocator)?;
+            self.vertex_buffer.destroy(logical_device, &mut allocator)?;
 
-            self.texture.destroy(virtual_device, &mut allocator)?;
-            self.sampler.destroy(virtual_device);
+            self.texture.destroy(logical_device, &mut allocator)?;
+            self.sampler.destroy(logical_device);
         }
 
         Ok(())

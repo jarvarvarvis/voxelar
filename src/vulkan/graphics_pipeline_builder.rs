@@ -19,7 +19,7 @@ use crate::result::Context;
 
 use super::pipeline_layout::SetUpPipelineLayout;
 use super::render_pass::SetUpRenderPass;
-use super::virtual_device::SetUpVirtualDevice;
+use super::logical_device::SetUpLogicalDevice;
 
 #[derive(Default)]
 pub struct GraphicsPipelineBuilder {
@@ -153,7 +153,7 @@ impl GraphicsPipelineBuilder {
 
     pub fn build(
         &self,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         render_pass: &SetUpRenderPass,
         pipeline_layout: &SetUpPipelineLayout,
     ) -> crate::Result<Pipeline> {
@@ -189,7 +189,7 @@ impl GraphicsPipelineBuilder {
             .build();
 
         unsafe {
-            let graphics_pipeline = virtual_device
+            let graphics_pipeline = logical_device
                 .device
                 .create_graphics_pipelines(PipelineCache::null(), &[pipeline_create_info], None)
                 .map_err(|(_, err)| err)?;

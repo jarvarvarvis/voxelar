@@ -1,7 +1,5 @@
 //! This is a module that contains the `AsAny` trait which is useful when you want to convert a
 //! reference to a type to a reference of `dyn std::any::Any`.
-//!
-//! Currently, this trait is only used by the tests for the `DedicatedPoolAllocator`.
 
 use std::any::Any;
 

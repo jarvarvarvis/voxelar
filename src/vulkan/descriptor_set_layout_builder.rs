@@ -5,7 +5,7 @@ use ash::vk::{
 };
 
 use super::descriptor_set_layout::SetUpDescriptorSetLayout;
-use super::virtual_device::SetUpVirtualDevice;
+use super::logical_device::SetUpLogicalDevice;
 
 #[derive(Default)]
 pub struct DescriptorSetLayoutBuilder {
@@ -36,7 +36,7 @@ impl DescriptorSetLayoutBuilder {
 
     pub fn build(
         self,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
     ) -> crate::Result<SetUpDescriptorSetLayout> {
         unsafe {
             let descriptor_set_layout_create_info = DescriptorSetLayoutCreateInfo::builder()
@@ -44,7 +44,7 @@ impl DescriptorSetLayoutBuilder {
                 .bindings(&self.bindings)
                 .build();
             SetUpDescriptorSetLayout::create_from_build_info(
-                virtual_device,
+                logical_device,
                 descriptor_set_layout_create_info,
             )
         }

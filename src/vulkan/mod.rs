@@ -21,6 +21,7 @@
 //! - graphics\_pipeline\_builder: Provides an abstraction for building Vulkan `Pipeline`s
 //! - image: Provides an abstraction for GPU memory-allocated images
 //! - image_view: Provides an abstraction for Vulkan image views
+//! - logical\_device: Provides a wrapper around logical Vulkan devices
 //! - per\_frame: Provides an abstraction for tracking data of each frame in double/triple/...-buffering scenarios; used with `FrameData` in this module
 //! - physical\_device: Provides an abstraction for finding a suitable `PhysicalDevice` for rendering, also queries important device information
 //! - pipeline\_layout: Provide a wrapper around `PipelineLayout`s
@@ -37,7 +38,6 @@
 //! - typed\_buffer: Provides an abstraction for buffers that hold data of a specific type
 //! - typed\_image: Provides an abstraction for images that hold data of a specific type
 //! - util: Provides random utility functions used by the vulkan module
-//! - virtual\_device: Provides a wrapper around virtual Vulkan devices
 pub extern crate egui;
 pub extern crate gpu_allocator;
 pub extern crate image as image_crate;
@@ -86,6 +86,7 @@ pub mod framebuffers;
 pub mod graphics_pipeline_builder;
 pub mod image;
 pub mod image_view;
+pub mod logical_device;
 pub mod per_frame;
 pub mod physical_device;
 pub mod pipeline_layout;
@@ -102,7 +103,6 @@ pub mod texture;
 pub mod typed_buffer;
 pub mod typed_image;
 pub mod util;
-pub mod virtual_device;
 
 use crate::render_context::RenderContext;
 use crate::result::Context;
@@ -121,6 +121,7 @@ use self::dynamic_descriptor_buffer::DynamicDescriptorBuffer;
 use self::egui_integration::SetUpEguiIntegration;
 use self::frame_data::FrameData;
 use self::framebuffers::SetUpFramebuffers;
+use self::logical_device::SetUpLogicalDevice;
 use self::physical_device::SetUpPhysicalDevice;
 use self::present_images::SetUpPresentImages;
 use self::render_pass::SetUpRenderPass;
@@ -131,7 +132,6 @@ use self::surface::SetUpSurfaceInfo;
 use self::swapchain::SetUpSwapchain;
 use self::texture::Texture;
 use self::typed_buffer::TypedAllocatedBuffer;
-use self::virtual_device::SetUpVirtualDevice;
 
 pub struct VulkanContext {
     pub entry: Entry,
@@ -142,7 +142,7 @@ pub struct VulkanContext {
 
     pub last_creation_info: Option<DataStructureCreationInfo>,
     pub physical_device: Option<SetUpPhysicalDevice>,
-    pub virtual_device: Option<SetUpVirtualDevice>,
+    pub logical_device: Option<SetUpLogicalDevice>,
     pub allocator: Option<ManuallyDrop<Arc<Mutex<Allocator>>>>, // This type is interesting
     pub swapchain: Option<SetUpSwapchain>,
     pub present_images: Option<SetUpPresentImages>,
@@ -189,9 +189,9 @@ impl VulkanContext {
     );
 
     generate_safe_getter!(
-        virtual_device,
-        SetUpVirtualDevice,
-        "No virtual device was set up yet! Use VulkanContext::create_virtual_device to do so"
+        logical_device,
+        SetUpLogicalDevice,
+        "No logical device was set up yet! Use VulkanContext::create_logical_device to do so"
     );
 
     pub fn lock_allocator(&self) -> crate::Result<MutexGuard<Allocator>> {
@@ -256,9 +256,9 @@ impl VulkanContext {
         Ok(())
     }
 
-    pub fn create_virtual_device(&mut self) -> crate::Result<()> {
+    pub fn create_logical_device(&mut self) -> crate::Result<()> {
         unsafe {
-            self.virtual_device = Some(SetUpVirtualDevice::create_with_defaults(
+            self.logical_device = Some(SetUpLogicalDevice::create_with_defaults(
                 &self.instance,
                 self.physical_device()?,
             )?);
@@ -273,7 +273,7 @@ impl VulkanContext {
     ) -> crate::Result<()> {
         let allocator = Allocator::new(&AllocatorCreateDesc {
             instance: self.instance.clone(),
-            device: self.virtual_device()?.device.clone(),
+            device: self.logical_device()?.device.clone(),
             physical_device: self.physical_device()?.device,
             debug_settings,
             buffer_device_address: false,
@@ -291,7 +291,7 @@ impl VulkanContext {
             let new_swapchain = SetUpSwapchain::create_with_defaults(
                 &self.instance,
                 &self.surface_info,
-                self.virtual_device()?,
+                self.logical_device()?,
                 present_mode_init_mode,
                 self.swapchain.as_ref(),
             )?;
@@ -311,7 +311,7 @@ impl VulkanContext {
     pub fn create_present_images(&mut self) -> crate::Result<()> {
         unsafe {
             self.present_images = Some(SetUpPresentImages::create_with_defaults(
-                self.virtual_device()?,
+                self.logical_device()?,
                 self.swapchain()?,
                 &self.surface_info,
             )?);
@@ -323,7 +323,7 @@ impl VulkanContext {
     pub fn create_command_pool_for_setup(&mut self) -> crate::Result<()> {
         unsafe {
             self.command_pool_for_setup = Some(SetUpCommandPool::create(
-                self.virtual_device()?,
+                self.logical_device()?,
                 1,
                 CommandBufferLevel::PRIMARY,
                 FenceCreateFlags::empty(),
@@ -337,7 +337,7 @@ impl VulkanContext {
             let mut depth_image = {
                 let allocator = &mut self.lock_allocator()?;
                 SetUpDepthImage::create_with_defaults(
-                    self.virtual_device()?,
+                    self.logical_device()?,
                     allocator,
                     &self.surface_info,
                 )?
@@ -357,7 +357,7 @@ impl VulkanContext {
     pub fn create_framebuffers(&mut self) -> crate::Result<()> {
         unsafe {
             self.framebuffers = Some(SetUpFramebuffers::create(
-                self.virtual_device()?,
+                self.logical_device()?,
                 self.depth_image()?,
                 &self.surface_info,
                 self.present_images()?,
@@ -371,7 +371,7 @@ impl VulkanContext {
     pub fn create_render_pass(&mut self) -> crate::Result<()> {
         unsafe {
             self.render_pass = Some(SetUpRenderPass::create_with_defaults(
-                self.virtual_device()?,
+                self.logical_device()?,
                 &self.surface_info,
             )?);
         }
@@ -381,9 +381,9 @@ impl VulkanContext {
 
     pub fn create_per_frame_data(&mut self, frame_overlap: usize) -> crate::Result<()> {
         unsafe {
-            let virtual_device = self.virtual_device()?;
+            let logical_device = self.logical_device()?;
             self.frames = PerFrame::try_init(
-                |_| FrameData::create_with_defaults(virtual_device),
+                |_| FrameData::create_with_defaults(logical_device),
                 frame_overlap,
             )?;
             Ok(())
@@ -399,7 +399,7 @@ impl VulkanContext {
         if let Some(physical_device) = &self.physical_device {
             self.surface_info.update(physical_device, window_size)?;
         }
-        self.create_virtual_device()?;
+        self.create_logical_device()?;
         self.create_allocator(creation_info.allocator_debug_settings)?;
         self.create_swapchain(creation_info.swapchain_present_mode)?;
         self.create_present_images()?;
@@ -424,32 +424,32 @@ impl VulkanContext {
 
         let new_swapchain = self.create_new_swapchain(creation_info.swapchain_present_mode)?;
 
-        if let Some(virtual_device) = self.virtual_device.as_ref() {
-            virtual_device.wait()?;
+        if let Some(logical_device) = self.logical_device.as_ref() {
+            logical_device.wait()?;
 
             if let Some(render_pass) = self.render_pass.as_mut() {
-                render_pass.destroy(&virtual_device);
+                render_pass.destroy(&logical_device);
             }
 
             if let Some(framebuffers) = self.framebuffers.as_mut() {
-                framebuffers.destroy(&virtual_device);
+                framebuffers.destroy(&logical_device);
             }
 
             if let Some(mut depth_image) = self.depth_image.take() {
                 let mut allocator = self.lock_allocator()?;
-                depth_image.destroy(&virtual_device, &mut allocator)?;
+                depth_image.destroy(&logical_device, &mut allocator)?;
             }
 
             if let Some(command_pool_for_setup) = self.command_pool_for_setup.as_mut() {
-                command_pool_for_setup.destroy(&virtual_device);
+                command_pool_for_setup.destroy(&logical_device);
             }
 
             if let Some(present_images) = self.present_images.as_mut() {
-                present_images.destroy(&virtual_device);
+                present_images.destroy(&logical_device);
             }
 
             for frame in self.frames.iter_mut() {
-                frame.destroy(&virtual_device);
+                frame.destroy(&logical_device);
             }
 
             if let Some(swapchain) = self.swapchain.as_mut() {
@@ -474,7 +474,7 @@ impl VulkanContext {
         event_loop: &VoxelarEventLoop,
     ) -> crate::Result<SetUpEguiIntegration> {
         let size = window.get_size();
-        let virtual_device = self.virtual_device()?;
+        let logical_device = self.logical_device()?;
         let allocator = self.create_allocator_ref()?;
         let surface_format = self.surface_info.surface_format(0)?;
         Ok(SetUpEguiIntegration::new(
@@ -482,10 +482,10 @@ impl VulkanContext {
             size.0 as u32,
             size.1 as u32,
             window.scale_factor(),
-            virtual_device,
+            logical_device,
             allocator,
             self.physical_device()?.queue_family_index,
-            virtual_device.present_queue,
+            logical_device.present_queue,
             self.swapchain()?,
             surface_format,
         ))
@@ -516,20 +516,20 @@ impl VulkanContext {
 
     pub fn submit_immediate_setup_commands<F>(&self, command_buffer_op: F) -> crate::Result<()>
     where
-        F: FnOnce(&SetUpVirtualDevice, &SetUpCommandBufferWithFence) -> crate::Result<()>,
+        F: FnOnce(&SetUpLogicalDevice, &SetUpCommandBufferWithFence) -> crate::Result<()>,
     {
         let command_pool = self.command_pool_for_setup()?;
 
         let setup_command_buffer = command_pool.get_command_buffer(0);
-        let virtual_device = self.virtual_device()?;
-        let present_queue = virtual_device.present_queue;
+        let logical_device = self.logical_device()?;
+        let present_queue = logical_device.present_queue;
         setup_command_buffer
-            .record_commands_for_one_time_submit(virtual_device, command_buffer_op)?;
-        setup_command_buffer.submit(virtual_device, present_queue, &[], &[], &[])?;
-        setup_command_buffer.wait_for_fence(virtual_device)?;
-        setup_command_buffer.reset_fence(virtual_device)?;
+            .record_commands_for_one_time_submit(logical_device, command_buffer_op)?;
+        setup_command_buffer.submit(logical_device, present_queue, &[], &[], &[])?;
+        setup_command_buffer.wait_for_fence(logical_device)?;
+        setup_command_buffer.reset_fence(logical_device)?;
 
-        command_pool.reset(virtual_device, CommandPoolResetFlags::empty())
+        command_pool.reset(logical_device, CommandPoolResetFlags::empty())
     }
 
     pub fn select_frame(&mut self, current_frame_index: usize) {
@@ -540,7 +540,7 @@ impl VulkanContext {
         let current_frame = self.frames.current();
 
         for draw_buffer_index in 0..current_frame.draw_buffers_count() {
-            current_frame.wait_for_draw_buffer_fence(self.virtual_device()?, draw_buffer_index)?;
+            current_frame.wait_for_draw_buffer_fence(self.logical_device()?, draw_buffer_index)?;
         }
 
         Ok(())
@@ -570,16 +570,16 @@ impl VulkanContext {
         command_op: CommandOp,
     ) -> crate::Result<()>
     where
-        CommandOp: FnOnce(&SetUpVirtualDevice, &SetUpCommandBufferWithFence) -> crate::Result<()>,
+        CommandOp: FnOnce(&SetUpLogicalDevice, &SetUpCommandBufferWithFence) -> crate::Result<()>,
     {
-        let virtual_device = self.virtual_device()?;
+        let logical_device = self.logical_device()?;
 
         let current_frame = self.frames.current();
 
-        current_frame.reset_draw_buffer_fence(virtual_device, 0)?;
-        current_frame.reset_draw_buffer(virtual_device, 0)?;
+        current_frame.reset_draw_buffer_fence(logical_device, 0)?;
+        current_frame.reset_draw_buffer(logical_device, 0)?;
         current_frame.record_draw_buffer_commands(
-            virtual_device,
+            logical_device,
             0,
             |device, draw_command_buffer| command_op(device, draw_command_buffer),
         )?;
@@ -597,7 +597,7 @@ impl VulkanContext {
     where
         RenderPassOp: FnMut() -> crate::Result<()>,
     {
-        let virtual_device = self.virtual_device()?;
+        let logical_device = self.logical_device()?;
 
         let surface_resolution = self.surface_info.surface_extent()?;
         let render_pass_begin_info = RenderPassBeginInfo::builder()
@@ -607,13 +607,13 @@ impl VulkanContext {
             .clear_values(clear_values);
 
         unsafe {
-            virtual_device.device.cmd_begin_render_pass(
+            logical_device.device.cmd_begin_render_pass(
                 draw_command_buffer.command_buffer,
                 &render_pass_begin_info,
                 SubpassContents::INLINE,
             );
             render_pass_op()?;
-            virtual_device
+            logical_device
                 .device
                 .cmd_end_render_pass(draw_command_buffer.command_buffer);
         }
@@ -623,13 +623,13 @@ impl VulkanContext {
 
     pub fn submit_draw_buffers(&self) -> crate::Result<()> {
         let current_frame = self.frames.current();
-        let virtual_device = self.virtual_device()?;
+        let logical_device = self.logical_device()?;
 
         for draw_buffer_index in 0..current_frame.draw_buffers_count() {
             current_frame.submit_draw_buffer_to_queue(
-                virtual_device,
+                logical_device,
                 draw_buffer_index,
-                virtual_device.present_queue,
+                logical_device.present_queue,
                 &[PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT],
             )?;
         }
@@ -650,7 +650,7 @@ impl VulkanContext {
             let result = self
                 .swapchain()?
                 .swapchain_loader
-                .queue_present(self.virtual_device()?.present_queue, &present_info);
+                .queue_present(self.logical_device()?.present_queue, &present_info);
             match result {
                 Err(ash::vk::Result::ERROR_OUT_OF_DATE_KHR | ash::vk::Result::SUBOPTIMAL_KHR) => {
                     Ok(true)
@@ -666,16 +666,16 @@ impl VulkanContext {
         data: &[T],
     ) -> crate::Result<()> {
         let allocator = &mut self.lock_allocator()?;
-        let virtual_device = self.virtual_device()?;
+        let logical_device = self.logical_device()?;
         let element_amount = buffer.element_amount;
         unsafe {
             let mut staging_buffer =
-                SetUpStagingBuffer::allocate(virtual_device, allocator, element_amount)?;
-            staging_buffer.copy_from_slice(virtual_device, data)?;
+                SetUpStagingBuffer::allocate(logical_device, allocator, element_amount)?;
+            staging_buffer.copy_from_slice(logical_device, data)?;
             self.submit_immediate_setup_commands(|device, setup_command_buffer| {
                 buffer.copy_from_staging_buffer(device, &staging_buffer, setup_command_buffer)
             })?;
-            staging_buffer.destroy(virtual_device, allocator)?;
+            staging_buffer.destroy(logical_device, allocator)?;
         }
         Ok(())
     }
@@ -687,7 +687,7 @@ impl VulkanContext {
         unsafe {
             let data_amount = data.len() as u64;
             let buffer = TypedAllocatedBuffer::<T>::allocate_vertex_buffer(
-                self.virtual_device()?,
+                self.logical_device()?,
                 &mut self.lock_allocator()?,
                 data_amount,
             )?;
@@ -703,7 +703,7 @@ impl VulkanContext {
         unsafe {
             let data_amount = data.len() as u64;
             let buffer = TypedAllocatedBuffer::<T>::allocate_index_buffer(
-                self.virtual_device()?,
+                self.logical_device()?,
                 &mut self.lock_allocator()?,
                 data_amount,
             )?;
@@ -718,7 +718,7 @@ impl VulkanContext {
     ) -> crate::Result<DynamicDescriptorBuffer<T>> {
         unsafe {
             DynamicDescriptorBuffer::<T>::allocate_uniform_buffer(
-                self.virtual_device()?,
+                self.logical_device()?,
                 self.physical_device()?,
                 count,
                 &mut self.lock_allocator()?,
@@ -734,7 +734,7 @@ impl VulkanContext {
         unsafe {
             CompiledShaderModule::create_shader_of_stage(
                 compiled_bytes,
-                self.virtual_device()?,
+                self.logical_device()?,
                 stage,
             )
         }
@@ -764,9 +764,9 @@ impl VulkanContext {
         T: Copy,
     {
         unsafe {
-            let virtual_device = self.virtual_device()?;
+            let logical_device = self.logical_device()?;
             let mut texture = Texture::<T>::create(
-                self.virtual_device()?,
+                self.logical_device()?,
                 &mut self.lock_allocator()?,
                 format,
                 texture_dimensions,
@@ -775,11 +775,11 @@ impl VulkanContext {
             let element_amount =
                 texture_dimensions.width * texture_dimensions.height * texture_dimensions.depth;
             let mut staging_buffer = SetUpStagingBuffer::allocate(
-                virtual_device,
+                logical_device,
                 &mut self.lock_allocator()?,
                 element_amount as u64,
             )?;
-            staging_buffer.copy_from_slice(virtual_device, data)?;
+            staging_buffer.copy_from_slice(logical_device, data)?;
 
             self.submit_immediate_setup_commands(|device, setup_command_buffer| {
                 texture.layout_transition_to_copy_target(device, setup_command_buffer);
@@ -788,7 +788,7 @@ impl VulkanContext {
                 Ok(())
             })?;
 
-            staging_buffer.destroy(virtual_device, &mut self.lock_allocator()?)?;
+            staging_buffer.destroy(logical_device, &mut self.lock_allocator()?)?;
 
             Ok(texture)
         }
@@ -799,15 +799,15 @@ impl VulkanContext {
         filter: Filter,
         sampler_address_mode: SamplerAddressMode,
     ) -> crate::Result<SetUpSampler> {
-        unsafe { SetUpSampler::create(self.virtual_device()?, filter, sampler_address_mode) }
+        unsafe { SetUpSampler::create(self.logical_device()?, filter, sampler_address_mode) }
     }
 
     pub fn wait_for_present_queue(&self) -> crate::Result<()> {
         unsafe {
-            let virtual_device = self.virtual_device()?;
-            virtual_device
+            let logical_device = self.logical_device()?;
+            logical_device
                 .device
-                .queue_wait_idle(virtual_device.present_queue)?;
+                .queue_wait_idle(logical_device.present_queue)?;
             Ok(())
         }
     }
@@ -884,7 +884,7 @@ impl<Verification: VerificationProvider + 'static> RenderContext<Verification> f
 
                 last_creation_info: None,
                 physical_device: None,
-                virtual_device: None,
+                logical_device: None,
                 allocator: None,
                 swapchain: None,
                 present_images: None,
@@ -905,34 +905,34 @@ impl<Verification: VerificationProvider + 'static> RenderContext<Verification> f
 
 impl Drop for VulkanContext {
     fn drop(&mut self) {
-        if let Some(virtual_device) = self.virtual_device.as_ref() {
-            virtual_device.wait().unwrap();
+        if let Some(logical_device) = self.logical_device.as_ref() {
+            logical_device.wait().unwrap();
 
             if let Some(render_pass) = self.render_pass.as_mut() {
-                render_pass.destroy(&virtual_device);
+                render_pass.destroy(&logical_device);
             }
 
             if let Some(framebuffers) = self.framebuffers.as_mut() {
-                framebuffers.destroy(&virtual_device);
+                framebuffers.destroy(&logical_device);
             }
 
             if let Some(mut depth_image) = self.depth_image.take() {
                 let mut allocator = self.lock_allocator().expect("No allocator defined");
                 depth_image
-                    .destroy(&virtual_device, &mut allocator)
+                    .destroy(&logical_device, &mut allocator)
                     .expect("Failed to destroy depth image");
             }
 
             if let Some(command_pool_for_setup) = self.command_pool_for_setup.as_mut() {
-                command_pool_for_setup.destroy(&virtual_device);
+                command_pool_for_setup.destroy(&logical_device);
             }
 
             if let Some(present_images) = self.present_images.as_mut() {
-                present_images.destroy(&virtual_device);
+                present_images.destroy(&logical_device);
             }
 
             for frame in self.frames.iter_mut() {
-                frame.destroy(&virtual_device);
+                frame.destroy(&logical_device);
             }
 
             if let Some(swapchain) = self.swapchain.as_mut() {
@@ -946,8 +946,8 @@ impl Drop for VulkanContext {
             }
         }
 
-        if let Some(virtual_device) = self.virtual_device.as_mut() {
-            virtual_device.destroy();
+        if let Some(logical_device) = self.logical_device.as_mut() {
+            logical_device.destroy();
         }
 
         unsafe {

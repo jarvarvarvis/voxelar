@@ -5,7 +5,7 @@ use ash::vk::{
 
 use super::surface::SetUpSurfaceInfo;
 use super::swapchain::SetUpSwapchain;
-use super::virtual_device::SetUpVirtualDevice;
+use super::logical_device::SetUpLogicalDevice;
 
 pub struct SetUpPresentImages {
     pub present_images: Vec<Image>,
@@ -14,13 +14,13 @@ pub struct SetUpPresentImages {
 
 impl SetUpPresentImages {
     pub unsafe fn create(
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         swapchain: &SetUpSwapchain,
         surface_info: &SetUpSurfaceInfo,
         components: ComponentMapping,
         subresource_range: ImageSubresourceRange,
     ) -> crate::Result<Self> {
-        let device = &virtual_device.device;
+        let device = &logical_device.device;
         let present_images = swapchain
             .swapchain_loader
             .get_swapchain_images(swapchain.swapchain)?;
@@ -46,7 +46,7 @@ impl SetUpPresentImages {
     }
 
     pub unsafe fn create_with_defaults(
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         swapchain: &SetUpSwapchain,
         surface_info: &SetUpSurfaceInfo,
     ) -> crate::Result<Self> {
@@ -64,7 +64,7 @@ impl SetUpPresentImages {
             layer_count: 1,
         };
         Self::create(
-            virtual_device,
+            logical_device,
             swapchain,
             surface_info,
             component_mapping,
@@ -72,7 +72,7 @@ impl SetUpPresentImages {
         )
     }
 
-    pub fn destroy(&mut self, device: &SetUpVirtualDevice) {
+    pub fn destroy(&mut self, device: &SetUpLogicalDevice) {
         unsafe {
             for image_view in self.present_image_views.iter() {
                 device.device.destroy_image_view(*image_view, None);

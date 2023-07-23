@@ -17,7 +17,7 @@ use gpu_allocator::vulkan::*;
 use gpu_allocator::*;
 
 use super::command_buffer::SetUpCommandBufferWithFence;
-use super::virtual_device::SetUpVirtualDevice;
+use super::logical_device::SetUpLogicalDevice;
 
 pub struct AllocatedImage {
     pub image: Image,
@@ -28,7 +28,7 @@ pub struct AllocatedImage {
 
 impl AllocatedImage {
     pub unsafe fn allocate(
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         allocator: &mut MutexGuard<Allocator>,
         image_type: ImageType,
         format: Format,
@@ -58,10 +58,10 @@ impl AllocatedImage {
             .usage(image_usage)
             .sharing_mode(sharing_mode);
 
-        let image = virtual_device
+        let image = logical_device
             .device
             .create_image(&image_create_info, None)?;
-        let image_memory_req = virtual_device.device.get_image_memory_requirements(image);
+        let image_memory_req = logical_device.device.get_image_memory_requirements(image);
 
         let allocation = allocator.allocate(&AllocationCreateDesc {
             name: "image",
@@ -71,7 +71,7 @@ impl AllocatedImage {
             allocation_scheme: AllocationScheme::GpuAllocatorManaged,
         })?;
 
-        virtual_device
+        logical_device
             .device
             .bind_image_memory(image, allocation.memory(), allocation.offset())?;
 
@@ -89,7 +89,7 @@ impl AllocatedImage {
 
     pub fn perform_layout_transition_pipeline_barrier(
         &mut self,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         setup_command_buffer: &SetUpCommandBufferWithFence,
         subresource_range: ImageSubresourceRange,
         src_access_mask: AccessFlags,
@@ -108,7 +108,7 @@ impl AllocatedImage {
             .subresource_range(subresource_range);
 
         unsafe {
-            virtual_device.device.cmd_pipeline_barrier(
+            logical_device.device.cmd_pipeline_barrier(
                 setup_command_buffer.command_buffer,
                 src_stage,
                 dst_stage,
@@ -122,11 +122,11 @@ impl AllocatedImage {
 
     pub fn destroy(
         &mut self,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         allocator: &mut MutexGuard<Allocator>,
     ) -> crate::Result<()> {
         unsafe {
-            virtual_device.device.destroy_image(self.image, None);
+            logical_device.device.destroy_image(self.image, None);
             if let Some(image_allocation) = self.allocation.take() {
                 allocator.free(image_allocation)?;
             }

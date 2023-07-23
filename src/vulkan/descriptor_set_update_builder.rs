@@ -10,7 +10,7 @@ use super::image_view::SetUpImageView;
 use super::sampler::SetUpSampler;
 use super::texture::Texture;
 use super::typed_buffer::TypedAllocatedBuffer;
-use super::virtual_device::SetUpVirtualDevice;
+use super::logical_device::SetUpLogicalDevice;
 
 #[derive(Debug)]
 pub struct WriteBufferDescriptorSetParams {
@@ -130,7 +130,7 @@ impl DescriptorSetUpdateBuilder {
 
     pub fn update(
         self,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         destination_set: &DescriptorSet,
     ) -> crate::Result<()> {
         unsafe {
@@ -155,7 +155,7 @@ impl DescriptorSetUpdateBuilder {
                 writes.push(write);
             }
 
-            virtual_device.device.update_descriptor_sets(&writes, &[]);
+            logical_device.device.update_descriptor_sets(&writes, &[]);
 
             Ok(())
         }

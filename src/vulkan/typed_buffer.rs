@@ -9,7 +9,7 @@ use gpu_allocator::MemoryLocation;
 use super::buffer::AllocatedBuffer;
 use super::command_buffer::SetUpCommandBufferWithFence;
 use super::staging_buffer::SetUpStagingBuffer;
-use super::virtual_device::SetUpVirtualDevice;
+use super::logical_device::SetUpLogicalDevice;
 
 pub struct TypedAllocatedBuffer<T> {
     pub buffer: AllocatedBuffer,
@@ -19,7 +19,7 @@ pub struct TypedAllocatedBuffer<T> {
 
 impl<T> TypedAllocatedBuffer<T> {
     pub unsafe fn allocate(
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         allocator: &mut MutexGuard<Allocator>,
         element_amount: u64,
         usage: BufferUsageFlags,
@@ -29,7 +29,7 @@ impl<T> TypedAllocatedBuffer<T> {
         let size = std::mem::size_of::<T>() as u64 * element_amount;
         Ok(Self {
             buffer: AllocatedBuffer::allocate(
-                virtual_device,
+                logical_device,
                 allocator,
                 size,
                 usage,
@@ -42,11 +42,11 @@ impl<T> TypedAllocatedBuffer<T> {
     }
 
     pub unsafe fn allocate_uniform_buffer(
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         allocator: &mut MutexGuard<Allocator>,
     ) -> crate::Result<Self> {
         Self::allocate(
-            virtual_device,
+            logical_device,
             allocator,
             1,
             BufferUsageFlags::UNIFORM_BUFFER,
@@ -56,7 +56,7 @@ impl<T> TypedAllocatedBuffer<T> {
     }
 
     pub unsafe fn allocate_vertex_buffer(
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         allocator: &mut MutexGuard<Allocator>,
         element_amount: u64,
     ) -> crate::Result<Self>
@@ -64,7 +64,7 @@ impl<T> TypedAllocatedBuffer<T> {
         T: Copy,
     {
         let buffer = Self::allocate(
-            virtual_device,
+            logical_device,
             allocator,
             element_amount,
             BufferUsageFlags::VERTEX_BUFFER | BufferUsageFlags::TRANSFER_DST,
@@ -75,7 +75,7 @@ impl<T> TypedAllocatedBuffer<T> {
     }
 
     pub unsafe fn allocate_index_buffer(
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         allocator: &mut MutexGuard<Allocator>,
         element_amount: u64,
     ) -> crate::Result<Self>
@@ -83,7 +83,7 @@ impl<T> TypedAllocatedBuffer<T> {
         T: Copy,
     {
         let buffer = Self::allocate(
-            virtual_device,
+            logical_device,
             allocator,
             element_amount,
             BufferUsageFlags::INDEX_BUFFER | BufferUsageFlags::TRANSFER_DST,
@@ -95,7 +95,7 @@ impl<T> TypedAllocatedBuffer<T> {
 
     pub fn copy_from_staging_buffer(
         &self,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         staging_buffer: &SetUpStagingBuffer<T>,
         setup_command_buffer: &SetUpCommandBufferWithFence,
     ) -> crate::Result<()> {
@@ -108,7 +108,7 @@ impl<T> TypedAllocatedBuffer<T> {
                 .dst_offset(0)
                 .src_offset(0)
                 .size(self.data_amount());
-            virtual_device.device.cmd_copy_buffer(
+            logical_device.device.cmd_copy_buffer(
                 setup_command_buffer.command_buffer,
                 staging_buffer.raw_buffer(),
                 self.raw_buffer(),
@@ -138,9 +138,9 @@ impl<T> TypedAllocatedBuffer<T> {
 
     pub fn destroy(
         &mut self,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         allocator: &mut MutexGuard<Allocator>,
     ) -> crate::Result<()> {
-        self.buffer.destroy(virtual_device, allocator)
+        self.buffer.destroy(logical_device, allocator)
     }
 }

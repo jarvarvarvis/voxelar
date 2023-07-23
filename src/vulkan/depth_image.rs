@@ -15,7 +15,7 @@ use super::command_buffer::SetUpCommandBufferWithFence;
 use super::image::AllocatedImage;
 use super::image_view::SetUpImageView;
 use super::surface::SetUpSurfaceInfo;
-use super::virtual_device::SetUpVirtualDevice;
+use super::logical_device::SetUpLogicalDevice;
 
 pub struct SetUpDepthImage {
     pub depth_image: AllocatedImage,
@@ -24,7 +24,7 @@ pub struct SetUpDepthImage {
 
 impl SetUpDepthImage {
     pub unsafe fn create(
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         allocator: &mut MutexGuard<Allocator>,
         format: Format,
         surface_extent: Extent2D,
@@ -37,7 +37,7 @@ impl SetUpDepthImage {
             depth: 1,
         };
         let depth_image = AllocatedImage::allocate(
-            virtual_device,
+            logical_device,
             allocator,
             ImageType::TYPE_2D,
             format,
@@ -51,7 +51,7 @@ impl SetUpDepthImage {
         )?;
 
         let depth_image_view = SetUpImageView::create(
-            virtual_device,
+            logical_device,
             ImageViewType::TYPE_2D,
             format,
             subresource_range,
@@ -75,14 +75,14 @@ impl SetUpDepthImage {
     }
 
     pub unsafe fn create_with_defaults(
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         allocator: &mut MutexGuard<Allocator>,
         surface_info: &SetUpSurfaceInfo,
     ) -> crate::Result<Self> {
         let surface_extent = surface_info.surface_extent()?;
 
         Self::create(
-            virtual_device,
+            logical_device,
             allocator,
             Format::D16_UNORM,
             surface_extent,
@@ -93,11 +93,11 @@ impl SetUpDepthImage {
 
     pub fn perform_layout_transition_pipeline_barrier(
         &mut self,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         setup_command_buffer: &SetUpCommandBufferWithFence,
     ) {
         self.depth_image.perform_layout_transition_pipeline_barrier(
-            virtual_device,
+            logical_device,
             setup_command_buffer,
             Self::create_default_subresource_range(),
             AccessFlags::empty(),
@@ -111,11 +111,11 @@ impl SetUpDepthImage {
 
     pub fn destroy(
         &mut self,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         allocator: &mut MutexGuard<Allocator>,
     ) -> crate::Result<()> {
-        self.depth_image.destroy(virtual_device, allocator)?;
-        self.depth_image_view.destroy(virtual_device);
+        self.depth_image.destroy(logical_device, allocator)?;
+        self.depth_image_view.destroy(logical_device);
         Ok(())
     }
 }

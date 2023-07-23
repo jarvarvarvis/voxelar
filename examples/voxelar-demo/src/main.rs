@@ -71,7 +71,7 @@ fn main() -> Result<()> {
                     }
                     _ => {}
                 }
-            },
+            }
             Event::MainEventsCleared => window.request_redraw(),
             Event::RedrawRequested(_) => {
                 demo.render(&mut window, &mut vulkan_context)?;

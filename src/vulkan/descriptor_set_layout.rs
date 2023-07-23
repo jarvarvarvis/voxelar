@@ -1,6 +1,6 @@
 use ash::vk::{DescriptorSetLayout, DescriptorSetLayoutCreateInfo};
 
-use super::virtual_device::SetUpVirtualDevice;
+use super::logical_device::SetUpLogicalDevice;
 
 #[repr(transparent)]
 pub struct SetUpDescriptorSetLayout {
@@ -9,10 +9,10 @@ pub struct SetUpDescriptorSetLayout {
 
 impl SetUpDescriptorSetLayout {
     pub unsafe fn create_from_build_info(
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         descriptor_set_layout_create_info: DescriptorSetLayoutCreateInfo,
     ) -> crate::Result<Self> {
-        let descriptor_set_layout = virtual_device
+        let descriptor_set_layout = logical_device
             .device
             .create_descriptor_set_layout(&descriptor_set_layout_create_info, None)?;
 
@@ -21,9 +21,9 @@ impl SetUpDescriptorSetLayout {
         })
     }
 
-    pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice) {
+    pub fn destroy(&mut self, logical_device: &SetUpLogicalDevice) {
         unsafe {
-            virtual_device
+            logical_device
                 .device
                 .destroy_descriptor_set_layout(self.descriptor_set_layout, None);
         }

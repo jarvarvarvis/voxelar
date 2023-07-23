@@ -1,6 +1,6 @@
 use ash::vk::{PipelineLayout, PipelineLayoutCreateInfo};
 
-use super::virtual_device::SetUpVirtualDevice;
+use super::logical_device::SetUpLogicalDevice;
 
 pub struct SetUpPipelineLayout {
     pub pipeline_layout: PipelineLayout,
@@ -8,19 +8,19 @@ pub struct SetUpPipelineLayout {
 
 impl SetUpPipelineLayout {
     pub unsafe fn create_from_build_info(
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         pipeline_layout_create_info: PipelineLayoutCreateInfo,
     ) -> crate::Result<Self> {
-        let pipeline_layout = virtual_device
+        let pipeline_layout = logical_device
             .device
             .create_pipeline_layout(&pipeline_layout_create_info, None)?;
 
         Ok(Self { pipeline_layout })
     }
 
-    pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice) {
+    pub fn destroy(&mut self, logical_device: &SetUpLogicalDevice) {
         unsafe {
-            virtual_device
+            logical_device
                 .device
                 .destroy_pipeline_layout(self.pipeline_layout, None);
         }

@@ -15,7 +15,7 @@ use super::command_buffer::SetUpCommandBufferWithFence;
 use super::image_view::SetUpImageView;
 use super::staging_buffer::SetUpStagingBuffer;
 use super::typed_image::TypedAllocatedImage;
-use super::virtual_device::SetUpVirtualDevice;
+use super::logical_device::SetUpLogicalDevice;
 
 pub struct Texture<T> {
     pub image: TypedAllocatedImage<T>,
@@ -24,13 +24,13 @@ pub struct Texture<T> {
 
 impl<T> Texture<T> {
     pub unsafe fn create(
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         allocator: &mut MutexGuard<Allocator>,
         format: Format,
         texture_extent: Extent3D,
     ) -> crate::Result<Self> {
         let image = TypedAllocatedImage::<T>::allocate(
-            virtual_device,
+            logical_device,
             allocator,
             ImageType::TYPE_2D,
             format,
@@ -43,7 +43,7 @@ impl<T> Texture<T> {
             SharingMode::EXCLUSIVE,
         )?;
         let image_view = SetUpImageView::create(
-            virtual_device,
+            logical_device,
             ImageViewType::TYPE_2D,
             format,
             Self::create_default_subresource_range(),
@@ -74,11 +74,11 @@ impl<T> Texture<T> {
 
     pub fn layout_transition_to_copy_target(
         &mut self,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         setup_command_buffer: &SetUpCommandBufferWithFence,
     ) {
         self.image.layout_transition_to_copy_target(
-            virtual_device,
+            logical_device,
             setup_command_buffer,
             Self::create_default_subresource_range(),
         )
@@ -86,12 +86,12 @@ impl<T> Texture<T> {
 
     pub fn copy_from_staging_buffer(
         &self,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         staging_buffer: &SetUpStagingBuffer<T>,
         setup_command_buffer: &SetUpCommandBufferWithFence,
     ) -> crate::Result<()> {
         self.image.copy_from_staging_buffer(
-            virtual_device,
+            logical_device,
             staging_buffer,
             setup_command_buffer,
             Self::create_default_subresource_layers(),
@@ -100,11 +100,11 @@ impl<T> Texture<T> {
 
     pub fn layout_transition_to_shader_readable(
         &mut self,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         setup_command_buffer: &SetUpCommandBufferWithFence,
     ) {
         self.image.layout_transition_to_shader_readable(
-            virtual_device,
+            logical_device,
             setup_command_buffer,
             Self::create_default_subresource_range(),
         )
@@ -112,11 +112,11 @@ impl<T> Texture<T> {
 
     pub fn destroy(
         &mut self,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         allocator: &mut MutexGuard<Allocator>,
     ) -> crate::Result<()> {
-        self.image.destroy(virtual_device, allocator)?;
-        self.image_view.destroy(virtual_device);
+        self.image.destroy(logical_device, allocator)?;
+        self.image_view.destroy(logical_device);
         Ok(())
     }
 }

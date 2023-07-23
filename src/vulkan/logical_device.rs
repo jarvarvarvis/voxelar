@@ -8,14 +8,14 @@ use ash::{Device, Instance};
 
 use super::physical_device::SetUpPhysicalDevice;
 
-pub struct SetUpVirtualDevice {
+pub struct SetUpLogicalDevice {
     pub device: Device,
 
     pub present_queue: Queue,
     pub queue_family_index: u32,
 }
 
-impl SetUpVirtualDevice {
+impl SetUpLogicalDevice {
     pub unsafe fn create(
         instance: &Instance,
         physical_device_info: &SetUpPhysicalDevice,

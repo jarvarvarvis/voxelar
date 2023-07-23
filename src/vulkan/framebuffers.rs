@@ -4,7 +4,7 @@ use super::depth_image::SetUpDepthImage;
 use super::present_images::SetUpPresentImages;
 use super::render_pass::SetUpRenderPass;
 use super::surface::SetUpSurfaceInfo;
-use super::virtual_device::SetUpVirtualDevice;
+use super::logical_device::SetUpLogicalDevice;
 
 pub struct SetUpFramebuffers {
     pub framebuffers: Vec<Framebuffer>,
@@ -12,7 +12,7 @@ pub struct SetUpFramebuffers {
 
 impl SetUpFramebuffers {
     pub unsafe fn create(
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         depth_image: &SetUpDepthImage,
         surface_info: &SetUpSurfaceInfo,
         present_images: &SetUpPresentImages,
@@ -32,7 +32,7 @@ impl SetUpFramebuffers {
                 .height(surface_extent.height)
                 .layers(1);
 
-            let framebuffer = virtual_device
+            let framebuffer = logical_device
                 .device
                 .create_framebuffer(&frame_buffer_create_info, None)?;
             framebuffers.push(framebuffer);
@@ -41,10 +41,10 @@ impl SetUpFramebuffers {
         Ok(Self { framebuffers })
     }
 
-    pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice) {
+    pub fn destroy(&mut self, logical_device: &SetUpLogicalDevice) {
         unsafe {
             for framebuffer in self.framebuffers.iter() {
-                virtual_device
+                logical_device
                     .device
                     .destroy_framebuffer(*framebuffer, None);
             }

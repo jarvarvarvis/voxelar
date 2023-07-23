@@ -7,7 +7,7 @@ use ash::vk::Queue;
 use super::command_buffer::SetUpCommandBufferWithFence;
 use super::command_pool::SetUpCommandPool;
 use super::sync::RenderingSyncPrimitives;
-use super::virtual_device::SetUpVirtualDevice;
+use super::logical_device::SetUpLogicalDevice;
 
 pub struct FrameData {
     pub sync_primitives: RenderingSyncPrimitives,
@@ -15,10 +15,10 @@ pub struct FrameData {
 }
 
 impl FrameData {
-    pub unsafe fn create_with_defaults(virtual_device: &SetUpVirtualDevice) -> crate::Result<Self> {
-        let sync_primitives = RenderingSyncPrimitives::create(virtual_device)?;
+    pub unsafe fn create_with_defaults(logical_device: &SetUpLogicalDevice) -> crate::Result<Self> {
+        let sync_primitives = RenderingSyncPrimitives::create(logical_device)?;
         let command_pool = SetUpCommandPool::create(
-            virtual_device,
+            logical_device,
             1,
             CommandBufferLevel::PRIMARY,
             FenceCreateFlags::SIGNALED,
@@ -36,53 +36,53 @@ impl FrameData {
 
     pub fn wait_for_draw_buffer_fence(
         &self,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         draw_buffer_index: usize,
     ) -> crate::Result<()> {
         let draw_command_buffer = self.command_pool.get_command_buffer(draw_buffer_index);
-        draw_command_buffer.wait_for_fence(virtual_device)
+        draw_command_buffer.wait_for_fence(logical_device)
     }
 
     pub fn reset_draw_buffer_fence(
         &self,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         draw_buffer_index: usize,
     ) -> crate::Result<()> {
         let draw_command_buffer = self.command_pool.get_command_buffer(draw_buffer_index);
-        draw_command_buffer.reset_fence(virtual_device)
+        draw_command_buffer.reset_fence(logical_device)
     }
 
     pub fn reset_draw_buffer(
         &self,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         draw_buffer_index: usize,
     ) -> crate::Result<()> {
         let draw_command_buffer = self.command_pool.get_command_buffer(draw_buffer_index);
-        draw_command_buffer.reset(virtual_device, CommandBufferResetFlags::RELEASE_RESOURCES)
+        draw_command_buffer.reset(logical_device, CommandBufferResetFlags::RELEASE_RESOURCES)
     }
 
     pub fn record_draw_buffer_commands<
-        F: FnOnce(&SetUpVirtualDevice, &SetUpCommandBufferWithFence) -> crate::Result<()>,
+        F: FnOnce(&SetUpLogicalDevice, &SetUpCommandBufferWithFence) -> crate::Result<()>,
     >(
         &self,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         draw_buffer_index: usize,
         f: F,
     ) -> crate::Result<()> {
         let draw_command_buffer = self.command_pool.get_command_buffer(draw_buffer_index);
-        draw_command_buffer.record_commands_for_one_time_submit(virtual_device, f)
+        draw_command_buffer.record_commands_for_one_time_submit(logical_device, f)
     }
 
     pub fn submit_draw_buffer_to_queue(
         &self,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         draw_buffer_index: usize,
         present_queue: Queue,
         wait_mask: &[PipelineStageFlags],
     ) -> crate::Result<()> {
         let draw_command_buffer = self.command_pool.get_command_buffer(draw_buffer_index);
         draw_command_buffer.submit(
-            virtual_device,
+            logical_device,
             present_queue,
             wait_mask,
             &[self.sync_primitives.present_complete_semaphore],
@@ -90,8 +90,8 @@ impl FrameData {
         )
     }
 
-    pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice) {
-        self.sync_primitives.destroy(virtual_device);
-        self.command_pool.destroy(virtual_device);
+    pub fn destroy(&mut self, logical_device: &SetUpLogicalDevice) {
+        self.sync_primitives.destroy(logical_device);
+        self.command_pool.destroy(logical_device);
     }
 }

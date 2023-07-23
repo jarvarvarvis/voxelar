@@ -13,7 +13,7 @@ use crate::window::VoxelarWindow;
 use super::command_buffer::SetUpCommandBufferWithFence;
 use super::surface::SetUpSurfaceInfo;
 use super::swapchain::SetUpSwapchain;
-use super::virtual_device::SetUpVirtualDevice;
+use super::logical_device::SetUpLogicalDevice;
 
 pub struct SetUpEguiIntegration {
     pub integration: ManuallyDrop<egui_winit_ash_integration::Integration<Arc<Mutex<Allocator>>>>,
@@ -25,7 +25,7 @@ impl SetUpEguiIntegration {
         window_width: u32,
         window_height: u32,
         window_scale_factor: f64,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         allocator: Arc<Mutex<Allocator>>,
         graphics_queue_index: u32,
         present_queue: Queue,
@@ -39,7 +39,7 @@ impl SetUpEguiIntegration {
             window_scale_factor,
             egui::FontDefinitions::default(),
             egui::Style::default(),
-            virtual_device.device.clone(),
+            logical_device.device.clone(),
             allocator,
             graphics_queue_index,
             present_queue,

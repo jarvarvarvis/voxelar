@@ -9,7 +9,7 @@ use ash::Instance;
 
 use super::creation_info::PresentModeInitMode;
 use super::surface::SetUpSurfaceInfo;
-use super::virtual_device::SetUpVirtualDevice;
+use super::logical_device::SetUpLogicalDevice;
 
 pub struct SetUpSwapchain {
     pub swapchain_loader: Swapchain,
@@ -28,10 +28,10 @@ impl SetUpSwapchain {
         present_mode: PresentModeKHR,
         clipped: bool,
         image_array_layers: u32,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         old_swapchain: Option<&SetUpSwapchain>,
     ) -> crate::Result<Self> {
-        let swapchain_loader = Swapchain::new(&instance, &virtual_device.device);
+        let swapchain_loader = Swapchain::new(&instance, &logical_device.device);
 
         let surface_format = surface_info.surface_format(0)?;
         let surface_extent = surface_info.surface_extent()?;
@@ -65,7 +65,7 @@ impl SetUpSwapchain {
     pub unsafe fn create_with_defaults(
         instance: &Instance,
         surface_info: &SetUpSurfaceInfo,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         present_mode_init_mode: PresentModeInitMode,
         old_swapchain: Option<&SetUpSwapchain>,
     ) -> crate::Result<Self> {
@@ -101,7 +101,7 @@ impl SetUpSwapchain {
             present_mode,
             true,
             1,
-            virtual_device,
+            logical_device,
             old_swapchain,
         )
     }

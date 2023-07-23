@@ -5,7 +5,7 @@ use crate::result::Context;
 
 use super::descriptor_set_layout::SetUpDescriptorSetLayout;
 use super::descriptor_set_logic::SetUpDescriptorSetLogic;
-use super::virtual_device::SetUpVirtualDevice;
+use super::logical_device::SetUpLogicalDevice;
 
 #[derive(Default)]
 pub struct DescriptorSetLogicBuilder<'builder> {
@@ -34,7 +34,7 @@ impl<'builder> DescriptorSetLogicBuilder<'builder> {
 
     pub fn build(
         self,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
     ) -> crate::Result<SetUpDescriptorSetLogic> {
         unsafe {
             let set_layouts = self
@@ -52,7 +52,7 @@ impl<'builder> DescriptorSetLogicBuilder<'builder> {
             //         SetUpDescriptorSetLayouts has the same memory layout as a slice over
             //         DescriptorSetLayouts.
             SetUpDescriptorSetLogic::create(
-                virtual_device,
+                logical_device,
                 *descriptor_pool_create_info,
                 std::mem::transmute::<&[SetUpDescriptorSetLayout], &[DescriptorSetLayout]>(set_layouts),
             )

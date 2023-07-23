@@ -1,7 +1,7 @@
 use ash::vk::Filter;
 use ash::vk::{Sampler, SamplerAddressMode, SamplerCreateInfo};
 
-use super::virtual_device::SetUpVirtualDevice;
+use super::logical_device::SetUpLogicalDevice;
 
 pub struct SetUpSampler {
     pub sampler: Sampler,
@@ -9,7 +9,7 @@ pub struct SetUpSampler {
 
 impl SetUpSampler {
     pub unsafe fn create(
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         filter: Filter,
         sampler_address_mode: SamplerAddressMode,
     ) -> crate::Result<Self> {
@@ -20,16 +20,16 @@ impl SetUpSampler {
             .address_mode_v(sampler_address_mode)
             .address_mode_w(sampler_address_mode);
 
-        let sampler = virtual_device
+        let sampler = logical_device
             .device
             .create_sampler(&sampler_create_info, None)?;
 
         Ok(Self { sampler })
     }
 
-    pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice) {
+    pub fn destroy(&mut self, logical_device: &SetUpLogicalDevice) {
         unsafe {
-            virtual_device.device.destroy_sampler(self.sampler, None);
+            logical_device.device.destroy_sampler(self.sampler, None);
         }
     }
 }

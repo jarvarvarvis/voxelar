@@ -5,7 +5,7 @@ use ash::vk::ShaderStageFlags;
 
 use super::descriptor_set_layout::SetUpDescriptorSetLayout;
 use super::pipeline_layout::SetUpPipelineLayout;
-use super::virtual_device::SetUpVirtualDevice;
+use super::logical_device::SetUpLogicalDevice;
 
 #[derive(Default)]
 pub struct PipelineLayoutBuilder<'builder> {
@@ -37,7 +37,7 @@ impl<'builder> PipelineLayoutBuilder<'builder> {
         self
     }
 
-    pub fn build(self, virtual_device: &SetUpVirtualDevice) -> crate::Result<SetUpPipelineLayout> {
+    pub fn build(self, logical_device: &SetUpLogicalDevice) -> crate::Result<SetUpPipelineLayout> {
         unsafe {
             let mut pipeline_layout_create_info = PipelineLayoutCreateInfo::builder();
             if !self.push_constant_ranges.is_empty() {
@@ -56,7 +56,7 @@ impl<'builder> PipelineLayoutBuilder<'builder> {
                     );
             }
             SetUpPipelineLayout::create_from_build_info(
-                virtual_device,
+                logical_device,
                 *pipeline_layout_create_info,
             )
         }

@@ -1,7 +1,7 @@
 use ash::vk::{Format, Image};
 use ash::vk::{ImageSubresourceRange, ImageView, ImageViewCreateInfo, ImageViewType};
 
-use super::virtual_device::SetUpVirtualDevice;
+use super::logical_device::SetUpLogicalDevice;
 
 pub struct SetUpImageView {
     pub image_view: ImageView,
@@ -9,7 +9,7 @@ pub struct SetUpImageView {
 
 impl SetUpImageView {
     pub unsafe fn create(
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         image_view_type: ImageViewType,
         format: Format,
         subresource_range: ImageSubresourceRange,
@@ -21,16 +21,16 @@ impl SetUpImageView {
             .subresource_range(subresource_range)
             .image(image);
 
-        let image_view = virtual_device
+        let image_view = logical_device
             .device
             .create_image_view(&image_view_info, None)?;
 
         Ok(Self { image_view })
     }
 
-    pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice) {
+    pub fn destroy(&mut self, logical_device: &SetUpLogicalDevice) {
         unsafe {
-            virtual_device
+            logical_device
                 .device
                 .destroy_image_view(self.image_view, None);
         }

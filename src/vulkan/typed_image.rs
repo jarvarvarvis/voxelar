@@ -16,7 +16,7 @@ use gpu_allocator::vulkan::Allocator;
 use super::command_buffer::SetUpCommandBufferWithFence;
 use super::image::AllocatedImage;
 use super::staging_buffer::SetUpStagingBuffer;
-use super::virtual_device::SetUpVirtualDevice;
+use super::logical_device::SetUpLogicalDevice;
 
 pub struct TypedAllocatedImage<T> {
     pub image: AllocatedImage,
@@ -25,7 +25,7 @@ pub struct TypedAllocatedImage<T> {
 
 impl<T> TypedAllocatedImage<T> {
     pub unsafe fn allocate(
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         allocator: &mut MutexGuard<Allocator>,
         image_type: ImageType,
         format: Format,
@@ -39,7 +39,7 @@ impl<T> TypedAllocatedImage<T> {
     ) -> crate::Result<Self> {
         Ok(Self {
             image: AllocatedImage::allocate(
-                virtual_device,
+                logical_device,
                 allocator,
                 image_type,
                 format,
@@ -57,12 +57,12 @@ impl<T> TypedAllocatedImage<T> {
 
     pub fn layout_transition_to_copy_target(
         &mut self,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         setup_command_buffer: &SetUpCommandBufferWithFence,
         image_subresource: ImageSubresourceRange,
     ) {
         self.image.perform_layout_transition_pipeline_barrier(
-            virtual_device,
+            logical_device,
             setup_command_buffer,
             image_subresource,
             AccessFlags::empty(),
@@ -76,7 +76,7 @@ impl<T> TypedAllocatedImage<T> {
 
     pub fn copy_from_staging_buffer(
         &self,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         staging_buffer: &SetUpStagingBuffer<T>,
         setup_command_buffer: &SetUpCommandBufferWithFence,
         image_subresource: ImageSubresourceLayers,
@@ -93,7 +93,7 @@ impl<T> TypedAllocatedImage<T> {
                 .image_subresource(image_subresource)
                 .image_extent(self.image.image_extent);
 
-            virtual_device.device.cmd_copy_buffer_to_image(
+            logical_device.device.cmd_copy_buffer_to_image(
                 setup_command_buffer.command_buffer,
                 staging_buffer.raw_buffer(),
                 self.raw_image(),
@@ -106,12 +106,12 @@ impl<T> TypedAllocatedImage<T> {
 
     pub fn layout_transition_to_shader_readable(
         &mut self,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         setup_command_buffer: &SetUpCommandBufferWithFence,
         image_subresource: ImageSubresourceRange,
     ) {
         self.image.perform_layout_transition_pipeline_barrier(
-            virtual_device,
+            logical_device,
             setup_command_buffer,
             image_subresource,
             AccessFlags::TRANSFER_WRITE,
@@ -129,9 +129,9 @@ impl<T> TypedAllocatedImage<T> {
 
     pub fn destroy(
         &mut self,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         allocator: &mut MutexGuard<Allocator>,
     ) -> crate::Result<()> {
-        self.image.destroy(virtual_device, allocator)
+        self.image.destroy(logical_device, allocator)
     }
 }

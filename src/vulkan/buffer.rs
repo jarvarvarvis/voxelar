@@ -12,7 +12,7 @@ use gpu_allocator::MemoryLocation;
 
 use crate::result::Context;
 
-use super::virtual_device::SetUpVirtualDevice;
+use super::logical_device::SetUpLogicalDevice;
 
 /// An allocation-backed buffer
 pub struct AllocatedBuffer {
@@ -27,7 +27,7 @@ impl AllocatedBuffer {
     /// buffer data is allocated according to the `MemoryPropertyFlags` and buffer's memory
     /// requirements using the provided `Allocator`.
     pub unsafe fn allocate(
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         allocator: &mut MutexGuard<Allocator>,
         size: u64,
         usage: BufferUsageFlags,
@@ -39,8 +39,8 @@ impl AllocatedBuffer {
             .usage(usage)
             .sharing_mode(sharing_mode);
 
-        let buffer = virtual_device.device.create_buffer(&buffer_info, None)?;
-        let memory_requirements = virtual_device.device.get_buffer_memory_requirements(buffer);
+        let buffer = logical_device.device.create_buffer(&buffer_info, None)?;
+        let memory_requirements = logical_device.device.get_buffer_memory_requirements(buffer);
 
         let buffer_allocation = allocator.allocate(&AllocationCreateDesc {
             name: "buffer",
@@ -50,7 +50,7 @@ impl AllocatedBuffer {
             allocation_scheme: AllocationScheme::GpuAllocatorManaged,
         })?;
 
-        virtual_device.device.bind_buffer_memory(
+        logical_device.device.bind_buffer_memory(
             buffer,
             buffer_allocation.memory(),
             buffer_allocation.offset(),
@@ -63,9 +63,9 @@ impl AllocatedBuffer {
     }
 
     /// This function returns the memory requirements of the internal buffer.
-    pub fn get_buffer_memory_req(&self, virtual_device: &SetUpVirtualDevice) -> MemoryRequirements {
+    pub fn get_buffer_memory_req(&self, logical_device: &SetUpLogicalDevice) -> MemoryRequirements {
         unsafe {
-            virtual_device
+            logical_device
                 .device
                 .get_buffer_memory_requirements(self.buffer)
         }
@@ -88,14 +88,14 @@ impl AllocatedBuffer {
     /// This function destroys this buffer and deallocates its memory using the provided `Allocator`.
     pub fn destroy(
         &mut self,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         allocator: &mut MutexGuard<Allocator>,
     ) -> crate::Result<()> {
         unsafe {
             if let Some(buffer_allocation) = self.allocation.take() {
                 allocator.free(buffer_allocation)?;
             }
-            virtual_device.device.destroy_buffer(self.buffer, None);
+            logical_device.device.destroy_buffer(self.buffer, None);
             Ok(())
         }
     }

@@ -8,7 +8,7 @@ use ash::vk::{RenderPass, RenderPassCreateInfo};
 use ash::vk::{SampleCountFlags, SubpassDependency, SubpassDescription};
 
 use super::surface::SetUpSurfaceInfo;
-use super::virtual_device::SetUpVirtualDevice;
+use super::logical_device::SetUpLogicalDevice;
 
 pub struct SetUpRenderPass {
     pub render_pass: RenderPass,
@@ -16,7 +16,7 @@ pub struct SetUpRenderPass {
 
 impl SetUpRenderPass {
     pub unsafe fn create_with_renderpass_attachments_and_subpasses(
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         renderpass_attachments: &[AttachmentDescription],
         subpasses: &[SubpassDescription],
         subpass_dependencies: &[SubpassDependency],
@@ -26,7 +26,7 @@ impl SetUpRenderPass {
             .subpasses(subpasses)
             .dependencies(subpass_dependencies);
 
-        let render_pass = virtual_device
+        let render_pass = logical_device
             .device
             .create_render_pass(&renderpass_create_info, None)?;
 
@@ -34,7 +34,7 @@ impl SetUpRenderPass {
     }
 
     pub unsafe fn create_with_color_depth_subpass(
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         renderpass_attachments: &[AttachmentDescription],
         color_attachment_refs: &[AttachmentReference],
         depth_attachment_ref: AttachmentReference,
@@ -46,7 +46,7 @@ impl SetUpRenderPass {
             .pipeline_bind_point(PipelineBindPoint::GRAPHICS);
 
         Self::create_with_renderpass_attachments_and_subpasses(
-            virtual_device,
+            logical_device,
             renderpass_attachments,
             std::slice::from_ref(&subpass),
             subpass_dependencies,
@@ -54,7 +54,7 @@ impl SetUpRenderPass {
     }
 
     pub unsafe fn create_with_defaults(
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         surface_info: &SetUpSurfaceInfo,
     ) -> crate::Result<Self> {
         let surface_format = surface_info.surface_format(0)?;
@@ -98,7 +98,7 @@ impl SetUpRenderPass {
         }];
 
         Self::create_with_color_depth_subpass(
-            virtual_device,
+            logical_device,
             &renderpass_attachments,
             &color_attachment_refs,
             depth_attachment_ref,
@@ -106,9 +106,9 @@ impl SetUpRenderPass {
         )
     }
 
-    pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice) {
+    pub fn destroy(&mut self, logical_device: &SetUpLogicalDevice) {
         unsafe {
-            virtual_device
+            logical_device
                 .device
                 .destroy_render_pass(self.render_pass, None);
         }

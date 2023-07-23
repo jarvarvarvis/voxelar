@@ -1,6 +1,6 @@
 use ash::vk::{Semaphore, SemaphoreCreateInfo};
 
-use super::virtual_device::SetUpVirtualDevice;
+use super::logical_device::SetUpLogicalDevice;
 
 pub struct RenderingSyncPrimitives {
     pub present_complete_semaphore: Semaphore,
@@ -8,13 +8,13 @@ pub struct RenderingSyncPrimitives {
 }
 
 impl RenderingSyncPrimitives {
-    pub unsafe fn create(virtual_device: &SetUpVirtualDevice) -> crate::Result<Self> {
+    pub unsafe fn create(logical_device: &SetUpLogicalDevice) -> crate::Result<Self> {
         let semaphore_create_info = SemaphoreCreateInfo::default();
 
-        let present_complete_semaphore = virtual_device
+        let present_complete_semaphore = logical_device
             .device
             .create_semaphore(&semaphore_create_info, None)?;
-        let rendering_complete_semaphore = virtual_device
+        let rendering_complete_semaphore = logical_device
             .device
             .create_semaphore(&semaphore_create_info, None)?;
 
@@ -24,12 +24,12 @@ impl RenderingSyncPrimitives {
         })
     }
 
-    pub fn destroy(&mut self, virtual_device: &SetUpVirtualDevice) {
+    pub fn destroy(&mut self, logical_device: &SetUpLogicalDevice) {
         unsafe {
-            virtual_device
+            logical_device
                 .device
                 .destroy_semaphore(self.present_complete_semaphore, None);
-            virtual_device
+            logical_device
                 .device
                 .destroy_semaphore(self.rendering_complete_semaphore, None);
         }

@@ -9,7 +9,7 @@ use gpu_allocator::vulkan::Allocator;
 use gpu_allocator::MemoryLocation;
 
 use super::typed_buffer::TypedAllocatedBuffer;
-use super::virtual_device::SetUpVirtualDevice;
+use super::logical_device::SetUpLogicalDevice;
 
 pub struct SetUpStagingBuffer<T> {
     pub buffer: TypedAllocatedBuffer<T>,
@@ -17,12 +17,12 @@ pub struct SetUpStagingBuffer<T> {
 
 impl<T> SetUpStagingBuffer<T> {
     pub unsafe fn allocate(
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         allocator: &mut MutexGuard<Allocator>,
         element_amount: u64,
     ) -> crate::Result<Self> {
         let buffer = TypedAllocatedBuffer::allocate(
-            virtual_device,
+            logical_device,
             allocator,
             element_amount,
             BufferUsageFlags::TRANSFER_SRC,
@@ -35,7 +35,7 @@ impl<T> SetUpStagingBuffer<T> {
 
     pub unsafe fn copy_from_slice(
         &self,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         data: &[T],
     ) -> crate::Result<()>
     where
@@ -46,7 +46,7 @@ impl<T> SetUpStagingBuffer<T> {
             "The provided data slice must have the same size as the source buffer"
         );
 
-        let buffer_memory_req = self.buffer.buffer.get_buffer_memory_req(virtual_device);
+        let buffer_memory_req = self.buffer.buffer.get_buffer_memory_req(logical_device);
 
         let buffer_ptr = self.buffer.mapped_ptr()? as *mut c_void;
 
@@ -62,9 +62,9 @@ impl<T> SetUpStagingBuffer<T> {
 
     pub fn destroy(
         &mut self,
-        virtual_device: &SetUpVirtualDevice,
+        logical_device: &SetUpLogicalDevice,
         allocator: &mut MutexGuard<Allocator>,
     ) -> crate::Result<()> {
-        self.buffer.destroy(virtual_device, allocator)
+        self.buffer.destroy(logical_device, allocator)
     }
 }
