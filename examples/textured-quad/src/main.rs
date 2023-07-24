@@ -50,10 +50,10 @@ fn main() -> Result<()> {
                 demo.handle_egui_integration_event(&window_event);
                 match window_event {
                     WindowEvent::Resized(_) => {
-                        demo.recreate_swapchain = true;
+                        demo.on_resize(&vulkan_context)?;
                     }
                     WindowEvent::ScaleFactorChanged { .. } => {
-                        demo.recreate_swapchain = true;
+                        demo.on_resize(&vulkan_context)?;
                     }
                     WindowEvent::KeyboardInput {
                         input:

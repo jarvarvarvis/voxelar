@@ -1,5 +1,7 @@
 use voxelar::ash::vk;
 use voxelar::compile_shader;
+use voxelar::engine::camera::orbital_camera::OrbitalCamera;
+use voxelar::engine::camera::Camera;
 use voxelar::engine::frame_time::FrameTimeManager;
 use voxelar::nalgebra::*;
 use voxelar::vulkan::descriptor_set_layout::SetUpDescriptorSetLayout;
@@ -47,7 +49,7 @@ pub struct PerFrameData {
 }
 
 pub struct Demo {
-    pub recreate_swapchain: bool,
+    recreate_swapchain: bool,
     viewport: vk::Viewport,
     scissor: vk::Rect2D,
 
@@ -67,8 +69,8 @@ pub struct Demo {
     sampler: SetUpSampler,
     texture: Texture<u8>,
 
-    pub frame_time_manager: FrameTimeManager,
-    camera_position: Point3<f32>,
+    camera: OrbitalCamera,
+    frame_time_manager: FrameTimeManager,
 
     egui_integration: SetUpEguiIntegration,
 }
@@ -226,6 +228,7 @@ impl Demo {
             .scissor(scissor)
             .build(&logical_device, &render_pass, &pipeline_layout)?;
 
+        let initial_aspect_ratio = surface_width as f32 / surface_height as f32;
         Ok(Self {
             recreate_swapchain: false,
             viewport,
@@ -246,9 +249,16 @@ impl Demo {
 
             sampler,
             texture,
-
+            
             frame_time_manager: FrameTimeManager::new(&voxelar_context),
-            camera_position: Point3::new(0.0, 2.0, -4.0),
+            camera: OrbitalCamera::new(
+                Point3::new(0.0, 2.0, -4.0),
+                3.0,
+                initial_aspect_ratio,
+                45.0,
+                0.1,
+                100.0,
+            ),
 
             egui_integration,
         })
@@ -260,6 +270,14 @@ impl Demo {
         egui_integration: SetUpEguiIntegration,
     ) -> crate::Result<Self> {
         unsafe { Self::create(voxelar_context, vulkan_context, egui_integration) }
+    }
+
+    pub fn on_resize(&mut self, vulkan_context: &VulkanContext) -> crate::Result<()> {
+        let surface_extent = vulkan_context.get_surface_extent()?;
+        self.recreate_swapchain = true;
+        self.camera.on_resize((surface_extent.width, surface_extent.height));
+
+        Ok(())
     }
 
     fn update_viewports_and_scissors(
@@ -282,24 +300,6 @@ impl Demo {
 
     pub fn handle_egui_integration_event(&mut self, window_event: &WindowEvent<'_>) {
         let _ = self.egui_integration.handle_event(window_event);
-    }
-
-    pub fn update_camera_and_get_mvp_matrix(&mut self, aspect_ratio: f32) -> Matrix4<f32> {
-        let projection = Matrix4::new_perspective(aspect_ratio, 60.0f32.to_radians(), 0.1, 100.0);
-
-        let origin = Point3::new(0.0, 0.0, 0.0);
-        let rotated_origin_camera_vector =
-            Rotation3::from_axis_angle(&Vector3::y_axis(), 1.0f32.to_radians())
-                .transform_vector(&(self.camera_position - origin));
-        self.camera_position = origin + rotated_origin_camera_vector;
-
-        let view = Matrix4::from(
-            Rotation3::look_at_lh(&(origin - self.camera_position), &Vector3::y_axis())
-                * Translation3::from(self.camera_position),
-        );
-        let model = Matrix4::identity();
-
-        projection * view * model
     }
 
     pub fn render(
@@ -380,8 +380,8 @@ impl Demo {
                             vk::IndexType::UINT32,
                         );
 
-                        let mvp_matrix =
-                            self.update_camera_and_get_mvp_matrix(window.aspect_ratio());
+                        self.camera.on_single_update();
+                        let mvp_matrix = self.camera.transform_model_matrix(Matrix4::identity());
                         let current_descriptor_data = self.per_frame_data.current();
                         let camera_buffer = DemoCameraBuffer { mvp_matrix };
                         self.descriptor_buffers.camera_buffer.store_at(
