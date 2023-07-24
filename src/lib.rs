@@ -7,6 +7,7 @@
 //! - engine: Provides various game engine utilities (e.g. frame time/FPS measurement etc.)
 //! - render\_context: Contains the `RenderContext` trait
 //! - result: Provides voxelar's error type, a `Result` with that type and more
+//! - voxel: Provides all functionality for voxel world storage, rendering etc.
 //! - vulkan: Provides all Vulkan functionality
 //! - window: Provides the window creation API
 //!
@@ -24,6 +25,7 @@ pub extern crate winit;
 pub mod engine;
 pub mod render_context;
 pub mod result;
+pub mod voxel;
 pub mod vulkan;
 pub mod window;
 
