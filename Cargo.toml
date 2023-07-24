@@ -19,7 +19,7 @@ egui = "0.22.0"
 egui-winit = "0.22.0"
 egui-winit-ash-integration = { git = "https://github.com/jarvarvarvis/egui-winit-ash-integration" }
 
-voxelar-utils = { path = "voxelar-utils" }
+voxelar-utils = { git = "https://github.com/jarvarvarvis/voxelar-utils" }
 
 nalgebra = "0.32.3"
 
