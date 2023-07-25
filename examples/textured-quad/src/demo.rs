@@ -254,6 +254,7 @@ impl Demo {
             camera: OrbitalCamera::new(
                 Point3::new(0.0, 2.0, -4.0),
                 3.0,
+                0.5,
                 initial_aspect_ratio,
                 45.0,
                 0.1,

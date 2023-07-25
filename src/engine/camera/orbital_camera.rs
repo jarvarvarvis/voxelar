@@ -6,6 +6,7 @@ pub struct OrbitalCamera {
     pub current_position: Point3<f32>,
     pub target: Point3<f32>,
     pub distance_from_target: f32,
+    pub per_update_rotation_angle_degrees: f32,
 
     pub fov_radians: f32,
     pub znear: f32,
@@ -17,6 +18,7 @@ impl OrbitalCamera {
     pub fn new(
         start_position: Point3<f32>,
         distance_from_target: f32,
+        per_update_rotation_angle_degrees: f32,
         aspect_ratio: f32,
         fov_degrees: f32,
         znear: f32,
@@ -27,6 +29,7 @@ impl OrbitalCamera {
             current_position: start_position,
             target: Point3::new(0.0, 0.0, 0.0),
             distance_from_target,
+            per_update_rotation_angle_degrees,
 
             fov_radians,
             znear,
@@ -68,7 +71,7 @@ impl Camera for OrbitalCamera {
     fn on_single_update(&mut self) {
         let target_to_camera_vector = -self.calculate_fixed_distance_vector_to_target();
         let rotated_origin_camera_vector =
-            Rotation3::from_axis_angle(&Vector3::y_axis(), 1.0f32.to_radians())
+            Rotation3::from_axis_angle(&Vector3::y_axis(), self.per_update_rotation_angle_degrees.to_radians())
                 .transform_vector(&target_to_camera_vector);
         self.current_position = self.target + rotated_origin_camera_vector;
     }
