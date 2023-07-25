@@ -1,21 +1,22 @@
 use std::ffi::CString;
 use std::io::Cursor;
-use std::path::PathBuf;
 
 use ash::util::read_spv;
-use lazy_static::lazy_static;
 
-use shaderc::ShaderKind;
-use shaderc::{CompileOptions, Compiler};
+#[cfg(feature = "shaderc-crate")]
+use {
+    shaderc::*,
+    lazy_static::lazy_static,
+    crate::result::Context,
+};
 
 use ash::vk::{
     PipelineShaderStageCreateInfo, ShaderModule, ShaderModuleCreateInfo, ShaderStageFlags,
 };
 
-use crate::result::Context;
-
 use super::logical_device::SetUpLogicalDevice;
 
+#[cfg(feature = "shaderc-crate")]
 lazy_static! {
     static ref SHADERC_COMPILER: Compiler = Compiler::new().unwrap();
 }
@@ -68,9 +69,9 @@ impl CompiledShaderModule {
     }
 }
 
+#[cfg(feature = "shaderc-crate")]
 pub fn compile_bytes(shader_kind: ShaderKind, source: &str, path: &str) -> crate::Result<Vec<u8>> {
-    let mut options =
-        CompileOptions::new().context("Unable to create compile options".to_string())?;
+    let options = CompileOptions::new().context("Unable to create compile options".to_string())?;
 
     let binary_result = SHADERC_COMPILER
         .compile_into_spirv(source, shader_kind, path, "main", Some(&options))
@@ -79,6 +80,7 @@ pub fn compile_bytes(shader_kind: ShaderKind, source: &str, path: &str) -> crate
     Ok(bytes)
 }
 
+#[cfg(feature = "shaderc-crate")]
 #[macro_export]
 macro_rules! compile_shader_from_included_src {
     ($kind:expr, $path:tt) => {

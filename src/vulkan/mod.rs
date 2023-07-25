@@ -45,11 +45,13 @@
 //! - egui: An immediate mode GUI library
 //! - gpu_allocator: A memory allocator for Vulkan
 //! - image (as image_crate): An image loading, encoding and decoding library
-//! - shaderc: Bindings for the Shaderc library
+//! - shaderc (only accessible when the shaderc-crate feature is used): Bindings for the Shaderc library
 
 pub extern crate egui;
 pub extern crate gpu_allocator;
 pub extern crate image as image_crate;
+
+#[cfg(feature = "shaderc-crate")]
 pub extern crate shaderc;
 
 use std::ffi::{c_char, CStr, CString};
