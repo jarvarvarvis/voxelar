@@ -1,5 +1,6 @@
 use std::ffi::CString;
 use std::io::Cursor;
+use std::path::PathBuf;
 
 use ash::util::read_spv;
 use lazy_static::lazy_static;
@@ -68,7 +69,9 @@ impl CompiledShaderModule {
 }
 
 pub fn compile_bytes(shader_kind: ShaderKind, source: &str, path: &str) -> crate::Result<Vec<u8>> {
-    let options = CompileOptions::new().context("Unable to create compile options".to_string())?;
+    let mut options =
+        CompileOptions::new().context("Unable to create compile options".to_string())?;
+
     let binary_result = SHADERC_COMPILER
         .compile_into_spirv(source, shader_kind, path, "main", Some(&options))
         .context("Unable to compile shader".to_string())?;
@@ -77,7 +80,7 @@ pub fn compile_bytes(shader_kind: ShaderKind, source: &str, path: &str) -> crate
 }
 
 #[macro_export]
-macro_rules! compile_shader {
+macro_rules! compile_shader_from_included_src {
     ($kind:expr, $path:tt) => {
         crate::vulkan::shader::compile_bytes($kind, include_str!($path), $path)
     };

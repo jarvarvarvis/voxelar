@@ -1,5 +1,5 @@
 use voxelar::ash::vk;
-use voxelar::compile_shader;
+use voxelar::compile_shader_from_included_src;
 use voxelar::engine::camera::orbital_camera::OrbitalCamera;
 use voxelar::engine::camera::Camera;
 use voxelar::engine::frame_time::FrameTimeManager;
@@ -196,10 +196,10 @@ impl Demo {
         let index_buffer_data = vec![0, 1, 2, 0, 2, 3];
         let index_buffer = vulkan_context.create_index_buffer(&index_buffer_data)?;
 
-        let compiled_vert = compile_shader!(ShaderKind::Vertex, "../shader/triangle.vert")?;
+        let compiled_vert = compile_shader_from_included_src!(ShaderKind::Vertex, "../shader/triangle.vert")?;
         let vertex_shader_module = vulkan_context.create_vertex_shader(compiled_vert)?;
 
-        let compiled_frag = compile_shader!(ShaderKind::Fragment, "../shader/triangle.frag")?;
+        let compiled_frag = compile_shader_from_included_src!(ShaderKind::Fragment, "../shader/triangle.frag")?;
         let fragment_shader_module = vulkan_context.create_fragment_shader(compiled_frag)?;
 
         let viewport = vk::Viewport {
