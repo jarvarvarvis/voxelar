@@ -403,11 +403,11 @@ impl Demo {
 
                         let camera_buffer_offset = self
                             .descriptor_buffers
-                            .scene_buffer
+                            .camera_buffer
                             .get_offset(current_frame_index);
                         let scene_buffer_offset = self
                             .descriptor_buffers
-                            .camera_buffer
+                            .scene_buffer
                             .get_offset(current_frame_index);
 
                         device.cmd_bind_descriptor_sets(
