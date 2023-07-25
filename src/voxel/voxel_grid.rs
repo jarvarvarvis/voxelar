@@ -1,4 +1,4 @@
-use super::voxel_storage::VoxelStorage;
+use super::voxel_storage::*;
 use super::*;
 
 pub struct VoxelGrid<V: Voxel> {
@@ -49,6 +49,14 @@ impl<V: Voxel> VoxelGrid<V> {
 }
 
 impl<V: Voxel> VoxelStorage<V> for VoxelGrid<V> {
+    fn size(&self) -> VoxelStorageBBExtent {
+        VoxelStorageBBExtent {
+            width: self.width(),
+            height: self.height(),
+            depth: self.depth(),
+        }
+    }
+
     fn get_voxel(&self, coordinate: VoxelCoordinate) -> crate::Result<&V> {
         let size = self.size;
         crate::verify!(
