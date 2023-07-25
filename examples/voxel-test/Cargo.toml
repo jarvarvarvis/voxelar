@@ -1,0 +1,15 @@
+[package]
+name = "voxel-test"
+version = "0.1.0"
+edition = "2021"
+build = "recompile_shaders.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+voxelar = { path = "../../." }
+voxelar-vertex = { git = "https://github.com/jarvarvarvis/voxelar-vertex" }
+
+[build-dependencies]
+shaderc = "0.8.2"
+walkdir = "2.3.3"
