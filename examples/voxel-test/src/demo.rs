@@ -27,7 +27,9 @@ use crate::vertex::*;
 
 #[repr(C)]
 pub struct DemoCameraBuffer {
+    camera_position: Vector4<f32>,
     mvp_matrix: Matrix4<f32>,
+    rotate_view_matrix: Matrix4<f32>,
     screen_size: Vector2<f32>,
 }
 
@@ -118,10 +120,10 @@ impl Demo {
         let surface_width = surface_resolution.width;
         let surface_height = surface_resolution.height;
 
-        let dimensions = Vector3::<isize>::new(10, 10, 10);
+        let dimensions = Vector3::<isize>::new(8, 8, 8);
         let mut vertices =
             Vec::with_capacity((dimensions.x * dimensions.y * dimensions.z) as usize);
-        for z in (-dimensions.x / 2)..(dimensions.x / 2) {
+        for z in (-dimensions.z / 2)..(dimensions.z / 2) {
             for y in (-dimensions.y / 2)..(dimensions.y / 2) {
                 for x in (-dimensions.x / 2)..(dimensions.x / 2) {
                     let vertex = VertexData {
@@ -192,7 +194,7 @@ impl Demo {
             frame_time_manager: FrameTimeManager::new(&voxelar_context),
             camera: OrbitalCamera::new(
                 Point3::new(0.0, 2.0, -4.0),
-                20.0,
+                70.0,
                 0.5,
                 initial_aspect_ratio,
                 45.0,
@@ -318,9 +320,20 @@ impl Demo {
                         );
 
                         self.camera.on_single_update();
-                        let current_descriptor_data = self.per_frame_data.current();
+                        let dist_cycle =
+                            (((total_frames % 360) as f32).to_radians().sin() + 1.0) / 2.0;
+                        self.camera.distance_from_target = 25.0 + 45.0 * dist_cycle;
+
+                        let camera_position = self.camera.position();
                         let camera_buffer = DemoCameraBuffer {
+                            camera_position: Vector4::new(
+                                camera_position.x,
+                                camera_position.y,
+                                camera_position.z,
+                                1.0,
+                            ),
                             mvp_matrix: self.camera.transform_model_matrix(Matrix4::identity()),
+                            rotate_view_matrix: self.camera.view_rotation_matrix(),
                             screen_size: Vector2::new(
                                 current_window_size.0 as f32,
                                 current_window_size.1 as f32,
@@ -332,6 +345,7 @@ impl Demo {
                             current_frame_index,
                         )?;
 
+                        let current_descriptor_data = self.per_frame_data.current();
                         let camera_buffer_offset = self
                             .descriptor_buffers
                             .camera_buffer
@@ -365,6 +379,14 @@ impl Demo {
                             ui.label(format!(
                                 "Frame Time: {:.1}ms",
                                 self.frame_time_manager.frame_time() * 1000.0
+                            ));
+
+                            ui.separator();
+
+                            let camera_pos = self.camera.position();
+                            ui.label(format!(
+                                "Camera Position: {:.2}, {:.2}, {:.2}",
+                                camera_pos.x, camera_pos.y, camera_pos.z,
                             ));
                         });
                         Ok(())

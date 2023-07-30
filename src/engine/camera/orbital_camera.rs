@@ -50,12 +50,13 @@ impl OrbitalCamera {
 }
 
 impl Camera for OrbitalCamera {
-    fn view_matrix(&self) -> Matrix4<f32> {
+    fn view_rotation_matrix(&self) -> Matrix4<f32> {
         let target_vector = self.calculate_fixed_distance_vector_to_target();
-        Matrix4::from(
-            Rotation3::look_at_lh(&target_vector, &Vector3::y_axis())
-                * Translation3::from(self.current_position),
-        )
+        Matrix4::from(Rotation3::look_at_lh(&target_vector, &Vector3::y_axis()))
+    }
+
+    fn view_matrix(&self) -> Matrix4<f32> {
+        self.view_rotation_matrix() * Matrix4::from(Translation3::from(self.current_position))
     }
 
     fn projection_matrix(&self) -> Matrix4<f32> {
@@ -70,10 +71,16 @@ impl Camera for OrbitalCamera {
 
     fn on_single_update(&mut self) {
         let target_to_camera_vector = -self.calculate_fixed_distance_vector_to_target();
-        let rotated_origin_camera_vector =
-            Rotation3::from_axis_angle(&Vector3::y_axis(), self.per_update_rotation_angle_degrees.to_radians())
-                .transform_vector(&target_to_camera_vector);
+        let rotated_origin_camera_vector = Rotation3::from_axis_angle(
+            &Vector3::y_axis(),
+            self.per_update_rotation_angle_degrees.to_radians(),
+        )
+        .transform_vector(&target_to_camera_vector);
         self.current_position = self.target + rotated_origin_camera_vector;
+    }
+
+    fn position(&self) -> Point3<f32> {
+        self.current_position
     }
 
     fn set_position(&mut self, position: Point3<f32>) {

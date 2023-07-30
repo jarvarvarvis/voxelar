@@ -2,6 +2,11 @@
 #define intersect_glsl
 
 #include "box.glsl"
+#include "ray.glsl"
+
+float maxComponent(vec3 value) {
+    return max(max(value.x, value.y), value.z);
+}
 
 // vec3 box.radius:       independent half-length along the X, Y, and Z axes
 // mat3 box.rotation:     box-to-world rotation (orthonormal 3x3 matrix) transformation
@@ -37,11 +42,11 @@ bool ourIntersectBoxCommon(
     // We'll use the negated sign of the ray direction in several places, so precompute it.
     // The sign() instruction is fast...but surprisingly not so fast that storing the result
     // temporarily isn't an advantage.
-    Vector3 sgn = -sign(ray.direction);
+    vec3 sgn = -sign(ray.direction);
 
 	// Ray-plane intersection. For each pair of planes, choose the one that is front-facing
     // to the ray and compute the distance to it.
-    Vector3 distanceToPlane = box.radius * winding * sgn - ray.origin;
+    vec3 distanceToPlane = box.radius * winding * sgn - ray.origin;
     if (oriented) {
         distanceToPlane /= ray.direction;
     } else {
