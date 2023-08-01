@@ -56,8 +56,6 @@ pub struct Demo {
     vertex_shader_module: CompiledShaderModule,
     fragment_shader_module: CompiledShaderModule,
     vertex_buffer: TypedAllocatedBuffer<VertexData>,
-    index_buffer: TypedAllocatedBuffer<u32>,
-    index_count: usize,
 
     camera: OrbitalCamera,
     frame_time_manager: FrameTimeManager,
@@ -81,12 +79,6 @@ impl Demo {
                 vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC,
                 vk::ShaderStageFlags::VERTEX,
             )
-            .add_binding(
-                1, // In the shader, this will specifiy binding = 2 in the uniform layout
-                1,
-                vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
-                vk::ShaderStageFlags::FRAGMENT,
-            )
             .build(logical_device)?;
         let descriptor_set_layouts = vec![global_set_layout];
 
@@ -99,7 +91,6 @@ impl Demo {
             |_| {
                 let descriptor_set_logic = DescriptorSetLogicBuilder::new()
                     .add_pool_size(vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC, 1)
-                    .add_pool_size(vk::DescriptorType::COMBINED_IMAGE_SAMPLER, 1)
                     .set_layouts(&descriptor_set_layouts)
                     .build(logical_device)?;
                 let destination_set = descriptor_set_logic.get_set(0);
@@ -140,6 +131,15 @@ impl Demo {
                 pos: Vector3::new(1.0, 0.0, 1.0),
                 uv: Vector2::new(1.0, 1.0),
             },
+
+            VertexData {
+                pos: Vector3::new(-1.0, 0.0, -1.0),
+                uv: Vector2::new(-1.0, -1.0),
+            },
+            VertexData {
+                pos: Vector3::new(1.0, 0.0, 1.0),
+                uv: Vector2::new(1.0, 1.0),
+            },
             VertexData {
                 pos: Vector3::new(-1.0, 0.0, 1.0),
                 uv: Vector2::new(-1.0, 1.0),
@@ -151,9 +151,6 @@ impl Demo {
         let vertex_input_state_builder =
             VertexInputStateBuilder::new().add_data_from_type::<VertexData>(0);
         let vertex_input_state_info = vertex_input_state_builder.build();
-
-        let index_buffer_data = vec![0, 1, 2, 0, 2, 3];
-        let index_buffer = vulkan_context.create_index_buffer(&index_buffer_data)?;
 
         let compiled_vert =
             compile_shader_from_included_src!(ShaderKind::Vertex, "../shader/triangle.vert")?;
@@ -205,8 +202,6 @@ impl Demo {
             vertex_shader_module,
             fragment_shader_module,
             vertex_buffer,
-            index_buffer,
-            index_count: index_buffer_data.len(),
 
             frame_time_manager: FrameTimeManager::new(&voxelar_context),
             camera: OrbitalCamera::new(
@@ -333,12 +328,6 @@ impl Demo {
                             &[self.vertex_buffer.raw_buffer()],
                             &[0],
                         );
-                        device.cmd_bind_index_buffer(
-                            draw_command_buffer,
-                            self.index_buffer.raw_buffer(),
-                            0,
-                            vk::IndexType::UINT32,
-                        );
 
                         self.camera.on_single_update();
                         let current_descriptor_data = self.per_frame_data.current();
@@ -366,11 +355,10 @@ impl Demo {
                             &[camera_buffer_offset as u32],
                         );
 
-                        device.cmd_draw_indexed(
+                        device.cmd_draw(
                             draw_command_buffer,
-                            self.index_count as u32,
+                            6, // The billboard is always made up of 6 vertices (a quad)
                             1,
-                            0,
                             0,
                             0,
                         );
@@ -445,7 +433,6 @@ impl Demo {
             self.vertex_shader_module.destroy(logical_device);
             self.fragment_shader_module.destroy(logical_device);
 
-            self.index_buffer.destroy(logical_device, &mut allocator)?;
             self.vertex_buffer.destroy(logical_device, &mut allocator)?;
         }
 
