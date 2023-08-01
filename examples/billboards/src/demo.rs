@@ -119,11 +119,11 @@ impl Demo {
         let vertex_input_state_info = vertex_input_state_builder.build();
 
         let compiled_vert =
-            compile_shader_from_included_src!(ShaderKind::Vertex, "../shader/triangle.vert")?;
+            compile_shader_from_included_src!(ShaderKind::Vertex, "../shader/billboard.vert")?;
         let vertex_shader_module = vulkan_context.create_vertex_shader(compiled_vert)?;
 
         let compiled_frag =
-            compile_shader_from_included_src!(ShaderKind::Fragment, "../shader/triangle.frag")?;
+            compile_shader_from_included_src!(ShaderKind::Fragment, "../shader/billboard.frag")?;
         let fragment_shader_module = vulkan_context.create_fragment_shader(compiled_frag)?;
 
         let viewport = vk::Viewport {
