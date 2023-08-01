@@ -35,9 +35,6 @@ pub extern crate image as image_crate;
 #[cfg(feature = "shaderc-crate")]
 pub extern crate shaderc;
 
-#[cfg(feature = "crevice-crate")]
-pub extern crate crevice;
-
 pub mod engine;
 pub mod render_context;
 pub mod result;
