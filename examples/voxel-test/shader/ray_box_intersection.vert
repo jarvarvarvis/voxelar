@@ -11,8 +11,9 @@ layout (set = 0, binding = 0) uniform camera_buffer
 {
     vec4 camera_position;
     mat4 mvp_matrix;
-    mat4 rotate_view_matrix;
+    mat4 view_matrix;
     vec2 screen_size;
+    float z_far;
 } CameraBuffer;
 
 struct RaytraceInput {
@@ -21,7 +22,7 @@ struct RaytraceInput {
 
 layout (location = 0) out RaytraceInput raytrace_input;
 
-const float VOXEL_SIZE = 2.0;
+const float VOXEL_SIZE = 5.0;
 
 void main() {
     vec4 clip_space_position = CameraBuffer.mvp_matrix * vec4(local_vertex_position, 1.0);
@@ -31,7 +32,7 @@ void main() {
         local_vertex_position,
         VOXEL_SIZE,
         CameraBuffer.mvp_matrix,
-        CameraBuffer.screen_size / 2.0,
+        CameraBuffer.screen_size,
         clip_space_position,
         point_size
     );
@@ -43,13 +44,13 @@ void main() {
         // Assumes voxels are in randomized order.
         clip_space_position = vec4(-1,-1,-1,-1);
     }
-    
+
     gl_Position = clip_space_position;
     gl_PointSize = point_size;
 
     Box box;
-    box.center = local_vertex_position;
-    box.radius = vec3(VOXEL_SIZE);
+    box.radius = vec3(VOXEL_SIZE / 2.0);
+    box.center = local_vertex_position * VOXEL_SIZE;
     box.invRadius = safeInverse(box.radius);
     box.rotation = mat3(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0);
 

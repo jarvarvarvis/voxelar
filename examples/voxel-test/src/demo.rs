@@ -29,8 +29,9 @@ use crate::vertex::*;
 pub struct DemoCameraBuffer {
     camera_position: Vector4<f32>,
     mvp_matrix: Matrix4<f32>,
-    rotate_view_matrix: Matrix4<f32>,
+    view_matrix: Matrix4<f32>,
     screen_size: Vector2<f32>,
+    z_far: f32,
 }
 
 pub struct DemoDescriptorBuffers {
@@ -120,19 +121,17 @@ impl Demo {
         let surface_width = surface_resolution.width;
         let surface_height = surface_resolution.height;
 
-        let dimensions = Vector3::<isize>::new(8, 8, 8);
-        let mut vertices =
-            Vec::with_capacity((dimensions.x * dimensions.y * dimensions.z) as usize);
-        for z in (-dimensions.z / 2)..(dimensions.z / 2) {
-            for y in (-dimensions.y / 2)..(dimensions.y / 2) {
-                for x in (-dimensions.x / 2)..(dimensions.x / 2) {
-                    let vertex = VertexData {
-                        pos: Vector3::new(x as f32, y as f32, z as f32),
-                    };
-                    vertices.push(vertex);
-                }
-            }
-        }
+        let vertices = vec![
+            VertexData {
+                pos: Vector3::new(0.0, 0.0, 0.0),
+            },
+            VertexData {
+                pos: Vector3::new(0.0, 1.0, 0.0),
+            },
+            VertexData {
+                pos: Vector3::new(1.0, 0.0, 0.0),
+            },
+        ];
 
         let vertex_buffer = vulkan_context.create_vertex_buffer(&vertices)?;
         let vertex_count = vertices.len() as u32;
@@ -325,6 +324,8 @@ impl Demo {
                         self.camera.distance_from_target = 25.0 + 45.0 * dist_cycle;
 
                         let camera_position = self.camera.position();
+
+                        let current_window_size = window.get_size();
                         let camera_buffer = DemoCameraBuffer {
                             camera_position: Vector4::new(
                                 camera_position.x,
@@ -333,11 +334,12 @@ impl Demo {
                                 1.0,
                             ),
                             mvp_matrix: self.camera.transform_model_matrix(Matrix4::identity()),
-                            rotate_view_matrix: self.camera.view_rotation_matrix(),
+                            view_matrix: self.camera.view_matrix(),
                             screen_size: Vector2::new(
                                 current_window_size.0 as f32,
                                 current_window_size.1 as f32,
                             ),
+                            z_far: self.camera.zfar,
                         };
                         self.descriptor_buffers.camera_buffer.store_at(
                             device,
