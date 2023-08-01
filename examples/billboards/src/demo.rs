@@ -15,7 +15,7 @@ use voxelar::vulkan::per_frame::PerFrame;
 use voxelar::vulkan::pipeline_layout::SetUpPipelineLayout;
 use voxelar::vulkan::pipeline_layout_builder::PipelineLayoutBuilder;
 use voxelar::vulkan::shader::CompiledShaderModule;
-use voxelar::vulkan::shaderc::ShaderKind;
+use voxelar::shaderc::ShaderKind;
 use voxelar::vulkan::uniform_buffer::SetUpUniformBuffer;
 use voxelar::vulkan::VulkanContext;
 use voxelar::window::VoxelarWindow;
@@ -332,7 +332,7 @@ impl Demo {
                     |integration| {
                         let ctx = integration.context();
 
-                        use voxelar::vulkan::egui;
+                        use voxelar::egui;
                         egui::Window::new("Engine Info").show(&ctx, |ui| {
                             ui.label(format!("FPS: {:.4}", self.frame_time_manager.fps()));
                             ui.label(format!(

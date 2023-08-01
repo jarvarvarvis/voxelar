@@ -1,4 +1,4 @@
-pub use super::image_crate::*;
+pub use image::*;
 
 use std::sync::MutexGuard;
 

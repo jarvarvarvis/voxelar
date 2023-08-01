@@ -375,7 +375,7 @@ impl Demo {
                     |integration| {
                         let ctx = integration.context();
 
-                        use voxelar::vulkan::egui;
+                        use voxelar::egui;
                         egui::Window::new("Engine Info").show(&ctx, |ui| {
                             ui.label(format!("FPS: {:.4}", self.frame_time_manager.fps()));
                             ui.label(format!(
