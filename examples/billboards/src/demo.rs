@@ -87,6 +87,7 @@ impl Demo {
             |_| {
                 let descriptor_set_logic = DescriptorSetLogicBuilder::new()
                     .add_pool_size(vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC, 1)
+                    .add_pool_size(vk::DescriptorType::STORAGE_BUFFER, 1)
                     .set_layouts(&descriptor_set_layouts)
                     .build(logical_device)?;
                 let destination_set = descriptor_set_logic.get_set(0);
@@ -114,8 +115,7 @@ impl Demo {
         let surface_width = surface_resolution.width;
         let surface_height = surface_resolution.height;
 
-        let vertex_input_state_builder =
-            VertexInputStateBuilder::new();
+        let vertex_input_state_builder = VertexInputStateBuilder::new();
         let vertex_input_state_info = vertex_input_state_builder.build();
 
         let compiled_vert =
@@ -289,7 +289,7 @@ impl Demo {
 
                         self.camera.on_single_update();
                         let current_descriptor_data = self.per_frame_data.current();
-                        let camera_buffer = DemoCameraBuffer { 
+                        let camera_buffer = DemoCameraBuffer {
                             projection_matrix: self.camera.projection_matrix(),
                             view_matrix: self.camera.view_matrix(),
                         };
@@ -316,7 +316,7 @@ impl Demo {
                         device.cmd_draw(
                             draw_command_buffer,
                             6, // The billboard is always made up of 6 vertices (a quad)
-                            1,
+                            4, // Draw 4 (currently a test value) billboards
                             0,
                             0,
                         );
