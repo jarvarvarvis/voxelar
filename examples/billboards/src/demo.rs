@@ -14,10 +14,8 @@ use voxelar::vulkan::graphics_pipeline_builder::GraphicsPipelineBuilder;
 use voxelar::vulkan::per_frame::PerFrame;
 use voxelar::vulkan::pipeline_layout::SetUpPipelineLayout;
 use voxelar::vulkan::pipeline_layout_builder::PipelineLayoutBuilder;
-use voxelar::vulkan::sampler::SetUpSampler;
 use voxelar::vulkan::shader::CompiledShaderModule;
 use voxelar::vulkan::shaderc::ShaderKind;
-use voxelar::vulkan::texture::Texture;
 use voxelar::vulkan::typed_buffer::TypedAllocatedBuffer;
 use voxelar::vulkan::uniform_buffer::SetUpUniformBuffer;
 use voxelar::vulkan::VulkanContext;
@@ -61,9 +59,6 @@ pub struct Demo {
     index_buffer: TypedAllocatedBuffer<u32>,
     index_count: usize,
 
-    sampler: SetUpSampler,
-    texture: Texture<u8>,
-
     camera: OrbitalCamera,
     frame_time_manager: FrameTimeManager,
 
@@ -100,18 +95,6 @@ impl Demo {
                 .allocate_dynamic_uniform_buffer(vulkan_context.frame_overlap())?,
         };
 
-        let image = voxelar::vulkan::image::open("textures/brick.jpg")?.into_rgba8();
-        let image_extent = vk::Extent3D {
-            width: image.width(),
-            height: image.height(),
-            depth: 4, // 4 channels
-        };
-
-        let texture =
-            vulkan_context.create_texture(vk::Format::R8G8B8A8_SRGB, image_extent, &image)?;
-        let sampler =
-            vulkan_context.create_sampler(vk::Filter::NEAREST, vk::SamplerAddressMode::REPEAT)?;
-
         let per_frame_data = PerFrame::try_init(
             |_| {
                 let descriptor_set_logic = DescriptorSetLogicBuilder::new()
@@ -126,12 +109,6 @@ impl Demo {
                         &descriptor_buffers.camera_buffer,
                         0,
                         vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC,
-                    )?
-                    .add_texture_descriptor(
-                        &sampler,
-                        &texture,
-                        1,
-                        vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
                     )?
                     .update(logical_device, destination_set)?;
 
@@ -230,9 +207,6 @@ impl Demo {
             vertex_buffer,
             index_buffer,
             index_count: index_buffer_data.len(),
-
-            sampler,
-            texture,
 
             frame_time_manager: FrameTimeManager::new(&voxelar_context),
             camera: OrbitalCamera::new(
@@ -473,9 +447,6 @@ impl Demo {
 
             self.index_buffer.destroy(logical_device, &mut allocator)?;
             self.vertex_buffer.destroy(logical_device, &mut allocator)?;
-
-            self.texture.destroy(logical_device, &mut allocator)?;
-            self.sampler.destroy(logical_device);
         }
 
         Ok(())
