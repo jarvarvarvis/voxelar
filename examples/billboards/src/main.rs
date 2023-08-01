@@ -1,7 +1,6 @@
 extern crate voxelar;
 
 mod demo;
-mod vertex;
 
 use voxelar::ash::vk::PresentModeKHR;
 

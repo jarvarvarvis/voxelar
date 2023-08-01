@@ -16,7 +16,6 @@ use voxelar::vulkan::pipeline_layout::SetUpPipelineLayout;
 use voxelar::vulkan::pipeline_layout_builder::PipelineLayoutBuilder;
 use voxelar::vulkan::shader::CompiledShaderModule;
 use voxelar::vulkan::shaderc::ShaderKind;
-use voxelar::vulkan::typed_buffer::TypedAllocatedBuffer;
 use voxelar::vulkan::uniform_buffer::SetUpUniformBuffer;
 use voxelar::vulkan::VulkanContext;
 use voxelar::window::VoxelarWindow;
@@ -24,8 +23,6 @@ use voxelar::winit::event::*;
 use voxelar::Voxelar;
 
 use voxelar_vertex::input_state_builder::VertexInputStateBuilder;
-
-use crate::vertex::*;
 
 #[repr(C)]
 pub struct DemoCameraBuffer {
@@ -55,7 +52,6 @@ pub struct Demo {
 
     vertex_shader_module: CompiledShaderModule,
     fragment_shader_module: CompiledShaderModule,
-    vertex_buffer: TypedAllocatedBuffer<VertexData>,
 
     camera: OrbitalCamera,
     frame_time_manager: FrameTimeManager,
@@ -118,38 +114,8 @@ impl Demo {
         let surface_width = surface_resolution.width;
         let surface_height = surface_resolution.height;
 
-        let vertices = vec![
-            VertexData {
-                pos: Vector3::new(-1.0, 0.0, -1.0),
-                uv: Vector2::new(-1.0, -1.0),
-            },
-            VertexData {
-                pos: Vector3::new(1.0, 0.0, -1.0),
-                uv: Vector2::new(1.0, -1.0),
-            },
-            VertexData {
-                pos: Vector3::new(1.0, 0.0, 1.0),
-                uv: Vector2::new(1.0, 1.0),
-            },
-
-            VertexData {
-                pos: Vector3::new(-1.0, 0.0, -1.0),
-                uv: Vector2::new(-1.0, -1.0),
-            },
-            VertexData {
-                pos: Vector3::new(1.0, 0.0, 1.0),
-                uv: Vector2::new(1.0, 1.0),
-            },
-            VertexData {
-                pos: Vector3::new(-1.0, 0.0, 1.0),
-                uv: Vector2::new(-1.0, 1.0),
-            },
-        ];
-
-        let vertex_buffer = vulkan_context.create_vertex_buffer(&vertices)?;
-
         let vertex_input_state_builder =
-            VertexInputStateBuilder::new().add_data_from_type::<VertexData>(0);
+            VertexInputStateBuilder::new();
         let vertex_input_state_info = vertex_input_state_builder.build();
 
         let compiled_vert =
@@ -201,7 +167,6 @@ impl Demo {
 
             vertex_shader_module,
             fragment_shader_module,
-            vertex_buffer,
 
             frame_time_manager: FrameTimeManager::new(&voxelar_context),
             camera: OrbitalCamera::new(
@@ -322,13 +287,6 @@ impl Demo {
                         device.cmd_set_viewport(draw_command_buffer, 0, &[self.viewport]);
                         device.cmd_set_scissor(draw_command_buffer, 0, &[self.scissor]);
 
-                        device.cmd_bind_vertex_buffers(
-                            draw_command_buffer,
-                            0,
-                            &[self.vertex_buffer.raw_buffer()],
-                            &[0],
-                        );
-
                         self.camera.on_single_update();
                         let current_descriptor_data = self.per_frame_data.current();
                         let camera_buffer = DemoCameraBuffer { 
@@ -432,8 +390,6 @@ impl Demo {
 
             self.vertex_shader_module.destroy(logical_device);
             self.fragment_shader_module.destroy(logical_device);
-
-            self.vertex_buffer.destroy(logical_device, &mut allocator)?;
         }
 
         Ok(())
