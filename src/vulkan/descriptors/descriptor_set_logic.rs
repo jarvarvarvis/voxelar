@@ -1,7 +1,7 @@
 use ash::vk::{DescriptorPool, DescriptorPoolCreateInfo, DescriptorSetLayout};
 use ash::vk::{DescriptorSet, DescriptorSetAllocateInfo};
 
-use super::logical_device::SetUpLogicalDevice;
+use crate::vulkan::logical_device::SetUpLogicalDevice;
 
 pub struct SetUpDescriptorSetLogic {
     pub descriptor_pool: DescriptorPool,

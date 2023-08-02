@@ -2,10 +2,10 @@ use ash::vk::{DescriptorPoolCreateFlags, DescriptorPoolCreateInfo, DescriptorPoo
 use ash::vk::{DescriptorSetLayout, DescriptorType};
 
 use crate::result::Context;
+use crate::vulkan::logical_device::SetUpLogicalDevice;
 
 use super::descriptor_set_layout::SetUpDescriptorSetLayout;
 use super::descriptor_set_logic::SetUpDescriptorSetLogic;
-use super::logical_device::SetUpLogicalDevice;
 
 #[derive(Default)]
 pub struct DescriptorSetLogicBuilder<'builder> {

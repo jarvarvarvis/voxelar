@@ -4,8 +4,9 @@ use ash::vk::{
     DescriptorSetLayoutBinding, DescriptorSetLayoutCreateFlags, DescriptorSetLayoutCreateInfo,
 };
 
+use crate::vulkan::logical_device::SetUpLogicalDevice;
+
 use super::descriptor_set_layout::SetUpDescriptorSetLayout;
-use super::logical_device::SetUpLogicalDevice;
 
 #[derive(Default)]
 pub struct DescriptorSetLayoutBuilder {

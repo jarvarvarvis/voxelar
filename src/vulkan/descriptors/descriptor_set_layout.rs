@@ -1,6 +1,6 @@
 use ash::vk::{DescriptorSetLayout, DescriptorSetLayoutCreateInfo};
 
-use super::logical_device::SetUpLogicalDevice;
+use crate::vulkan::logical_device::SetUpLogicalDevice;
 
 #[repr(transparent)]
 pub struct SetUpDescriptorSetLayout {

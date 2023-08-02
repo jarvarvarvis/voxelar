@@ -4,14 +4,14 @@ use ash::vk::DescriptorType;
 use ash::vk::WriteDescriptorSet;
 use ash::vk::{DescriptorImageInfo, ImageLayout};
 
-use super::buffer::AllocatedBuffer;
-use super::image_view::SetUpImageView;
-use super::logical_device::SetUpLogicalDevice;
-use super::sampler::SetUpSampler;
-use super::storage_buffer::SetUpStorageBuffer;
-use super::texture::Texture;
-use super::typed_buffer::TypedAllocatedBuffer;
-use super::uniform_buffer::SetUpUniformBuffer;
+use crate::vulkan::buffer::AllocatedBuffer;
+use crate::vulkan::image_view::SetUpImageView;
+use crate::vulkan::logical_device::SetUpLogicalDevice;
+use crate::vulkan::sampler::SetUpSampler;
+use crate::vulkan::storage_buffer::SetUpStorageBuffer;
+use crate::vulkan::texture::Texture;
+use crate::vulkan::typed_buffer::TypedAllocatedBuffer;
+use crate::vulkan::uniform_buffer::SetUpUniformBuffer;
 
 #[derive(Debug)]
 pub struct WriteBufferDescriptorSetParams {

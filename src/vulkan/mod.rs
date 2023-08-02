@@ -10,11 +10,7 @@
 //! - creation\_info: Provides a `DataStructureCreationInfo` struct for high-level information related to the `VulkanContext` data structure initialization
 //! - debug: Provides an abstraction for the verification layer setup (if requested)
 //! - depth\_image: Provides an abstraction for depth image creation
-//! - descriptor\_set\_layout: Provides a wrapper around `DescriptorSetLayout`s
-//! - descriptor\_set\_layout\_builder: Provides an abstraction for building `(SetUp)DescriptorSetLayout`s
-//! - descriptor\_set\_logic: Provides an abstraction for `DescriptorSet` allocation
-//! - descriptor\_set\_logic\_builder: Provides an abstraction for building `SetUpDescriptorSetLogic`s
-//! - descriptor\_set\_update\_builder: Provides an abstraction for updating descriptor sets and specifying attached descriptors
+//! - descriptors: A module for all descriptor logic
 //! - dynamic\_uniform\_buffer: Provides an abstraction for uniform buffers that can be used with dynamic descriptor sets
 //! - egui\_integration: A wrapper for the egui integration provided by the `egui-winit-ash-integration` crate
 //! - frame\_data: Provides an abstraction for per-frame synchronization and command logic in double/triple/...-buffering scenarios
@@ -74,11 +70,7 @@ pub mod command_pool;
 pub mod creation_info;
 pub mod debug;
 pub mod depth_image;
-pub mod descriptor_set_layout;
-pub mod descriptor_set_layout_builder;
-pub mod descriptor_set_logic;
-pub mod descriptor_set_logic_builder;
-pub mod descriptor_set_update_builder;
+pub mod descriptors;
 pub mod egui_integration;
 pub mod frame_data;
 pub mod framebuffers;

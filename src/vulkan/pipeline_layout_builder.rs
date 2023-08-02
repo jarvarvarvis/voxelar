@@ -3,7 +3,8 @@ use ash::vk::PipelineLayoutCreateInfo;
 use ash::vk::PushConstantRange;
 use ash::vk::ShaderStageFlags;
 
-use super::descriptor_set_layout::SetUpDescriptorSetLayout;
+use crate::vulkan::descriptors::descriptor_set_layout::SetUpDescriptorSetLayout;
+
 use super::logical_device::SetUpLogicalDevice;
 use super::pipeline_layout::SetUpPipelineLayout;
 
