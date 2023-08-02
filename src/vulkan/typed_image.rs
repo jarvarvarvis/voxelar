@@ -13,10 +13,10 @@ use ash::vk::{
 };
 use gpu_allocator::vulkan::Allocator;
 
+use super::buffers::staging_buffer::SetUpStagingBuffer;
 use super::command_buffer::SetUpCommandBufferWithFence;
 use super::image::AllocatedImage;
 use super::logical_device::SetUpLogicalDevice;
-use super::staging_buffer::SetUpStagingBuffer;
 
 pub struct TypedAllocatedImage<T> {
     pub image: AllocatedImage,

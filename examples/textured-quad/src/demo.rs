@@ -4,6 +4,9 @@ use voxelar::engine::camera::orbital_camera::OrbitalCamera;
 use voxelar::engine::camera::Camera;
 use voxelar::engine::frame_time::FrameTimeManager;
 use voxelar::nalgebra::*;
+use voxelar::shaderc::ShaderKind;
+use voxelar::vulkan::buffers::typed_buffer::TypedAllocatedBuffer;
+use voxelar::vulkan::buffers::uniform_buffer::SetUpUniformBuffer;
 use voxelar::vulkan::descriptors::descriptor_set_layout::SetUpDescriptorSetLayout;
 use voxelar::vulkan::descriptors::descriptor_set_layout_builder::DescriptorSetLayoutBuilder;
 use voxelar::vulkan::descriptors::descriptor_set_logic::SetUpDescriptorSetLogic;
@@ -16,10 +19,7 @@ use voxelar::vulkan::pipeline_layout::SetUpPipelineLayout;
 use voxelar::vulkan::pipeline_layout_builder::PipelineLayoutBuilder;
 use voxelar::vulkan::sampler::SetUpSampler;
 use voxelar::vulkan::shader::CompiledShaderModule;
-use voxelar::shaderc::ShaderKind;
 use voxelar::vulkan::texture::Texture;
-use voxelar::vulkan::typed_buffer::TypedAllocatedBuffer;
-use voxelar::vulkan::uniform_buffer::SetUpUniformBuffer;
 use voxelar::vulkan::VulkanContext;
 use voxelar::window::VoxelarWindow;
 use voxelar::winit::event::*;
@@ -196,10 +196,12 @@ impl Demo {
         let index_buffer_data = vec![0, 1, 2, 0, 2, 3];
         let index_buffer = vulkan_context.create_index_buffer(&index_buffer_data)?;
 
-        let compiled_vert = compile_shader_from_included_src!(ShaderKind::Vertex, "../shader/triangle.vert")?;
+        let compiled_vert =
+            compile_shader_from_included_src!(ShaderKind::Vertex, "../shader/triangle.vert")?;
         let vertex_shader_module = vulkan_context.create_vertex_shader(compiled_vert)?;
 
-        let compiled_frag = compile_shader_from_included_src!(ShaderKind::Fragment, "../shader/triangle.frag")?;
+        let compiled_frag =
+            compile_shader_from_included_src!(ShaderKind::Fragment, "../shader/triangle.frag")?;
         let fragment_shader_module = vulkan_context.create_fragment_shader(compiled_frag)?;
 
         let viewport = vk::Viewport {
@@ -249,7 +251,7 @@ impl Demo {
 
             sampler,
             texture,
-            
+
             frame_time_manager: FrameTimeManager::new(&voxelar_context),
             camera: OrbitalCamera::new(
                 Point3::new(0.0, 2.0, -4.0),
@@ -276,7 +278,8 @@ impl Demo {
     pub fn on_resize(&mut self, vulkan_context: &VulkanContext) -> crate::Result<()> {
         let surface_extent = vulkan_context.get_surface_extent()?;
         self.recreate_swapchain = true;
-        self.camera.on_resize((surface_extent.width, surface_extent.height));
+        self.camera
+            .on_resize((surface_extent.width, surface_extent.height));
 
         Ok(())
     }

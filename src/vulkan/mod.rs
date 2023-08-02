@@ -3,14 +3,13 @@
 //! This is the module that provides Vulkan-related abstractions and functionality.
 //!
 //! Module overview:
-//! - aligned\_buffer: Provides an abstraction for buffers with custom alignments
-//! - buffer: Provides an abstraction for GPU memory-allocated buffers
+//! - buffers: Provides all abstractions for Vulkan buffers
 //! - command\_buffer: Provides an abstraction for command buffers and access synchronization
 //! - command\_pool: Provides an abstraction for command buffer allocation
 //! - creation\_info: Provides a `DataStructureCreationInfo` struct for high-level information related to the `VulkanContext` data structure initialization
 //! - debug: Provides an abstraction for the verification layer setup (if requested)
 //! - depth\_image: Provides an abstraction for depth image creation
-//! - descriptors: A module for all descriptor logic
+//! - descriptors: Provides all descriptor logic and abstractions
 //! - dynamic\_uniform\_buffer: Provides an abstraction for uniform buffers that can be used with dynamic descriptor sets
 //! - egui\_integration: A wrapper for the egui integration provided by the `egui-winit-ash-integration` crate
 //! - frame\_data: Provides an abstraction for per-frame synchronization and command logic in double/triple/...-buffering scenarios
@@ -27,13 +26,10 @@
 //! - render\_pass: Provides an abstraction for the creation of a default render pass
 //! - sampler: Provides a wrapper around image samplers
 //! - shader: Provides an abstraction for shader compilation and shader module creation
-//! - staging\_buffer: Provides an abstraction for staging buffers (used when transferring data from CPU- to GPU-only memory)
-//! - storage\_buffer: Provides an abstraction for shader storage buffers
 //! - surface: Provides an abstraction for the window surface and all related information
 //! - swapchain: Provides an abstraction for the creation of a default swapchain
 //! - sync: Provides a wrapper around synchronization structures (related to rendering)
 //! - texture: Provides an abstraction for GPU-allocated textures
-//! - typed\_buffer: Provides an abstraction for buffers that hold data of a specific type
 //! - typed\_image: Provides an abstraction for images that hold data of a specific type
 //! - util: Provides random utility functions used by the vulkan module
 
@@ -63,8 +59,7 @@ use paste::paste;
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 use ash::vk::{KhrGetPhysicalDeviceProperties2Fn, KhrPortabilityEnumerationFn};
 
-pub mod aligned_buffer;
-pub mod buffer;
+pub mod buffers;
 pub mod command_buffer;
 pub mod command_pool;
 pub mod creation_info;
@@ -86,15 +81,11 @@ pub mod present_images;
 pub mod render_pass;
 pub mod sampler;
 pub mod shader;
-pub mod staging_buffer;
-pub mod storage_buffer;
 pub mod surface;
 pub mod swapchain;
 pub mod sync;
 pub mod texture;
-pub mod typed_buffer;
 pub mod typed_image;
-pub mod uniform_buffer;
 pub mod util;
 
 use crate::render_context::RenderContext;
@@ -104,6 +95,10 @@ use crate::Voxelar;
 
 use crate::vulkan::per_frame::PerFrame;
 
+use self::buffers::staging_buffer::SetUpStagingBuffer;
+use self::buffers::storage_buffer::SetUpStorageBuffer;
+use self::buffers::typed_buffer::TypedAllocatedBuffer;
+use self::buffers::uniform_buffer::SetUpUniformBuffer;
 use self::command_buffer::SetUpCommandBufferWithFence;
 use self::command_pool::SetUpCommandPool;
 use self::creation_info::DataStructureCreationInfo;
@@ -119,13 +114,9 @@ use self::present_images::SetUpPresentImages;
 use self::render_pass::SetUpRenderPass;
 use self::sampler::SetUpSampler;
 use self::shader::CompiledShaderModule;
-use self::staging_buffer::SetUpStagingBuffer;
-use self::storage_buffer::SetUpStorageBuffer;
 use self::surface::SetUpSurfaceInfo;
 use self::swapchain::SetUpSwapchain;
 use self::texture::Texture;
-use self::typed_buffer::TypedAllocatedBuffer;
-use self::uniform_buffer::SetUpUniformBuffer;
 
 pub struct VulkanContext {
     pub entry: Entry,

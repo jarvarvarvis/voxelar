@@ -6,9 +6,10 @@ use ash::vk::{BufferCopy, SharingMode};
 use gpu_allocator::vulkan::Allocator;
 use gpu_allocator::MemoryLocation;
 
+use crate::vulkan::command_buffer::SetUpCommandBufferWithFence;
+use crate::vulkan::logical_device::SetUpLogicalDevice;
+
 use super::buffer::AllocatedBuffer;
-use super::command_buffer::SetUpCommandBufferWithFence;
-use super::logical_device::SetUpLogicalDevice;
 use super::staging_buffer::SetUpStagingBuffer;
 
 pub struct TypedAllocatedBuffer<T> {

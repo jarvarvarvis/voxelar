@@ -11,10 +11,10 @@ use ash::vk::{
 };
 use gpu_allocator::vulkan::Allocator;
 
+use super::buffers::staging_buffer::SetUpStagingBuffer;
 use super::command_buffer::SetUpCommandBufferWithFence;
 use super::image_view::SetUpImageView;
 use super::logical_device::SetUpLogicalDevice;
-use super::staging_buffer::SetUpStagingBuffer;
 use super::typed_image::TypedAllocatedImage;
 
 pub struct Texture<T> {

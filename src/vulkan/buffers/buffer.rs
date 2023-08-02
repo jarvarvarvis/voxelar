@@ -11,8 +11,7 @@ use gpu_allocator::vulkan::{Allocation, AllocationCreateDesc, AllocationScheme, 
 use gpu_allocator::MemoryLocation;
 
 use crate::result::Context;
-
-use super::logical_device::SetUpLogicalDevice;
+use crate::vulkan::logical_device::SetUpLogicalDevice;
 
 /// An allocation-backed buffer
 pub struct AllocatedBuffer {

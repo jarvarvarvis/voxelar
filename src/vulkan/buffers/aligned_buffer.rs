@@ -8,8 +8,10 @@ use ash::vk::SharingMode;
 use gpu_allocator::vulkan::Allocator;
 use gpu_allocator::MemoryLocation;
 
+use crate::vulkan::logical_device::SetUpLogicalDevice;
+use crate::vulkan::util;
+
 use super::buffer::AllocatedBuffer;
-use super::logical_device::SetUpLogicalDevice;
 
 pub struct AlignedBuffer<T> {
     pub buffer: AllocatedBuffer,
@@ -30,8 +32,7 @@ impl<T> AlignedBuffer<T> {
         memory_location: MemoryLocation,
     ) -> crate::Result<Self> {
         let size_of_type = std::mem::size_of::<T>();
-        let aligned_size_of_type =
-            super::util::pad_buffer_size_for_alignment(size_of_type, alignment);
+        let aligned_size_of_type = util::pad_buffer_size_for_alignment(size_of_type, alignment);
         Ok(Self {
             buffer: AllocatedBuffer::allocate(
                 logical_device,

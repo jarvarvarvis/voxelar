@@ -4,14 +4,14 @@ use ash::vk::DescriptorType;
 use ash::vk::WriteDescriptorSet;
 use ash::vk::{DescriptorImageInfo, ImageLayout};
 
-use crate::vulkan::buffer::AllocatedBuffer;
+use crate::vulkan::buffers::buffer::AllocatedBuffer;
+use crate::vulkan::buffers::storage_buffer::SetUpStorageBuffer;
+use crate::vulkan::buffers::typed_buffer::TypedAllocatedBuffer;
+use crate::vulkan::buffers::uniform_buffer::SetUpUniformBuffer;
 use crate::vulkan::image_view::SetUpImageView;
 use crate::vulkan::logical_device::SetUpLogicalDevice;
 use crate::vulkan::sampler::SetUpSampler;
-use crate::vulkan::storage_buffer::SetUpStorageBuffer;
 use crate::vulkan::texture::Texture;
-use crate::vulkan::typed_buffer::TypedAllocatedBuffer;
-use crate::vulkan::uniform_buffer::SetUpUniformBuffer;
 
 #[derive(Debug)]
 pub struct WriteBufferDescriptorSetParams {
@@ -68,13 +68,7 @@ impl DescriptorSetUpdateBuilder {
         descriptor_type: DescriptorType,
     ) -> crate::Result<Self> {
         let range = std::mem::size_of::<T>();
-        self.add_buffer_descriptor(
-            &buffer,
-            destination_binding,
-            descriptor_type,
-            0,
-            range,
-        )
+        self.add_buffer_descriptor(&buffer, destination_binding, descriptor_type, 0, range)
     }
 
     pub fn add_uniform_buffer_descriptor<T>(
@@ -84,13 +78,7 @@ impl DescriptorSetUpdateBuilder {
         descriptor_type: DescriptorType,
     ) -> crate::Result<Self> {
         let range = buffer.aligned_size_of_type;
-        self.add_buffer_descriptor(
-            &buffer,
-            destination_binding,
-            descriptor_type,
-            0,
-            range,
-        )
+        self.add_buffer_descriptor(&buffer, destination_binding, descriptor_type, 0, range)
     }
 
     pub fn add_storage_buffer_descriptor<T>(
@@ -100,13 +88,7 @@ impl DescriptorSetUpdateBuilder {
         descriptor_type: DescriptorType,
     ) -> crate::Result<Self> {
         let range = buffer.aligned_size_of_type;
-        self.add_buffer_descriptor(
-            &buffer,
-            destination_binding,
-            descriptor_type,
-            0,
-            range,
-        )
+        self.add_buffer_descriptor(&buffer, destination_binding, descriptor_type, 0, range)
     }
 
     pub fn add_image_descriptor(
