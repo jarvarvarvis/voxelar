@@ -1,5 +1,3 @@
-pub use image::*;
-
 use std::sync::MutexGuard;
 
 use ash::vk::AccessFlags;
@@ -16,8 +14,8 @@ use ash::vk::{
 use gpu_allocator::vulkan::*;
 use gpu_allocator::*;
 
-use super::command_buffer::SetUpCommandBufferWithFence;
-use super::logical_device::SetUpLogicalDevice;
+use crate::vulkan::command_buffer::SetUpCommandBufferWithFence;
+use crate::vulkan::logical_device::SetUpLogicalDevice;
 
 pub struct AllocatedImage {
     pub image: Image,
@@ -83,7 +81,7 @@ impl AllocatedImage {
         self.image_extent.width * self.image_extent.height * self.channels
     }
 
-    pub fn perform_layout_transition_pipeline_barrier(
+    pub fn add_layout_transition_pipeline_barrier(
         &mut self,
         logical_device: &SetUpLogicalDevice,
         setup_command_buffer: &SetUpCommandBufferWithFence,

@@ -15,8 +15,7 @@
 //! - frame\_data: Provides an abstraction for per-frame synchronization and command logic in double/triple/...-buffering scenarios
 //! - framebuffers: Provides an abstraction for framebuffer creation for each present image of a swapchain
 //! - graphics\_pipeline\_builder: Provides an abstraction for building Vulkan `Pipeline`s
-//! - image: Provides an abstraction for GPU memory-allocated images
-//! - image\_view: Provides an abstraction for Vulkan image views
+//! - image: Provides abstractions for all image-related functionality
 //! - logical\_device: Provides a wrapper around logical Vulkan devices
 //! - per\_frame: Provides an abstraction for tracking data of each frame in double/triple/...-buffering scenarios; used with `FrameData` in this module
 //! - physical\_device: Provides an abstraction for finding a suitable `PhysicalDevice` for rendering, also queries important device information
@@ -24,13 +23,10 @@
 //! - pipeline\_layout\_builder: Provides an abstraction for building `(SetUp)PipelineLayout`s
 //! - present\_images: Provides an abstraction for getting the images of a swapchain
 //! - render\_pass: Provides an abstraction for the creation of a default render pass
-//! - sampler: Provides a wrapper around image samplers
 //! - shader: Provides an abstraction for shader compilation and shader module creation
 //! - surface: Provides an abstraction for the window surface and all related information
 //! - swapchain: Provides an abstraction for the creation of a default swapchain
 //! - sync: Provides a wrapper around synchronization structures (related to rendering)
-//! - texture: Provides an abstraction for GPU-allocated textures
-//! - typed\_image: Provides an abstraction for images that hold data of a specific type
 //! - util: Provides random utility functions used by the vulkan module
 
 use std::ffi::{c_char, CStr, CString};
@@ -71,7 +67,6 @@ pub mod frame_data;
 pub mod framebuffers;
 pub mod graphics_pipeline_builder;
 pub mod image;
-pub mod image_view;
 pub mod logical_device;
 pub mod per_frame;
 pub mod physical_device;
@@ -79,13 +74,10 @@ pub mod pipeline_layout;
 pub mod pipeline_layout_builder;
 pub mod present_images;
 pub mod render_pass;
-pub mod sampler;
 pub mod shader;
 pub mod surface;
 pub mod swapchain;
 pub mod sync;
-pub mod texture;
-pub mod typed_image;
 pub mod util;
 
 use crate::render_context::RenderContext;
@@ -108,15 +100,15 @@ use self::depth_image::SetUpDepthImage;
 use self::egui_integration::SetUpEguiIntegration;
 use self::frame_data::FrameData;
 use self::framebuffers::SetUpFramebuffers;
+use self::image::sampler::SetUpSampler;
+use self::image::texture::Texture;
 use self::logical_device::SetUpLogicalDevice;
 use self::physical_device::SetUpPhysicalDevice;
 use self::present_images::SetUpPresentImages;
 use self::render_pass::SetUpRenderPass;
-use self::sampler::SetUpSampler;
 use self::shader::CompiledShaderModule;
 use self::surface::SetUpSurfaceInfo;
 use self::swapchain::SetUpSwapchain;
-use self::texture::Texture;
 
 pub struct VulkanContext {
     pub entry: Entry,

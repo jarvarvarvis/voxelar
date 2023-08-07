@@ -14,12 +14,12 @@ use voxelar::vulkan::descriptors::descriptor_set_logic_builder::DescriptorSetLog
 use voxelar::vulkan::descriptors::descriptor_set_update_builder::DescriptorSetUpdateBuilder;
 use voxelar::vulkan::egui_integration::SetUpEguiIntegration;
 use voxelar::vulkan::graphics_pipeline_builder::GraphicsPipelineBuilder;
+use voxelar::vulkan::image::sampler::SetUpSampler;
+use voxelar::vulkan::image::texture::Texture;
 use voxelar::vulkan::per_frame::PerFrame;
 use voxelar::vulkan::pipeline_layout::SetUpPipelineLayout;
 use voxelar::vulkan::pipeline_layout_builder::PipelineLayoutBuilder;
-use voxelar::vulkan::sampler::SetUpSampler;
 use voxelar::vulkan::shader::CompiledShaderModule;
-use voxelar::vulkan::texture::Texture;
 use voxelar::vulkan::VulkanContext;
 use voxelar::window::VoxelarWindow;
 use voxelar::winit::event::*;

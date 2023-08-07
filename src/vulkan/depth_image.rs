@@ -12,8 +12,8 @@ use ash::vk::{
 use gpu_allocator::vulkan::*;
 
 use super::command_buffer::SetUpCommandBufferWithFence;
-use super::image::AllocatedImage;
-use super::image_view::SetUpImageView;
+use super::image::image::AllocatedImage;
+use super::image::image_view::SetUpImageView;
 use super::logical_device::SetUpLogicalDevice;
 use super::surface::SetUpSurfaceInfo;
 
@@ -96,7 +96,7 @@ impl SetUpDepthImage {
         logical_device: &SetUpLogicalDevice,
         setup_command_buffer: &SetUpCommandBufferWithFence,
     ) {
-        self.depth_image.perform_layout_transition_pipeline_barrier(
+        self.depth_image.add_layout_transition_pipeline_barrier(
             logical_device,
             setup_command_buffer,
             Self::create_default_subresource_range(),

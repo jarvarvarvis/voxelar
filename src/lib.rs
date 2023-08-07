@@ -20,8 +20,6 @@
 //! - gpu\_allocator: A memory allocator for Vulkan
 //! - image (as image\_crate): An image loading, encoding and decoding library
 //! - shaderc (only accessible when the shaderc-crate feature is used): Bindings for the Shaderc library
-//! - crevice (only accessible when the crevice-crate feature is used): A crate that can be used to
-//!   create GLSL-compatible versions of structs with explicitly-initialized padding
 
 pub extern crate ash;
 pub extern crate nalgebra;

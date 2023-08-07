@@ -13,10 +13,11 @@ use ash::vk::{
 };
 use gpu_allocator::vulkan::Allocator;
 
-use super::buffers::staging_buffer::SetUpStagingBuffer;
-use super::command_buffer::SetUpCommandBufferWithFence;
+use crate::vulkan::buffers::staging_buffer::SetUpStagingBuffer;
+use crate::vulkan::command_buffer::SetUpCommandBufferWithFence;
+use crate::vulkan::logical_device::SetUpLogicalDevice;
+
 use super::image::AllocatedImage;
-use super::logical_device::SetUpLogicalDevice;
 
 pub struct TypedAllocatedImage<T> {
     pub image: AllocatedImage,
@@ -61,7 +62,7 @@ impl<T> TypedAllocatedImage<T> {
         setup_command_buffer: &SetUpCommandBufferWithFence,
         image_subresource: ImageSubresourceRange,
     ) {
-        self.image.perform_layout_transition_pipeline_barrier(
+        self.image.add_layout_transition_pipeline_barrier(
             logical_device,
             setup_command_buffer,
             image_subresource,
@@ -110,7 +111,7 @@ impl<T> TypedAllocatedImage<T> {
         setup_command_buffer: &SetUpCommandBufferWithFence,
         image_subresource: ImageSubresourceRange,
     ) {
-        self.image.perform_layout_transition_pipeline_barrier(
+        self.image.add_layout_transition_pipeline_barrier(
             logical_device,
             setup_command_buffer,
             image_subresource,

@@ -1,7 +1,8 @@
 use ash::vk::{Format, Image};
 use ash::vk::{ImageSubresourceRange, ImageView, ImageViewCreateInfo, ImageViewType};
 
-use super::logical_device::SetUpLogicalDevice;
+use crate::vulkan::logical_device::SetUpLogicalDevice;
+
 
 pub struct SetUpImageView {
     pub image_view: ImageView,

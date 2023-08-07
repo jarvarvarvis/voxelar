@@ -8,10 +8,10 @@ use crate::vulkan::buffers::buffer::AllocatedBuffer;
 use crate::vulkan::buffers::storage_buffer::SetUpStorageBuffer;
 use crate::vulkan::buffers::typed_buffer::TypedAllocatedBuffer;
 use crate::vulkan::buffers::uniform_buffer::SetUpUniformBuffer;
-use crate::vulkan::image_view::SetUpImageView;
+use crate::vulkan::image::image_view::SetUpImageView;
+use crate::vulkan::image::sampler::SetUpSampler;
+use crate::vulkan::image::texture::Texture;
 use crate::vulkan::logical_device::SetUpLogicalDevice;
-use crate::vulkan::sampler::SetUpSampler;
-use crate::vulkan::texture::Texture;
 
 #[derive(Debug)]
 pub struct WriteBufferDescriptorSetParams {

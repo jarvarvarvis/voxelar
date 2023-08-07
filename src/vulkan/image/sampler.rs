@@ -1,7 +1,7 @@
 use ash::vk::Filter;
 use ash::vk::{Sampler, SamplerAddressMode, SamplerCreateInfo};
 
-use super::logical_device::SetUpLogicalDevice;
+use crate::vulkan::logical_device::SetUpLogicalDevice;
 
 pub struct SetUpSampler {
     pub sampler: Sampler,
