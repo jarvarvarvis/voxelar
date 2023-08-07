@@ -11,7 +11,7 @@ use ash::vk::{
 };
 use gpu_allocator::vulkan::*;
 
-use super::command_buffer::SetUpCommandBufferWithFence;
+use super::command::command_buffer::SetUpCommandBufferWithFence;
 use super::image::image::AllocatedImage;
 use super::image::image_view::SetUpImageView;
 use super::logical_device::SetUpLogicalDevice;

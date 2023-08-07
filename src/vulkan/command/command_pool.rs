@@ -2,8 +2,9 @@ use ash::vk::FenceCreateFlags;
 use ash::vk::{CommandBufferAllocateInfo, CommandBufferLevel};
 use ash::vk::{CommandPool, CommandPoolCreateFlags, CommandPoolCreateInfo, CommandPoolResetFlags};
 
+use crate::vulkan::logical_device::SetUpLogicalDevice;
+
 use super::command_buffer::SetUpCommandBufferWithFence;
-use super::logical_device::SetUpLogicalDevice;
 
 pub struct SetUpCommandPool {
     pub pool: CommandPool,

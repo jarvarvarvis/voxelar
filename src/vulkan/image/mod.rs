@@ -1,3 +1,6 @@
+//! This is a module that provides all abstractions and functionality related to images, e.g.
+//! allocation on the GPU, loading an image from a file using the `image` crate, etc.
+//!
 //! - image: Provides an abstraction for GPU memory-allocated images
 //! - image\_view: Provides an abstraction for Vulkan image views
 //! - sampler: Provides a wrapper around image samplers

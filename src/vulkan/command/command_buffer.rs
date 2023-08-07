@@ -9,7 +9,7 @@ use ash::vk::{
 };
 use ash::vk::{Fence, FenceCreateFlags, FenceCreateInfo, Semaphore};
 
-use super::logical_device::SetUpLogicalDevice;
+use crate::vulkan::logical_device::SetUpLogicalDevice;
 
 /// A set up command buffer with a fence to synchronize usage.
 pub struct SetUpCommandBufferWithFence {

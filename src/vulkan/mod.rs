@@ -4,8 +4,7 @@
 //!
 //! Module overview:
 //! - buffers: Provides all abstractions for Vulkan buffers
-//! - command\_buffer: Provides an abstraction for command buffers and access synchronization
-//! - command\_pool: Provides an abstraction for command buffer allocation
+//! - command: Provides all abstractions and functionality for Vulkan commands
 //! - creation\_info: Provides a `DataStructureCreationInfo` struct for high-level information related to the `VulkanContext` data structure initialization
 //! - debug: Provides an abstraction for the verification layer setup (if requested)
 //! - depth\_image: Provides an abstraction for depth image creation
@@ -56,8 +55,7 @@ use paste::paste;
 use ash::vk::{KhrGetPhysicalDeviceProperties2Fn, KhrPortabilityEnumerationFn};
 
 pub mod buffers;
-pub mod command_buffer;
-pub mod command_pool;
+pub mod command;
 pub mod creation_info;
 pub mod debug;
 pub mod depth_image;
@@ -91,8 +89,8 @@ use self::buffers::staging_buffer::SetUpStagingBuffer;
 use self::buffers::storage_buffer::SetUpStorageBuffer;
 use self::buffers::typed_buffer::TypedAllocatedBuffer;
 use self::buffers::uniform_buffer::SetUpUniformBuffer;
-use self::command_buffer::SetUpCommandBufferWithFence;
-use self::command_pool::SetUpCommandPool;
+use self::command::command_buffer::SetUpCommandBufferWithFence;
+use self::command::command_pool::SetUpCommandPool;
 use self::creation_info::DataStructureCreationInfo;
 use self::creation_info::PresentModeInitMode;
 use self::debug::VerificationProvider;

@@ -12,7 +12,7 @@ use ash::vk::{
 use gpu_allocator::vulkan::Allocator;
 
 use crate::vulkan::buffers::staging_buffer::SetUpStagingBuffer;
-use crate::vulkan::command_buffer::SetUpCommandBufferWithFence;
+use crate::vulkan::command::command_buffer::SetUpCommandBufferWithFence;
 use crate::vulkan::logical_device::SetUpLogicalDevice;
 
 use super::image_view::SetUpImageView;

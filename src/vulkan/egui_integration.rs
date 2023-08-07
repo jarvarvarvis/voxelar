@@ -10,7 +10,7 @@ use winit::event_loop::EventLoop;
 
 use crate::window::VoxelarWindow;
 
-use super::command_buffer::SetUpCommandBufferWithFence;
+use super::command::command_buffer::SetUpCommandBufferWithFence;
 use super::logical_device::SetUpLogicalDevice;
 use super::surface::SetUpSurfaceInfo;
 use super::swapchain::SetUpSwapchain;

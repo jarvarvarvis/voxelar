@@ -6,7 +6,7 @@ use ash::vk::{BufferCopy, SharingMode};
 use gpu_allocator::vulkan::Allocator;
 use gpu_allocator::MemoryLocation;
 
-use crate::vulkan::command_buffer::SetUpCommandBufferWithFence;
+use crate::vulkan::command::command_buffer::SetUpCommandBufferWithFence;
 use crate::vulkan::logical_device::SetUpLogicalDevice;
 
 use super::buffer::AllocatedBuffer;

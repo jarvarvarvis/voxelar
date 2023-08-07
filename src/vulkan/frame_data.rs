@@ -4,8 +4,8 @@ use ash::vk::FenceCreateFlags;
 use ash::vk::PipelineStageFlags;
 use ash::vk::Queue;
 
-use super::command_buffer::SetUpCommandBufferWithFence;
-use super::command_pool::SetUpCommandPool;
+use super::command::command_buffer::SetUpCommandBufferWithFence;
+use super::command::command_pool::SetUpCommandPool;
 use super::logical_device::SetUpLogicalDevice;
 use super::sync::RenderingSyncPrimitives;
 

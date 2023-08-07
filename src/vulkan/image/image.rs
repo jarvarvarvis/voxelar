@@ -14,7 +14,7 @@ use ash::vk::{
 use gpu_allocator::vulkan::*;
 use gpu_allocator::*;
 
-use crate::vulkan::command_buffer::SetUpCommandBufferWithFence;
+use crate::vulkan::command::command_buffer::SetUpCommandBufferWithFence;
 use crate::vulkan::logical_device::SetUpLogicalDevice;
 
 pub struct AllocatedImage {
