@@ -713,7 +713,6 @@ impl VulkanContext {
         unsafe {
             SetUpStorageBuffer::<T>::allocate(
                 self.logical_device()?,
-                self.physical_device()?,
                 &mut self.lock_allocator()?,
                 count,
             )
