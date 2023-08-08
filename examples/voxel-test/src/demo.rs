@@ -99,12 +99,8 @@ impl Demo {
                 let destination_set = descriptor_set_logic.get_set(0);
 
                 DescriptorSetUpdateBuilder::new()
-                    .add_uniform_buffer_descriptor(
-                        &descriptor_buffers.camera_buffer,
-                        0,
-                        vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC,
-                    )?
-                    .update(logical_device, destination_set)?;
+                    .add_dynamic_uniform_buffer_descriptor(&descriptor_buffers.camera_buffer, 0)
+                    .update(logical_device, destination_set);
 
                 Ok(PerFrameData {
                     descriptor_set_logic,

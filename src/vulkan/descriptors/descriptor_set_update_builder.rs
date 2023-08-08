@@ -45,7 +45,7 @@ impl DescriptorSetUpdateBuilder {
         descriptor_type: DescriptorType,
         offset: usize,
         range: usize,
-    ) -> crate::Result<Self> {
+    ) -> Self {
         let descriptor_buffer_info = DescriptorBufferInfo::builder()
             .buffer(buffer.buffer)
             .offset(offset as u64)
@@ -58,7 +58,7 @@ impl DescriptorSetUpdateBuilder {
                 descriptor_type,
             });
 
-        Ok(self)
+        self
     }
 
     pub fn add_typed_buffer_descriptor<T>(
@@ -66,7 +66,7 @@ impl DescriptorSetUpdateBuilder {
         buffer: &TypedAllocatedBuffer<T>,
         destination_binding: u32,
         descriptor_type: DescriptorType,
-    ) -> crate::Result<Self> {
+    ) -> Self {
         let range = std::mem::size_of::<T>() * buffer.element_amount;
         self.add_buffer_descriptor(&buffer, destination_binding, descriptor_type, 0, range)
     }
@@ -75,8 +75,18 @@ impl DescriptorSetUpdateBuilder {
         self,
         buffer: &SetUpUniformBuffer<T>,
         destination_binding: u32,
-        descriptor_type: DescriptorType,
-    ) -> crate::Result<Self> {
+    ) -> Self {
+        let descriptor_type = DescriptorType::UNIFORM_BUFFER;
+        let range = buffer.aligned_size_of_type * buffer.element_amount;
+        self.add_buffer_descriptor(&buffer, destination_binding, descriptor_type, 0, range)
+    }
+
+    pub fn add_dynamic_uniform_buffer_descriptor<T>(
+        self,
+        buffer: &SetUpUniformBuffer<T>,
+        destination_binding: u32,
+    ) -> Self {
+        let descriptor_type = DescriptorType::UNIFORM_BUFFER_DYNAMIC;
         let range = buffer.aligned_size_of_type;
         self.add_buffer_descriptor(&buffer, destination_binding, descriptor_type, 0, range)
     }
@@ -85,9 +95,19 @@ impl DescriptorSetUpdateBuilder {
         self,
         buffer: &SetUpStorageBuffer<T>,
         destination_binding: u32,
-        descriptor_type: DescriptorType,
-    ) -> crate::Result<Self> {
+    ) -> Self {
+        let descriptor_type = DescriptorType::STORAGE_BUFFER;
         let range = buffer.aligned_size_of_type * buffer.element_amount;
+        self.add_buffer_descriptor(&buffer, destination_binding, descriptor_type, 0, range)
+    }
+
+    pub fn add_dynamic_storage_buffer_descriptor<T>(
+        self,
+        buffer: &SetUpStorageBuffer<T>,
+        destination_binding: u32,
+    ) -> Self {
+        let descriptor_type = DescriptorType::STORAGE_BUFFER_DYNAMIC;
+        let range = buffer.aligned_size_of_type;
         self.add_buffer_descriptor(&buffer, destination_binding, descriptor_type, 0, range)
     }
 
@@ -97,7 +117,7 @@ impl DescriptorSetUpdateBuilder {
         image_view: &SetUpImageView,
         destination_binding: u32,
         descriptor_type: DescriptorType,
-    ) -> crate::Result<Self> {
+    ) -> Self {
         let descriptor_image_info = DescriptorImageInfo::builder()
             .sampler(sampler.sampler)
             .image_view(image_view.image_view)
@@ -109,7 +129,7 @@ impl DescriptorSetUpdateBuilder {
             descriptor_type,
         });
 
-        Ok(self)
+        self
     }
 
     pub fn add_texture_descriptor<T>(
@@ -118,7 +138,7 @@ impl DescriptorSetUpdateBuilder {
         texture: &Texture<T>,
         destination_binding: u32,
         descriptor_type: DescriptorType,
-    ) -> crate::Result<Self> {
+    ) -> Self {
         self.add_image_descriptor(
             sampler,
             &texture.image_view,
@@ -127,11 +147,7 @@ impl DescriptorSetUpdateBuilder {
         )
     }
 
-    pub fn update(
-        self,
-        logical_device: &SetUpLogicalDevice,
-        destination_set: &DescriptorSet,
-    ) -> crate::Result<()> {
+    pub fn update(self, logical_device: &SetUpLogicalDevice, destination_set: &DescriptorSet) {
         unsafe {
             let mut writes = Vec::with_capacity(self.buffer_write_params.len());
             for buf_params in self.buffer_write_params.iter() {
@@ -155,8 +171,6 @@ impl DescriptorSetUpdateBuilder {
             }
 
             logical_device.update_descriptor_sets(&writes, &[]);
-
-            Ok(())
         }
     }
 }

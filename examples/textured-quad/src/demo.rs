@@ -135,23 +135,15 @@ impl Demo {
                 let destination_set = descriptor_set_logic.get_set(0);
 
                 DescriptorSetUpdateBuilder::new()
-                    .add_uniform_buffer_descriptor(
-                        &descriptor_buffers.camera_buffer,
-                        0,
-                        vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC,
-                    )?
-                    .add_uniform_buffer_descriptor(
-                        &descriptor_buffers.scene_buffer,
-                        1,
-                        vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC,
-                    )?
+                    .add_dynamic_uniform_buffer_descriptor(&descriptor_buffers.camera_buffer, 0)
+                    .add_dynamic_uniform_buffer_descriptor(&descriptor_buffers.scene_buffer, 1)
                     .add_texture_descriptor(
                         &sampler,
                         &texture,
                         2,
                         vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
-                    )?
-                    .update(logical_device, destination_set)?;
+                    )
+                    .update(logical_device, destination_set);
 
                 Ok(PerFrameData {
                     descriptor_set_logic,
