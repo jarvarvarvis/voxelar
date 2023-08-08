@@ -67,7 +67,7 @@ impl DescriptorSetUpdateBuilder {
         destination_binding: u32,
         descriptor_type: DescriptorType,
     ) -> crate::Result<Self> {
-        let range = std::mem::size_of::<T>();
+        let range = std::mem::size_of::<T>() * buffer.element_amount;
         self.add_buffer_descriptor(&buffer, destination_binding, descriptor_type, 0, range)
     }
 
@@ -87,7 +87,7 @@ impl DescriptorSetUpdateBuilder {
         destination_binding: u32,
         descriptor_type: DescriptorType,
     ) -> crate::Result<Self> {
-        let range = buffer.aligned_size_of_type;
+        let range = buffer.aligned_size_of_type * buffer.element_amount;
         self.add_buffer_descriptor(&buffer, destination_binding, descriptor_type, 0, range)
     }
 

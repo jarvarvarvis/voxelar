@@ -81,9 +81,30 @@ pub fn compile_bytes(shader_kind: ShaderKind, source: &str, path: &str) -> crate
 }
 
 #[cfg(feature = "shaderc-crate")]
+pub fn compile_bytes_with_debug_info(shader_kind: ShaderKind, source: &str, path: &str) -> crate::Result<Vec<u8>> {
+    let mut options = CompileOptions::new().context("Unable to create compile options".to_string())?;
+
+    options.set_generate_debug_info();
+
+    let binary_result = SHADERC_COMPILER
+        .compile_into_spirv(source, shader_kind, path, "main", Some(&options))
+        .context("Unable to compile shader".to_string())?;
+    let bytes = binary_result.as_binary_u8().to_vec();
+    Ok(bytes)
+}
+
+#[cfg(feature = "shaderc-crate")]
 #[macro_export]
 macro_rules! compile_shader_from_included_src {
     ($kind:expr, $path:tt) => {
         crate::vulkan::shader::compile_bytes($kind, include_str!($path), $path)
+    };
+}
+
+#[cfg(feature = "shaderc-crate")]
+#[macro_export]
+macro_rules! compile_shader_from_included_src_with_debug_info {
+    ($kind:expr, $path:tt) => {
+        crate::vulkan::shader::compile_bytes_with_debug_info($kind, include_str!($path), $path)
     };
 }

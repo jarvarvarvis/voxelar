@@ -19,17 +19,18 @@ impl<T> SetUpStorageBuffer<T> {
         logical_device: &SetUpLogicalDevice,
         physical_device: &SetUpPhysicalDevice,
         allocator: &mut MutexGuard<Allocator>,
-        element_count: usize,
+        element_amount: usize,
     ) -> crate::Result<Self> {
-        let alignment = physical_device
+        /*let alignment = physical_device
             .device_properties
             .limits
-            .min_storage_buffer_offset_alignment;
+            .min_storage_buffer_offset_alignment;*/
+        let alignment = std::mem::align_of::<T>();
         Ok(Self {
             buffer: AlignedBuffer::allocate(
                 logical_device,
                 allocator,
-                element_count,
+                element_amount,
                 alignment as usize,
                 BufferUsageFlags::STORAGE_BUFFER,
                 SharingMode::EXCLUSIVE,

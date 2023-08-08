@@ -1,6 +1,6 @@
-#version 450
+#version 460
+
 #extension GL_ARB_separate_shader_objects : enable
-#extension GL_ARB_shading_language_420pack : enable
 
 layout (set = 0, binding = 0) uniform camera_buffer
 {
@@ -8,9 +8,13 @@ layout (set = 0, binding = 0) uniform camera_buffer
     mat4 view_matrix;
 } CameraBuffer;
 
-layout (set = 0, binding = 1) readonly buffer billboard_buffer
+struct BillboardBufferData {
+    vec4 position;
+};
+
+layout (std430, set = 0, binding = 1) readonly buffer billboard_buffer
 {
-    vec4 positions[];
+    BillboardBufferData data[];
 } BillboardBuffer;
 
 const vec2 VERTEX_COORDS[6] = vec2[](
@@ -20,13 +24,6 @@ const vec2 VERTEX_COORDS[6] = vec2[](
     vec2( 1.0, -1.0),
     vec2(-1.0,  1.0),
     vec2( 1.0,  1.0)
-);
-
-const vec3 BILLBOARD_POSITIONS[4] = vec3[](
-    vec3(0.0, 0.0, 0.0),
-    vec3(1.0, 0.0, 0.0),
-    vec3(0.0, 1.0, 0.0),
-    vec3(0.0, 0.0, 1.0)
 );
 
 layout (location = 0) out vec2 frag_offset;
@@ -47,7 +44,8 @@ void main() {
         CameraBuffer.view_matrix[2][1],
     };
 
-    vec3 billboard_position = BILLBOARD_POSITIONS[gl_InstanceIndex];
+    BillboardBufferData data = BillboardBuffer.data[gl_InstanceIndex];
+    vec3 billboard_position = data.position.xyz;
     vec3 position_world = billboard_position
         + BILLBOARD_RADIUS * frag_offset.x * camera_right_world
         + BILLBOARD_RADIUS * frag_offset.y * camera_up_world;

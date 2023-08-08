@@ -17,7 +17,7 @@ pub struct AlignedBuffer<T> {
     pub buffer: AllocatedBuffer,
     pub alignment: usize,
     pub aligned_size_of_type: usize,
-    pub element_count: usize,
+    pub element_amount: usize,
     phantom: PhantomData<T>,
 }
 
@@ -25,7 +25,7 @@ impl<T> AlignedBuffer<T> {
     pub unsafe fn allocate(
         logical_device: &SetUpLogicalDevice,
         allocator: &mut MutexGuard<Allocator>,
-        element_count: usize,
+        element_amount: usize,
         alignment: usize,
         usage: BufferUsageFlags,
         sharing_mode: SharingMode,
@@ -37,14 +37,14 @@ impl<T> AlignedBuffer<T> {
             buffer: AllocatedBuffer::allocate(
                 logical_device,
                 allocator,
-                element_count * aligned_size_of_type,
+                element_amount * aligned_size_of_type,
                 usage,
                 sharing_mode,
                 memory_location,
             )?,
             alignment,
             aligned_size_of_type,
-            element_count,
+            element_amount,
             phantom: PhantomData,
         })
     }
@@ -91,7 +91,7 @@ impl<T> AlignedBuffer<T> {
         T: Copy,
     {
         crate::verify!(
-            data.len() as usize == self.element_count,
+            data.len() as usize == self.element_amount,
             "The provided data slice must have the same size as the source buffer"
         );
 

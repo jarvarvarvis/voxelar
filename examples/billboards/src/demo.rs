@@ -1,10 +1,11 @@
 use voxelar::ash::vk;
-use voxelar::compile_shader_from_included_src;
+use voxelar::compile_shader_from_included_src_with_debug_info;
 use voxelar::engine::camera::orbital_camera::OrbitalCamera;
 use voxelar::engine::camera::Camera;
 use voxelar::engine::frame_time::FrameTimeManager;
 use voxelar::nalgebra::*;
 use voxelar::shaderc::ShaderKind;
+use voxelar::vulkan::buffers::storage_buffer::SetUpStorageBuffer;
 use voxelar::vulkan::buffers::uniform_buffer::SetUpUniformBuffer;
 use voxelar::vulkan::descriptors::descriptor_set_layout::SetUpDescriptorSetLayout;
 use voxelar::vulkan::descriptors::descriptor_set_layout_builder::DescriptorSetLayoutBuilder;
@@ -30,8 +31,15 @@ pub struct DemoCameraBuffer {
     view_matrix: Matrix4<f32>,
 }
 
+#[repr(C, align(16))]
+#[derive(Clone, Copy)]
+pub struct DemoBillboardBuffer {
+    coordinate: Vector4<f32>,
+}
+
 pub struct DemoDescriptorBuffers {
     camera_buffer: SetUpUniformBuffer<DemoCameraBuffer>,
+    billboard_buffer: SetUpStorageBuffer<DemoBillboardBuffer>,
 }
 
 pub struct PerFrameData {
@@ -75,13 +83,39 @@ impl Demo {
                 vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC,
                 vk::ShaderStageFlags::VERTEX,
             )
+            .add_binding(
+                1, // In the shader, this will specify binding = 1 in the readonly buffer layout
+                1,
+                vk::DescriptorType::STORAGE_BUFFER,
+                vk::ShaderStageFlags::VERTEX,
+            )
             .build(logical_device)?;
         let descriptor_set_layouts = vec![global_set_layout];
 
         let descriptor_buffers = DemoDescriptorBuffers {
             camera_buffer: vulkan_context
                 .allocate_dynamic_uniform_buffer(vulkan_context.frame_overlap())?,
+            billboard_buffer: vulkan_context.allocate_storage_buffer(4)?,
         };
+
+        let billboard_data = vec![
+            DemoBillboardBuffer {
+                coordinate: Vector4::new(1.0, 0.0, 0.0, 0.0),
+            },
+            DemoBillboardBuffer {
+                coordinate: Vector4::new(0.0, 1.0, 0.0, 0.0),
+            },
+            DemoBillboardBuffer {
+                coordinate: Vector4::new(0.0, 0.0, 1.0, 0.0),
+            },
+            DemoBillboardBuffer {
+                coordinate: Vector4::new(1.0, 0.0, 1.0, 0.0),
+            },
+        ];
+
+        descriptor_buffers
+            .billboard_buffer
+            .copy_from_slice(&billboard_data)?;
 
         let per_frame_data = PerFrame::try_init(
             |_| {
@@ -97,6 +131,11 @@ impl Demo {
                         &descriptor_buffers.camera_buffer,
                         0,
                         vk::DescriptorType::UNIFORM_BUFFER_DYNAMIC,
+                    )?
+                    .add_storage_buffer_descriptor(
+                        &descriptor_buffers.billboard_buffer,
+                        1,
+                        vk::DescriptorType::STORAGE_BUFFER,
                     )?
                     .update(logical_device, destination_set)?;
 
@@ -118,12 +157,16 @@ impl Demo {
         let vertex_input_state_builder = VertexInputStateBuilder::new();
         let vertex_input_state_info = vertex_input_state_builder.build();
 
-        let compiled_vert =
-            compile_shader_from_included_src!(ShaderKind::Vertex, "../shader/billboard.vert")?;
+        let compiled_vert = compile_shader_from_included_src_with_debug_info!(
+            ShaderKind::Vertex,
+            "../shader/billboard.vert"
+        )?;
         let vertex_shader_module = vulkan_context.create_vertex_shader(compiled_vert)?;
 
-        let compiled_frag =
-            compile_shader_from_included_src!(ShaderKind::Fragment, "../shader/billboard.frag")?;
+        let compiled_frag = compile_shader_from_included_src_with_debug_info!(
+            ShaderKind::Fragment,
+            "../shader/billboard.frag"
+        )?;
         let fragment_shader_module = vulkan_context.create_fragment_shader(compiled_frag)?;
 
         let viewport = vk::Viewport {
@@ -373,6 +416,9 @@ impl Demo {
 
             self.descriptor_buffers
                 .camera_buffer
+                .destroy(logical_device, &mut allocator)?;
+            self.descriptor_buffers
+                .billboard_buffer
                 .destroy(logical_device, &mut allocator)?;
 
             for descriptor_data in self.per_frame_data.iter_mut() {
