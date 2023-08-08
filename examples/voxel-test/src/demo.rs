@@ -36,6 +36,8 @@ pub struct DemoCameraBuffer {
 
 pub struct DemoDescriptorBuffers {
     camera_buffer: SetUpUniformBuffer<DemoCameraBuffer>,
+    vertex_buffer: TypedAllocatedBuffer<VertexData>,
+    vertex_count: u32,
 }
 
 pub struct PerFrameData {
@@ -56,9 +58,6 @@ pub struct Demo {
 
     vertex_shader_module: CompiledShaderModule,
     fragment_shader_module: CompiledShaderModule,
-
-    vertex_buffer: TypedAllocatedBuffer<VertexData>,
-    vertex_count: u32,
 
     camera: OrbitalCamera,
     frame_time_manager: FrameTimeManager,
@@ -85,9 +84,26 @@ impl Demo {
             .build(logical_device)?;
         let descriptor_set_layouts = vec![global_set_layout];
 
+        let vertices = vec![
+            VertexData {
+                pos: Vector3::new(0.0, 0.0, 0.0),
+            },
+            VertexData {
+                pos: Vector3::new(0.0, 1.0, 0.0),
+            },
+            VertexData {
+                pos: Vector3::new(1.0, 0.0, 0.0),
+            },
+        ];
+
+        let vertex_buffer = vulkan_context.create_vertex_buffer(&vertices)?;
+        let vertex_count = vertices.len() as u32;
+
         let descriptor_buffers = DemoDescriptorBuffers {
             camera_buffer: vulkan_context
                 .allocate_dynamic_uniform_buffer(vulkan_context.frame_overlap())?,
+            vertex_buffer,
+            vertex_count,
         };
 
         let per_frame_data = PerFrame::try_init(
@@ -116,21 +132,6 @@ impl Demo {
         let surface_resolution = vulkan_context.get_surface_extent()?;
         let surface_width = surface_resolution.width;
         let surface_height = surface_resolution.height;
-
-        let vertices = vec![
-            VertexData {
-                pos: Vector3::new(0.0, 0.0, 0.0),
-            },
-            VertexData {
-                pos: Vector3::new(0.0, 1.0, 0.0),
-            },
-            VertexData {
-                pos: Vector3::new(1.0, 0.0, 0.0),
-            },
-        ];
-
-        let vertex_buffer = vulkan_context.create_vertex_buffer(&vertices)?;
-        let vertex_count = vertices.len() as u32;
 
         let vertex_input_state_builder =
             VertexInputStateBuilder::new().add_data_from_type::<VertexData>(0);
@@ -183,8 +184,6 @@ impl Demo {
 
             vertex_shader_module,
             fragment_shader_module,
-            vertex_buffer,
-            vertex_count,
 
             frame_time_manager: FrameTimeManager::new(&voxelar_context),
             camera: OrbitalCamera::new(
@@ -310,7 +309,7 @@ impl Demo {
                         device.cmd_bind_vertex_buffers(
                             draw_command_buffer,
                             0,
-                            &[self.vertex_buffer.raw_buffer()],
+                            &[self.descriptor_buffers.vertex_buffer.raw_buffer()],
                             &[0],
                         );
 
@@ -358,7 +357,13 @@ impl Demo {
                             &[camera_buffer_offset as u32],
                         );
 
-                        device.cmd_draw(draw_command_buffer, self.vertex_count, 1, 0, 0);
+                        device.cmd_draw(
+                            draw_command_buffer,
+                            self.descriptor_buffers.vertex_count,
+                            1,
+                            0,
+                            0,
+                        );
 
                         Ok(())
                     },
@@ -421,6 +426,9 @@ impl Demo {
             self.descriptor_buffers
                 .camera_buffer
                 .destroy(logical_device, &mut allocator)?;
+            self.descriptor_buffers
+                .vertex_buffer
+                .destroy(logical_device, &mut allocator)?;
 
             for descriptor_data in self.per_frame_data.iter_mut() {
                 descriptor_data.descriptor_set_logic.destroy(logical_device);
@@ -437,8 +445,6 @@ impl Demo {
 
             self.vertex_shader_module.destroy(logical_device);
             self.fragment_shader_module.destroy(logical_device);
-
-            self.vertex_buffer.destroy(logical_device, &mut allocator)?;
         }
 
         Ok(())
