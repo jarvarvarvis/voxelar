@@ -16,6 +16,7 @@ fn main() {
     let compiler: Compiler = Compiler::new().unwrap();
 
     let mut options = CompileOptions::new().expect("Unable to create compile options");
+
     options.set_include_callback(|requested_name, include_type, containing_name, depth| {
         if depth > 20 {
             return Err(
@@ -49,6 +50,8 @@ fn main() {
             content: resolved_content,
         })
     });
+
+    options.set_generate_debug_info();
 
     let ok_entries = WalkDir::new(".").into_iter().filter_map(|e| e.ok());
     let file_entries = ok_entries.filter(|entry| entry.file_type().is_file());
