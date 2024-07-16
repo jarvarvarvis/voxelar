@@ -753,6 +753,22 @@ impl VulkanContext {
         self.create_shader_of_stage(compiled_bytes, ShaderStageFlags::FRAGMENT)
     }
 
+    #[cfg(feature = "shaderc-crate")]
+    pub fn load_vertex_shader(&self, path: &str) -> crate::Result<CompiledShaderModule> {
+        use shaderc::ShaderKind;
+        let src = std::fs::read_to_string(path)?;
+        let compiled_vert = shader::compile_bytes(ShaderKind::Vertex, src.as_str(), path)?;
+        self.create_vertex_shader(compiled_vert)
+    }
+
+    #[cfg(feature = "shaderc-crate")]
+    pub fn load_fragment_shader(&self, path: &str) -> crate::Result<CompiledShaderModule> {
+        use shaderc::ShaderKind;
+        let src = std::fs::read_to_string(path)?;
+        let compiled_vert = shader::compile_bytes(ShaderKind::Fragment, src.as_str(), path)?;
+        self.create_fragment_shader(compiled_vert)
+    }
+
     pub fn create_texture<T>(
         &self,
         format: Format,
