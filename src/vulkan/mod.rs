@@ -478,6 +478,12 @@ impl VulkanContext {
             &self.surface_info,
         )
     }
+
+    pub fn update_swapchains(&mut self, window_size: (u32, u32), egui_integration: &mut SetUpEguiIntegration) -> crate::Result<()> {
+        self.update_swapchain(window_size)?;
+        self.update_egui_integration_swapchain(window_size, egui_integration)?;
+        Ok(())
+    }
 }
 
 impl VulkanContext {
