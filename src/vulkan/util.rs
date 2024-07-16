@@ -1,8 +1,21 @@
+use ash::vk::{Extent2D, Viewport};
+
 pub fn map_vec_ref<A, B, MapFn>(vec: &Vec<A>, map_fn: MapFn) -> Vec<B>
 where
     MapFn: Fn(&A) -> B,
 {
     vec.iter().map(|value| map_fn(value)).collect()
+}
+
+pub fn convert_extent_to_viewport(extent: Extent2D) -> Viewport {
+    Viewport {
+        x: 0.0,
+        y: 0.0,
+        width: extent.width as f32,
+        height: extent.height as f32,
+        min_depth: 0.0,
+        max_depth: 1.0,
+    }
 }
 
 /// Taken from [this](https://stackoverflow.com/a/42186553) answer
