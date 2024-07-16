@@ -6,9 +6,27 @@ use ash::vk::{AttachmentDescription, AttachmentLoadOp, AttachmentReference, Atta
 use ash::vk::{PipelineBindPoint, PipelineStageFlags};
 use ash::vk::{RenderPass, RenderPassCreateInfo};
 use ash::vk::{SampleCountFlags, SubpassDependency, SubpassDescription};
+use nalgebra::Vector4;
 
 use super::logical_device::SetUpLogicalDevice;
 use super::surface::SetUpSurfaceInfo;
+
+pub fn color_clear_value(color: Vector4<f32>) -> vk::ClearValue {
+    vk::ClearValue {
+        color: vk::ClearColorValue {
+            float32: color.into(),
+        },
+    }
+}
+
+pub fn default_depth_clear_value() -> vk::ClearValue {
+    vk::ClearValue {
+        depth_stencil: vk::ClearDepthStencilValue {
+            depth: 1.0,
+            stencil: 0,
+        },
+    }
+}
 
 pub struct SetUpRenderPass {
     pub render_pass: RenderPass,
