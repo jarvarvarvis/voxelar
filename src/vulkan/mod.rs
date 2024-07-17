@@ -60,6 +60,8 @@ pub mod creation_info;
 pub mod debug;
 pub mod depth_image;
 pub mod descriptors;
+
+#[cfg(feature = "egui-integration")]
 pub mod egui_integration;
 pub mod frame_data;
 pub mod framebuffers;
@@ -95,6 +97,7 @@ use self::creation_info::DataStructureCreationInfo;
 use self::creation_info::PresentModeInitMode;
 use self::debug::VerificationProvider;
 use self::depth_image::SetUpDepthImage;
+#[cfg(feature = "egui-integration")]
 use self::egui_integration::SetUpEguiIntegration;
 use self::frame_data::FrameData;
 use self::framebuffers::SetUpFramebuffers;
@@ -309,7 +312,7 @@ impl VulkanContext {
 
     pub fn create_depth_image(&mut self) -> crate::Result<()> {
         unsafe {
-            let mut depth_image = {
+            let depth_image = {
                 let allocator = &mut self.lock_allocator()?;
                 SetUpDepthImage::create_with_defaults(
                     self.logical_device()?,
@@ -317,12 +320,6 @@ impl VulkanContext {
                     &self.surface_info,
                 )?
             };
-
-            self.submit_immediate_setup_commands(|device, setup_command_buffer| {
-                depth_image
-                    .perform_layout_transition_pipeline_barrier(device, setup_command_buffer);
-                Ok(())
-            })?;
 
             self.depth_image = Some(depth_image);
         }
@@ -443,6 +440,7 @@ impl VulkanContext {
         Ok(())
     }
 
+    #[cfg(feature = "egui-integration")]
     pub fn create_egui_integration(
         &self,
         window: &VoxelarWindow,
@@ -466,6 +464,7 @@ impl VulkanContext {
         ))
     }
 
+    #[cfg(feature = "egui-integration")]
     pub fn update_egui_integration_swapchain(
         &self,
         window_size: (u32, u32),
@@ -479,6 +478,7 @@ impl VulkanContext {
         )
     }
 
+    #[cfg(feature = "egui-integration")]
     pub fn update_swapchains(&mut self, window_size: (u32, u32), egui_integration: &mut SetUpEguiIntegration) -> crate::Result<()> {
         self.update_swapchain(window_size)?;
         self.update_egui_integration_swapchain(window_size, egui_integration)?;

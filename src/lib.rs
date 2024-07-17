@@ -26,6 +26,7 @@ pub extern crate nalgebra;
 pub extern crate voxelar_utils;
 pub extern crate winit;
 
+#[cfg(feature = "egui-integration")]
 pub extern crate egui;
 pub extern crate gpu_allocator;
 pub extern crate image as image_crate;

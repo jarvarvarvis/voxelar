@@ -4,14 +4,13 @@ use ash::vk::Extent2D;
 use ash::vk::Extent3D;
 use ash::vk::Format;
 use ash::vk::SharingMode;
-use ash::vk::{AccessFlags, PipelineStageFlags, SampleCountFlags};
+use ash::vk::SampleCountFlags;
 use ash::vk::{
-    ImageAspectFlags, ImageLayout, ImageSubresourceRange, ImageTiling, ImageType, ImageUsageFlags,
+    ImageAspectFlags, ImageSubresourceRange, ImageTiling, ImageType, ImageUsageFlags,
     ImageViewType,
 };
 use gpu_allocator::vulkan::*;
 
-use super::command::command_buffer::SetUpCommandBufferWithFence;
 use super::image::image::AllocatedImage;
 use super::image::image_view::SetUpImageView;
 use super::logical_device::SetUpLogicalDevice;
@@ -89,25 +88,6 @@ impl SetUpDepthImage {
             SampleCountFlags::TYPE_1,
             Self::create_default_subresource_range(),
         )
-    }
-
-    pub fn perform_layout_transition_pipeline_barrier(
-        &mut self,
-        logical_device: &SetUpLogicalDevice,
-        setup_command_buffer: &SetUpCommandBufferWithFence,
-    ) {
-        self.depth_image.add_layout_transition_pipeline_barrier(
-            logical_device,
-            setup_command_buffer,
-            Self::create_default_subresource_range(),
-            AccessFlags::empty(),
-            AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE
-                | AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ,
-            ImageLayout::UNDEFINED,
-            ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-            PipelineStageFlags::BOTTOM_OF_PIPE,
-            PipelineStageFlags::LATE_FRAGMENT_TESTS,
-        );
     }
 
     pub fn destroy(

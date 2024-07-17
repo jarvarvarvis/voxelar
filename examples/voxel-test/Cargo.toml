@@ -7,7 +7,7 @@ build = "recompile_shaders.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-voxelar = { path = "../../." }
+voxelar = { path = "../../.", features = ["shaderc-crate", "egui-integration"] }
 voxelar-vertex = { git = "https://github.com/jarvarvarvis/voxelar-vertex" }
 
 [build-dependencies]

@@ -6,5 +6,5 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-voxelar = { path = "../../.", features = ["shaderc-crate"] }
+voxelar = { path = "../../.", features = ["shaderc-crate", "egui-integration"] }
 voxelar-vertex = { git = "https://github.com/jarvarvarvis/voxelar-vertex" }
